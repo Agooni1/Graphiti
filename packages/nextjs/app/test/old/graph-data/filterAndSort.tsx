@@ -2,6 +2,12 @@ import React from "react";
 import { AssetTransfersCategory, AssetTransfersResult } from "alchemy-sdk";
 import { FilterOptions } from "./types";
 
+// interface FilterOptions {
+//   maxCount?: number;
+//   maxChild?: number;
+//   order?: "newest" | "oldest";
+// }
+
 interface Props {
   transfers: AssetTransfersResult[];
   options?: FilterOptions;
@@ -30,6 +36,27 @@ export const FilterAndSortTx = (
 //   console.log("Filtered transfers:", result);
   return result;
 };
+
+//below works for from only
+// export const FilterPair = (
+//   transfers: AssetTransfersResult[],
+//   parentAddress: string
+// ): { from: string; to: string }[] => {
+//   const pairs = new Set<string>();
+//   const parent = parentAddress.toLowerCase();
+
+//   transfers.forEach(tx => {
+//     if (tx.from?.toLowerCase() === parent && tx.to) {
+//       const pairKey = `${tx.from.toLowerCase()}->${tx.to.toLowerCase()}`;
+//       pairs.add(pairKey);
+//     }
+//   });
+
+//   return Array.from(pairs).map(pair => {
+//     const [from, to] = pair.split("->");
+//     return { from, to };
+//   });
+// }
 
 export const FilterPair = (
   transfers: AssetTransfersResult[],

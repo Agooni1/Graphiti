@@ -2,9 +2,15 @@
 import { useEffect } from "react";
 import { alchemy } from "~~/app/lib/alchemy";
 import { AssetTransfersCategory, SortingOrder } from "alchemy-sdk";
+import { GraphNode, GraphLink } from "./types";
 import { generateNodesFromTx, Transfer } from "./generateNodesFromTx";
-import { GraphDataProps } from "./types";
 
+interface GraphDataProps {
+  address: string;
+  depth?: number;
+  maxDepth?: number;
+  onGraphDataReady: (data: { nodes: GraphNode[]; links: GraphLink[] }) => void;
+}
 
 export const GraphDatamodular = ({ address, depth = 0, maxDepth = 2, onGraphDataReady }: GraphDataProps) => {
   useEffect(() => {

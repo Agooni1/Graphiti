@@ -2,7 +2,6 @@
 //Provides small utility functions to keep your logic clean and reusable
 
 import { GraphNode } from "./types";
-import { alchemy } from "~~/app/lib/alchemy";
 
 export function shortAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -24,24 +23,3 @@ export function dedupeNodes(nodes: GraphNode[]): GraphNode[] {
     return true;
   });
 }
-
-export const getETHBalance = async (address: string): Promise<string> => {
-  try {
-    const rawBalance = await alchemy.core.getBalance(address);
-    const eth = Number(rawBalance) / 1e18;
-    return eth.toFixed(4);
-  } catch (err) {
-    console.error("Failed to fetch ETH balance:", err);
-    return "Error";
-  }
-};
-
-export const isContract = async (address: string): Promise<boolean> => {
-  try {
-    const bytecode = await alchemy.core.getCode(address);
-    return bytecode !== "0x";
-  } catch (err) {
-    console.error("Failed to check contract status:", err);
-    return false;
-  }
-};

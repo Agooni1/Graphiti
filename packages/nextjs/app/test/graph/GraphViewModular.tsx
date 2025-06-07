@@ -8,12 +8,15 @@
 // Purpose:
 // The main React component rendering your force-directed graph using react-force-graph-2d.
 
-import ForceGraph2D from "react-force-graph-2d";
-import { FC, useEffect, useRef } from "react";
+"use client";
+import dynamic from "next/dynamic";
+import { FC, useEffect, useRef, useState } from "react";
 import { drawNode, paintNodePointerArea } from "./nodeRenderUtils";
 import { getLinkCurvature, getLinkColor } from "./linkUtils";
 import { GraphNode, GraphLink } from "../graph-data/types";
 
+// Dynamically import ForceGraph2D with SSR disabled
+const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
 
 interface GraphViewProps {
   graphData: {
@@ -24,6 +27,16 @@ interface GraphViewProps {
 
 const GraphViewModular: FC<GraphViewProps> = ({ graphData }) => {
   const graphRef = useRef<any>(null);
+  // Use state to store width/height to avoid SSR window access
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+
+  useEffect(() => {
+    // Only run on client
+    setDimensions({
+      width: window.innerWidth,
+      height: window.innerHeight * 0.8,
+    });
+  }, []);
 
   useEffect(() => {
     const nodeCount = graphData.nodes.length;
@@ -52,8 +65,8 @@ const GraphViewModular: FC<GraphViewProps> = ({ graphData }) => {
       linkDirectionalArrowRelPos={0.9}
       linkWidth={2}
       linkLabel={(link: GraphLink) => link.transactionHash ?? ""}
-      width={window.innerWidth}
-      height={window.innerHeight * 0.8}
+      width={dimensions.width}
+      height={dimensions.height}
       onNodeClick={(node) => {
         const address = (node as GraphNode).id;
         window.open(`https://sepolia.etherscan.io/address/${address}`, "_blank");

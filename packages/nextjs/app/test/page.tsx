@@ -79,7 +79,10 @@ const Test: NextPage = () => {
                   min="1"
                   max="50"
                   value={sliderValue}
-                  onChange={e => setSliderValue(Number(e.target.value))}
+                  onChange={e => {
+                    setSliderValue(Number(e.target.value));
+                    console.log("Slider value:", e.target.value);
+                  }}
                   className="range rotate-[-90deg]"
                 />
                 <div className="btn-group mt-4">

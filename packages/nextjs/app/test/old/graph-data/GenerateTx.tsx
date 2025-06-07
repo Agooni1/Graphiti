@@ -3,7 +3,9 @@ import { useEffect } from "react";
 import { alchemy } from "~~/app/lib/alchemy";
 import { AssetTransfersCategory, SortingOrder } from "alchemy-sdk";
 import { GraphNode, GraphLink } from "./types";
-import { FilterPair } from "./filterAndSort";
+import { generateNodesFromTx, Transfer } from "./generateNodesFromTx";
+// import { filterAndSortTransfers } from "./filterAndSort";
+import { FilterAndSortTx, FilterPair, filterTransfersByPair } from "./filterAndSort";
 import { pairData } from "./pairData";
 
 
