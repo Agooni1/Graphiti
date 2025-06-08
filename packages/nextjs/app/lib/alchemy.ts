@@ -1,25 +1,8 @@
-// let alchemy: any = null;
-
-// export const getAlchemy = async () => {
-//   const { Alchemy, Network } = await import("alchemy-sdk");
-//   const config = {
-//     apiKey: "Sj3FWFimpiaaBKnAkUlsnjktExNXYVZR",
-//     network: Network.ETH_SEPOLIA,
-//   };
-
-//   if (!alchemy) {
-//     alchemy = new Alchemy(config);
-//   }
-//   return alchemy;
-// };
-
-// Configures the Alchemy SDK
-
 // Imports the Alchemy SDK
 import { Alchemy, Network } from "alchemy-sdk";
 
 const config = {
-  apiKey: "Sj3FWFimpiaaBKnAkUlsnjktExNXYVZR", // Replace with your API key
+  apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY, // Replace with your API key
   network: Network.ETH_SEPOLIA, // Replace with your network
 };
 

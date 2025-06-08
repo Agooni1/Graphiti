@@ -32,8 +32,8 @@ export const getETHBalance = async (address: string): Promise<string> => {
     const eth = Number(rawBalance) / 1e18;
     return eth.toFixed(4);
   } catch (err) {
-    console.error("Failed to fetch ETH balance:", err);
-    return "Error";
+    // Fail silently, cuz i dont wanna upgrade the API key
+    return "...";
   }
 };
 
@@ -42,7 +42,7 @@ export const isContract = async (address: string): Promise<boolean> => {
     const bytecode = await alchemy.core.getCode(address);
     return bytecode !== "0x";
   } catch (err) {
-    console.error("Failed to check contract status:", err);
+    // Fail silently, return false (not a contract)
     return false;
   }
 };
@@ -218,6 +218,40 @@ export async function isContractCached(address: string): Promise<boolean> {
   const result = await isContract(address);
   contractCache[address] = result;
   return result;
+}
+
+const transferCache: Record<string, AssetTransfersResult[]> = {};
+
+export async function fetchAllTransfersCached(address: string): Promise<AssetTransfersResult[]> {
+  if (transferCache[address] && transferCache[address].length > 0) {
+    return transferCache[address];
+  }
+  const transfers = await fetchAllTransfers(address);
+  if (transfers.length > 0) {
+    transferCache[address] = transfers;
+  }
+  return transfers;
+}
+
+export async function asyncPool<T, R>(
+  poolLimit: number,
+  array: T[],
+  iteratorFn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const ret: R[] = [];
+  const executing: Promise<void>[] = [];
+  for (const item of array) {
+    const p = Promise.resolve()
+      .then(() => iteratorFn(item))
+      .then(res => { ret.push(res); });
+    executing.push(p);
+    if (executing.length >= poolLimit) {
+      await Promise.race(executing);
+      executing.splice(executing.findIndex(e => e === p), 1);
+    }
+  }
+  await Promise.all(executing);
+  return ret;
 }
 
 

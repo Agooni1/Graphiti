@@ -2,26 +2,23 @@
 import type { NextPage } from "next";
 import { useState, useCallback, useEffect } from "react";
 import { AddressInput } from "~~/components/scaffold-eth";
-import GraphViewModular from "./graph/GraphViewModular";
-import { GenerateTx } from "./old/GenerateTx";
 import VisNetworkGraph from "./graph/VisNetworkGraph";
 import { AssetTransfersResult } from "alchemy-sdk";
 import { GraphNode, GraphLink } from "./graph-data/types";
-import { fetchAllTransfers, FilterAndSortTx } from "./graph-data/utils";
+import { fetchAllTransfers, fetchAllTransfersCached, FilterAndSortTx } from "./graph-data/utils";
 import { generateNodesFromTx } from "./graph-data/generateNodesFromTx"; // or your graph builder
 
 const Test: NextPage = () => {
   const [inputValue, setInputValue] = useState("");
   const [address, setAddress] = useState("");
   // const [graphData, setGraphData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
-  const [sliderValue, setSliderValue] = useState(10);
   const [layerNum, setLayerNum] = useState(1);
   const [transferDirection, setTransferDirection] = useState<"from" | "to" | "both">("both");
   const [loading, setLoading] = useState(false);
 
   const [allTransfers, setAllTransfers] = useState<AssetTransfersResult[]>([]);
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({ nodes: [], links: [] });
-  const [txDisplayLimit, setTxDisplayLimit] = useState(50); // total number of transactions
+  const [txDisplayLimit, setTxDisplayLimit] = useState(10); // total number of transactions
 
   // Stable callback for graph data
   const handleGraphDataReady = useCallback((data: any) => {
@@ -36,9 +33,8 @@ const Test: NextPage = () => {
 
   useEffect(() => {
     if (!address) return;
-    fetchAllTransfers(address).then(transfers => {
+    fetchAllTransfersCached(address).then(transfers => {
       setAllTransfers(transfers);
-      // console.log("Fetched transfers:", transfers); // <-- Add this line
     });
   }, [address]);
 
@@ -80,11 +76,14 @@ const Test: NextPage = () => {
             <button
               className="btn btn-primary"
               onClick={() => {
+                if (address.toLowerCase() !== inputValue.toLowerCase()) {
+                  setTxDisplayLimit(10);
+                }
                 setAddress(inputValue);
                 setInputValue("");
                 handleParamsChange();
               }}
-              disabled={!inputValue}
+              disabled={!inputValue || loading}
             >
               <span>Set</span>
             </button>
@@ -95,6 +94,7 @@ const Test: NextPage = () => {
                 setInputValue("");
                 setGraphData({ nodes: [], links: [] });
               }}
+              disabled={loading}
             >
               Clear
             </button>
@@ -111,9 +111,10 @@ const Test: NextPage = () => {
               value={txDisplayLimit}
               onChange={e => {
                 setTxDisplayLimit(Number(e.target.value));
-                handleParamsChange();
+                // handleParamsChange();
               }}
               className="range w-full"
+              disabled={loading}
             />
             <div className="text-center text-base-content/50 text-xs mt-1">{txDisplayLimit} tx</div>
           </div>
@@ -124,8 +125,8 @@ const Test: NextPage = () => {
               min="1"
               max="5"
               value={layerNum}
-              onChange={e => {
-                setLayerNum(Number(e.target.value));
+              onChange={a => {
+                setLayerNum(Number(a.target.value));
                 handleParamsChange();
               }}
               className="range w-full"
@@ -140,18 +141,21 @@ const Test: NextPage = () => {
             <button
               className={`btn btn-sm ${transferDirection === "from" ? "btn-active btn-primary" : ""}`}
               onClick={() => { setTransferDirection("from"); handleParamsChange(); }}
+              disabled={loading}
             >
               Sent
             </button>
             <button
               className={`btn btn-sm ${transferDirection === "to" ? "btn-active btn-primary" : ""}`}
               onClick={() => { setTransferDirection("to"); handleParamsChange(); }}
+              disabled={loading}
             >
               Received
             </button>
             <button
               className={`btn btn-sm ${transferDirection === "both" ? "btn-active btn-primary" : ""}`}
               onClick={() => { setTransferDirection("both"); handleParamsChange(); }}
+              disabled={loading}
             >
               All
             </button>
@@ -168,22 +172,6 @@ const Test: NextPage = () => {
           </div>
         )}
         {/* Graph */}
-        {/* {address && (
-          <>
-            <GenerateTx
-              address={address}
-              txNum={sliderValue}
-              NumLayers={layerNum - 1}
-              direction={transferDirection}
-              onGraphDataReady={handleGraphDataReady}
-            />
-            <GraphViewModular graphData={graphData} />
-            <VisNetworkGraph graphData={graphData} />
-            <div style={{ width: "100%", height: "100%", padding: "1rem", boxSizing: "border-box" }}>
-              <VisNetworkGraph graphData={graphData} />
-            </div>
-          </>
-        )} */}
         <VisNetworkGraph graphData={graphData} />
         {!loading && (!address || graphData.nodes.length === 0) && (
           <div className="absolute inset-0 flex items-center justify-center text-base-content/50 text-lg">

@@ -3,7 +3,8 @@
 // into a format usable by your graph component: an array of GraphNodes and GraphLinks.
 
 import { GraphNode, GraphLink } from "./types";
-import { getETHBalanceCached, isContractCached } from "./utils"; // Import your balance fetcher
+import { getETHBalanceCached, isContractCached, asyncPool } from "./utils"; // Import your balance fetcher
+// import { asyncPool } from "./asyncPool"; // Import asyncPool
 
 export interface Transfer {
   from: string;
@@ -49,7 +50,16 @@ export async function generateNodesFromTx(
     });
   }
 
-
+  // Instead of Promise.all(nodes.map(...)), use asyncPool:
+  const graphNodes: GraphNode[] = await asyncPool(5, Array.from(nodesMap.keys()), async id => {
+    const balance = await getETHBalanceCached(id);
+    const isCon = await isContractCached(id);
+    return {
+      id,
+      balance,
+      isContract: isCon,
+    };
+  });
 
   const nodes = Array.from(nodesMap.values());
   return {
