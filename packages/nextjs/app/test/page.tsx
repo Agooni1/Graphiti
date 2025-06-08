@@ -1,112 +1,154 @@
 "use client";
 import type { NextPage } from "next";
-import { useState } from "react";
-import { Address, AddressInput, Balance, EtherInput, IntegerInput } from "~~/components/scaffold-eth";
+import { useState, useCallback } from "react";
+import { AddressInput } from "~~/components/scaffold-eth";
 import GraphViewModular from "./graph/GraphViewModular";
 import { GenerateTx } from "./graph-data/GenerateTx";
 
 const Test: NextPage = () => {
-  // const address = "0x65aFADD39029741B3b8f0756952C74678c9cEC93";
-  // const address = "0xcC6eDeB501BbD8AD9E028BDe937B63Cdd64A1D91";
-  // const address = "0xE03A1074c86CFeDd5C142C4F04F1a1536e203543";
-  const [inputValue, setInputValue] = useState(""); // holds the text in the input box
-  const [address, setAddress] = useState("0xcC6eDeB501BbD8AD9E028BDe937B63Cdd64A1D91");       // confirmed address on button click
-
+  const [inputValue, setInputValue] = useState("");
+  const [address, setAddress] = useState("");
   const [graphData, setGraphData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
-
-  const [sliderValue, setSliderValue] = useState(10); // Example default depth or count
-
+  const [sliderValue, setSliderValue] = useState(10);
+  const [layerNum, setLayerNum] = useState(1);
   const [transferDirection, setTransferDirection] = useState<"from" | "to" | "both">("both");
+  const [loading, setLoading] = useState(false);
+
+  // Stable callback for graph data
+  const handleGraphDataReady = useCallback((data: any) => {
+    setGraphData(data);
+    setLoading(false);
+  }, []);
+
+  // When address/params change, show loading spinner
+  const handleParamsChange = () => {
+    setLoading(true);
+  };
 
   return (
-    <div>
-      {/* <WrapperClient address={address} /> */}
-       <div className="flex flex-col w-full mb-2">
-          <label className="text-sm mb-1">Set Address:</label>
-        <AddressInput
-          value={inputValue}
-          onChange={value => {
-            setInputValue(value); // updates text box display
-          }}
-          name="Target Address"
-        />
-        <button
-          className="btn btn-primary h-[2.2rem] min-h-[2.2rem] mt-2"
-          onClick={() => {
-            setAddress(inputValue); // updates actual address state
-            setInputValue("");
-          }}
-        >
-          Send
-        </button>
+    <div className="min-h-screen bg-base-200 flex flex-col items-center py-6">
+      {/* Controls Card */}
+      <div className="w-full max-w-3xl bg-base-100 rounded-xl shadow-lg p-6 mb-6 flex flex-col md:flex-row md:items-end gap-6">
+        {/* Address Input */}
+        <div className="flex-1">
+          <label className="block text-base-content mb-1 font-semibold">Target Address</label>
+          <AddressInput
+            value={inputValue}
+            onChange={value => setInputValue(value)}
+            name="Target Address"
+          />
+          <div className="flex gap-2 mt-2">
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                setAddress(inputValue);
+                setInputValue("");
+                handleParamsChange();
+              }}
+              disabled={!inputValue}
+            >
+              <span>Set</span>
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                setAddress("");
+                setInputValue("");
+                setGraphData({ nodes: [], links: [] });
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+        {/* Sliders */}
+        <div className="flex flex-col gap-4 w-48">
+          <div>
+            <label className="block text-base-content mb-1 font-semibold">Transactions per Layer</label>
+            <input
+              type="range"
+              min="1"
+              max="50"
+              value={sliderValue}
+              onChange={e => {
+                setSliderValue(Number(e.target.value));
+                handleParamsChange();
+              }}
+              className="range w-full"
+            />
+            <div className="text-center text-base-content/50 text-xs mt-1">{sliderValue} tx</div>
+          </div>
+          <div>
+            <label className="block text-base-content mb-1 font-semibold">Graph Depth</label>
+            <input
+              type="range"
+              min="1"
+              max="5"
+              value={layerNum}
+              onChange={e => {
+                setLayerNum(Number(e.target.value));
+                handleParamsChange();
+              }}
+              className="range w-full"
+            />
+            <div className="text-center text-base-content/50 text-xs mt-1">Depth: {layerNum}</div>
+          </div>
+        </div>
+        {/* Direction Buttons */}
+        <div className="flex flex-col gap-2">
+          <label className="block text-base-content mb-1 font-semibold">Direction</label>
+          <div className="btn-group flex">
+            <button
+              className={`btn btn-sm ${transferDirection === "from" ? "btn-active btn-primary" : ""}`}
+              onClick={() => { setTransferDirection("from"); handleParamsChange(); }}
+            >
+              Sent
+            </button>
+            <button
+              className={`btn btn-sm ${transferDirection === "to" ? "btn-active btn-primary" : ""}`}
+              onClick={() => { setTransferDirection("to"); handleParamsChange(); }}
+            >
+              Received
+            </button>
+            <button
+              className={`btn btn-sm ${transferDirection === "both" ? "btn-active btn-primary" : ""}`}
+              onClick={() => { setTransferDirection("both"); handleParamsChange(); }}
+            >
+              All
+            </button>
+          </div>
+        </div>
       </div>
-      <div>
-        <button
-          className="btn btn-primary h-[2.2rem] min-h-[2.2rem] mt-2"
-          onClick={() => {
-            setAddress(""); // updates actual address state
-          }}
-        >
-          Clear
-        </button>
-      </div>
-      <div>
-        {/* <WrapperNode address= {address} /> */}
-        {/* <GraphData address={address} onGraphDataReady={setGraphData} /> */}
-        {/* OK THIS ONE DOES WORK (BELOW) */}
-        {/* <GraphDatamodular address={address} onGraphDataReady={setGraphData} /> */} 
-        
-        
-      </div>
-            <div className="relative w-full h-[80vh] mt-8">
-              {/* Main graph display full width/height */}
-              <div className="w-full h-full">
-                <GenerateTx address={address} txNum={sliderValue} direction={transferDirection} onGraphDataReady={setGraphData} />
-                <GraphViewModular graphData={graphData} />
-              </div>
 
-              {/* Slider fixed in bottom-right corner */}
-              <div className="absolute top-4 right-4 flex flex-col items-center">
-                <input
-                  type="range"
-                  min="1"
-                  max="50"
-                  value={sliderValue}
-                  onChange={e => {
-                    setSliderValue(Number(e.target.value));
-                    console.log("Slider value:", e.target.value);
-                  }}
-                  className="range rotate-[-90deg]"
-                />
-                <div className="btn-group mt-4">
-                  <button
-                    className={`btn btn-sm ${transferDirection === "from" ? "btn-active" : ""}`}
-                    onClick={() => setTransferDirection("from")}
-                  >
-                    Sent
-                  </button>
-                  <button
-                    className={`btn btn-sm ${transferDirection === "to" ? "btn-active" : ""}`}
-                    onClick={() => setTransferDirection("to")}
-                  >
-                    Received
-                  </button>
-                  <button
-                    className={`btn btn-sm ${transferDirection === "both" ? "btn-active" : ""}`}
-                    onClick={() => setTransferDirection("both")}
-                  >
-                    All
-                  </button>
-                </div>
-              </div>
-              <div className="absolute top-24 right-12 flex flex-col items-center">
-                <span className="text-sm mt-2 text-white">Depth: {sliderValue}</span>
-              </div>
-            </div>
-      
-            </div>
+      {/* Graph Area */}
+      <div className="w-full max-w-6xl h-[70vh] bg-base-100 rounded-xl shadow-lg flex items-center justify-center relative">
+        {/* Loading Spinner */}
+        {loading && address && (
+          <div className="absolute inset-0 flex items-center justify-center bg-base-100 bg-opacity-80 z-10 rounded-xl">
+            <span className="loading loading-spinner loading-lg text-primary"></span>
+          </div>
+        )}
+        {/* Graph */}
+        {address && (
+          <>
+            <GenerateTx
+              address={address}
+              txNum={sliderValue}
+              NumLayers={layerNum - 1}
+              direction={transferDirection}
+              onGraphDataReady={handleGraphDataReady}
+            />
+            <GraphViewModular graphData={graphData} />
+          </>
+        )}
+        {!loading && (!address || graphData.nodes.length === 0) && (
+          <div className="absolute inset-0 flex items-center justify-center text-base-content/50 text-lg">
+            Enter an address to view the graph.
+          </div>
+        )}
+      </div>
+    </div>
   );
-
 };
 
 export default Test;

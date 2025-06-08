@@ -2,7 +2,8 @@
 // Controls how links look between nodes, particularly for directional edges and curved lines.
 
 import { GraphNode, GraphLink } from "../graph-data/types";
-import { HUES } from "./graphConstants";
+
+export const HUES = [0, 60, 120, 180, 240, 300];
 
 export function getLinkCurvature(link: GraphLink, allLinks: GraphLink[]): number {
   const i = link.curvatureIndex ?? 0;
