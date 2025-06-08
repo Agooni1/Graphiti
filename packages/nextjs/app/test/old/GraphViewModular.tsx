@@ -11,8 +11,8 @@
 "use client";
 import dynamic from "next/dynamic";
 import { FC, useEffect, useRef, useState, useLayoutEffect } from "react";
-import { drawNode, paintNodePointerArea } from "../old/nodeRenderUtils";
-import { getLinkCurvature, getLinkColor } from "../old/linkUtils";
+import { drawNode, paintNodePointerArea } from "./nodeRenderUtils";
+import { getLinkCurvature, getLinkColor } from "./linkUtils";
 import { GraphNode, GraphLink } from "../graph-data/types";
 import { FiMaximize2, FiMinimize2 } from "react-icons/fi";
 import * as d3 from "d3-force"; // Add this import at the top

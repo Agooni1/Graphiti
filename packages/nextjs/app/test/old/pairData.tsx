@@ -1,5 +1,5 @@
-import { GraphNode, GraphLink, PairDataProps } from "./types";
-import { getETHBalance, isContract, filterTransfersByPair } from "./utils";
+import { GraphNode, GraphLink, PairDataProps } from "../graph-data/types";
+import { getETHBalance, isContract, filterTransfersByPair } from "../graph-data/utils";
 
 
 export const pairData = async ({ pairsFromParent, transfers }: PairDataProps) => {

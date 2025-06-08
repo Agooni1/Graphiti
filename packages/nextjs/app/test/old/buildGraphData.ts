@@ -1,7 +1,7 @@
 import { alchemy } from "~~/app/lib/alchemy";
 import { AssetTransfersCategory, SortingOrder } from "alchemy-sdk";
-import { FilterPair, pairData } from "./utils";
-import { GraphNode, GraphLink } from "./types";
+import { FilterPair, pairData } from "../graph-data/utils";
+import { GraphNode, GraphLink } from "../graph-data/types";
 
 type BuildGraphOptions = {
   address: string;

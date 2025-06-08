@@ -3,7 +3,7 @@
 
 import { GraphNode, FilterOptions, PairDataProps, GraphLink} from "./types";
 import { alchemy } from "~~/app/lib/alchemy";
-import { AssetTransfersCategory, AssetTransfersResult } from "alchemy-sdk";
+import { AssetTransfersCategory, AssetTransfersResult, SortingOrder } from "alchemy-sdk";
 
 export function shortAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -51,14 +51,26 @@ export const FilterAndSortTx = (
   transfers: AssetTransfersResult[],
   options: FilterOptions = {}
 ): AssetTransfersResult[] => {
+  // Remove transfers with missing from/to addresses
+  let validTransfers = transfers.filter(tx => tx.from && tx.to);
 
-  const NewestFirst = [...transfers].sort((a, b) => {
+  // Direction filtering
+  if (options.direction === "from") {
+    // Sent: from the parent address
+    validTransfers = validTransfers.filter(tx => tx.from?.toLowerCase() === options.address?.toLowerCase());
+  } else if (options.direction === "to") {
+    // Received: to the parent address
+    validTransfers = validTransfers.filter(tx => tx.to?.toLowerCase() === options.address?.toLowerCase());
+  }
+  // "both" means no additional filtering
+
+  const NewestFirst = [...validTransfers].sort((a, b) => {
     const blockA = Number(a.blockNum);
     const blockB = Number(b.blockNum);
     return blockB - blockA;
   });
 
-  const OldestFirst = [...transfers].sort((a, b) => {
+  const OldestFirst = [...validTransfers].sort((a, b) => {
     const blockA = Number(a.blockNum);
     const blockB = Number(b.blockNum);
     return blockA - blockB;
@@ -147,4 +159,66 @@ export const pairData = async ({ pairsFromParent, transfers }: PairDataProps): P
   const graphData = { nodes: graphNodes, links: links };
   return graphData;
 };
+
+export async function fetchAllTransfers(address: string): Promise<AssetTransfersResult[]> {
+  if (!address) return [];
+
+  const commonParams = {
+    fromBlock: "0x0",
+    toBlock: "latest",
+    maxCount: 500,
+    category: [
+      AssetTransfersCategory.EXTERNAL,
+      AssetTransfersCategory.INTERNAL,
+      AssetTransfersCategory.ERC20,
+      AssetTransfersCategory.ERC721,
+      AssetTransfersCategory.ERC1155,
+    ],
+    order: SortingOrder.DESCENDING,
+  };
+
+  try {
+    // Fetch sent and received separately
+    const [sent, received] = await Promise.all([
+      alchemy.core.getAssetTransfers({ ...commonParams, fromAddress: address, toAddress: undefined }),
+      alchemy.core.getAssetTransfers({ ...commonParams, fromAddress: undefined, toAddress: address }),
+    ]);
+
+    // Combine and deduplicate by tx hash
+    const all = [...sent.transfers, ...received.transfers];
+    // console.log("API Fetched transfers:", all);
+    const seen = new Set<string>();
+    const deduped = all.filter(tx => {
+      if (seen.has(tx.hash)) return false;
+      seen.add(tx.hash);
+      return true;
+    });
+    
+    console.log("API Deduplicated transfers:", deduped);
+
+    return deduped;
+    // return [];
+  } catch (err) {
+    console.error("Failed to fetch transfers:", err);
+    return [];
+  }
+}
+
+const ethBalanceCache: Record<string, string> = {};
+export async function getETHBalanceCached(address: string): Promise<string> {
+  if (ethBalanceCache[address]) return ethBalanceCache[address];
+  const balance = await getETHBalance(address);
+  ethBalanceCache[address] = balance;
+  return balance;
+}
+
+const contractCache: Record<string, boolean> = {};
+export async function isContractCached(address: string): Promise<boolean> {
+  if (address in contractCache) return contractCache[address];
+  const result = await isContract(address);
+  contractCache[address] = result;
+  return result;
+}
+
+
 

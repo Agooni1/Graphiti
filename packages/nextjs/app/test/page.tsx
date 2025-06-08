@@ -1,18 +1,27 @@
 "use client";
 import type { NextPage } from "next";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { AddressInput } from "~~/components/scaffold-eth";
 import GraphViewModular from "./graph/GraphViewModular";
-import { GenerateTx } from "./graph-data/GenerateTx";
+import { GenerateTx } from "./old/GenerateTx";
+import VisNetworkGraph from "./graph/VisNetworkGraph";
+import { AssetTransfersResult } from "alchemy-sdk";
+import { GraphNode, GraphLink } from "./graph-data/types";
+import { fetchAllTransfers, FilterAndSortTx } from "./graph-data/utils";
+import { generateNodesFromTx } from "./graph-data/generateNodesFromTx"; // or your graph builder
 
 const Test: NextPage = () => {
   const [inputValue, setInputValue] = useState("");
   const [address, setAddress] = useState("");
-  const [graphData, setGraphData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
+  // const [graphData, setGraphData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
   const [sliderValue, setSliderValue] = useState(10);
   const [layerNum, setLayerNum] = useState(1);
   const [transferDirection, setTransferDirection] = useState<"from" | "to" | "both">("both");
   const [loading, setLoading] = useState(false);
+
+  const [allTransfers, setAllTransfers] = useState<AssetTransfersResult[]>([]);
+  const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({ nodes: [], links: [] });
+  const [txDisplayLimit, setTxDisplayLimit] = useState(50); // total number of transactions
 
   // Stable callback for graph data
   const handleGraphDataReady = useCallback((data: any) => {
@@ -24,6 +33,36 @@ const Test: NextPage = () => {
   const handleParamsChange = () => {
     setLoading(true);
   };
+
+  useEffect(() => {
+    if (!address) return;
+    fetchAllTransfers(address).then(transfers => {
+      setAllTransfers(transfers);
+      // console.log("Fetched transfers:", transfers); // <-- Add this line
+    });
+  }, [address]);
+
+  useEffect(() => {
+    const fetchGraphData = async () => {
+      if (!allTransfers.length) {
+        setGraphData({ nodes: [], links: [] });
+        setLoading(false); // <-- Add this
+        return;
+      }
+
+      const filtered: any[] = FilterAndSortTx(allTransfers, {
+        maxCount: txDisplayLimit,
+        direction: transferDirection,
+        address: address,
+      });
+
+      const graph = await generateNodesFromTx(filtered);
+      setGraphData(graph);
+      setLoading(false); // <-- Add this
+    };
+
+    fetchGraphData();
+  }, [allTransfers, txDisplayLimit, transferDirection, layerNum]);
 
   return (
     <div className="min-h-screen bg-base-200 flex flex-col items-center py-6">
@@ -64,19 +103,19 @@ const Test: NextPage = () => {
         {/* Sliders */}
         <div className="flex flex-col gap-4 w-48">
           <div>
-            <label className="block text-base-content mb-1 font-semibold">Transactions per Layer</label>
+            <label className="block text-base-content mb-1 font-semibold">Transactions:</label>
             <input
               type="range"
               min="1"
-              max="50"
-              value={sliderValue}
+              max="100"
+              value={txDisplayLimit}
               onChange={e => {
-                setSliderValue(Number(e.target.value));
+                setTxDisplayLimit(Number(e.target.value));
                 handleParamsChange();
               }}
               className="range w-full"
             />
-            <div className="text-center text-base-content/50 text-xs mt-1">{sliderValue} tx</div>
+            <div className="text-center text-base-content/50 text-xs mt-1">{txDisplayLimit} tx</div>
           </div>
           <div>
             <label className="block text-base-content mb-1 font-semibold">Graph Depth</label>
@@ -129,7 +168,7 @@ const Test: NextPage = () => {
           </div>
         )}
         {/* Graph */}
-        {address && (
+        {/* {address && (
           <>
             <GenerateTx
               address={address}
@@ -139,8 +178,13 @@ const Test: NextPage = () => {
               onGraphDataReady={handleGraphDataReady}
             />
             <GraphViewModular graphData={graphData} />
+            <VisNetworkGraph graphData={graphData} />
+            <div style={{ width: "100%", height: "100%", padding: "1rem", boxSizing: "border-box" }}>
+              <VisNetworkGraph graphData={graphData} />
+            </div>
           </>
-        )}
+        )} */}
+        <VisNetworkGraph graphData={graphData} />
         {!loading && (!address || graphData.nodes.length === 0) && (
           <div className="absolute inset-0 flex items-center justify-center text-base-content/50 text-lg">
             Enter an address to view the graph.

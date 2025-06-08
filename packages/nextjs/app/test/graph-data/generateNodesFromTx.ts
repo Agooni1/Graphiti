@@ -3,6 +3,7 @@
 // into a format usable by your graph component: an array of GraphNodes and GraphLinks.
 
 import { GraphNode, GraphLink } from "./types";
+import { getETHBalanceCached, isContractCached } from "./utils"; // Import your balance fetcher
 
 export interface Transfer {
   from: string;
@@ -11,7 +12,9 @@ export interface Transfer {
   value?: string;
 }
 
-export function generateNodesFromTx(transfers: Transfer[]): { nodes: GraphNode[]; links: GraphLink[] } {
+export async function generateNodesFromTx(
+  transfers: Transfer[]
+): Promise<{ nodes: GraphNode[]; links: GraphLink[] }> {
   const nodesMap = new Map<string, GraphNode>();
   const links: GraphLink[] = [];
   const linkCounts: Record<string, number> = {};
@@ -21,17 +24,19 @@ export function generateNodesFromTx(transfers: Transfer[]): { nodes: GraphNode[]
     if (!nodesMap.has(tx.from)) {
       nodesMap.set(tx.from, {
         id: tx.from,
-        label: tx.from,
+        label: `${tx.from.slice(0, 6)}...${tx.from.slice(-4)}`,
+        balance: await getETHBalanceCached(tx.from),
+        isContract: await isContractCached(tx.from),
       });
     }
-
     if (!nodesMap.has(tx.to)) {
       nodesMap.set(tx.to, {
         id: tx.to,
-        label: tx.to,
+        label: `${tx.to.slice(0, 6)}...${tx.to.slice(-4)}`,
+        balance: await getETHBalanceCached(tx.to),
+        isContract: await isContractCached(tx.to),
       });
     }
-
     const key = `${tx.from}->${tx.to}`;
     const count = (linkCounts[key] = (linkCounts[key] || 0) + 1);
     const index = (linkIndices[key] = count - 1);
@@ -44,8 +49,11 @@ export function generateNodesFromTx(transfers: Transfer[]): { nodes: GraphNode[]
     });
   }
 
+
+
+  const nodes = Array.from(nodesMap.values());
   return {
-    nodes: Array.from(nodesMap.values()),
+    nodes,
     links,
   };
 }

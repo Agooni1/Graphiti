@@ -31,7 +31,9 @@ export interface GraphLink {
 export interface FilterOptions {
   maxCount?: number;
   maxChild?: number;
+  address?: string;
   order?: "newest" | "oldest";
+  direction?: "from" | "to" | "both"; // ← add this line
 }
 
 export interface Props {

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import { buildGraphData } from "./buildGraphData";
-import { DataProps } from "./types";
+import { DataProps } from "../graph-data/types";
 
 export const GenerateTx = ({
   address,
