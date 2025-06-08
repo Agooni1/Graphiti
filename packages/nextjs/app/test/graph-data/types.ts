@@ -43,3 +43,12 @@ export interface PairDataProps {
   pairsFromParent: { from: string; to: string; direction: "inbound" | "outbound"; }[];
   transfers: AssetTransfersResult[];
 }
+
+export interface DataProps {
+  address: string;
+  NumNodes?: number;
+  NumLayers?: number;
+  txNum?: number;
+  direction: "from" | "to" | "both"; // ← add this line
+  onGraphDataReady: (data: { nodes: GraphNode[]; links: GraphLink[] }) => void;
+}

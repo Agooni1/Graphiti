@@ -1,15 +1,8 @@
 "use client";
 import type { NextPage } from "next";
-// import WrapperClient from "./_components/WrapperClient";
-import { WrapperNode } from "./_components/WrapperNode";
-// import Wrapper from "./_components/Wrapper";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import { Address, AddressInput, Balance, EtherInput, IntegerInput } from "~~/components/scaffold-eth";
-import { GraphView } from "./_components/GraphView";
-// import NewGraphView from "./graphewGraphView";
-// import { GraphData } from "./graph-data/GraphDataModular";
 import GraphViewModular from "./graph/GraphViewModular";
-import { GraphDatamodular } from "./graph-data/GraphDataModular";
 import { GenerateTx } from "./graph-data/GenerateTx";
 
 const Test: NextPage = () => {

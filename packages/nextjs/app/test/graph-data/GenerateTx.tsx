@@ -2,19 +2,13 @@
 import { useEffect } from "react";
 import { alchemy } from "~~/app/lib/alchemy";
 import { AssetTransfersCategory, SortingOrder } from "alchemy-sdk";
-import { GraphNode, GraphLink } from "./types";
-import { FilterPair } from "./filterAndSort";
+import { GraphNode, GraphLink, DataProps } from "./types";
+// import { FilterPair } from "./filterAndSort";
+import { FilterPair } from "./utils";
 import { pairData } from "./pairData";
 
 
-interface DataProps {
-  address: string;
-  NumNodes?: number;
-  NumLayers?: number;
-  txNum?: number;
-  direction: "from" | "to" | "both"; // ← add this line
-  onGraphDataReady: (data: { nodes: GraphNode[]; links: GraphLink[] }) => void;
-}
+
 
 export const GenerateTx = ({ address, NumNodes = 0, txNum, NumLayers = 0, direction, onGraphDataReady }: DataProps) => {
 // export const GenerateTx = ({ address, NumNodes = 0, NumLayers = 0 }: DataProps) => {

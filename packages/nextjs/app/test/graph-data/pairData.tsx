@@ -1,7 +1,5 @@
 import { GraphNode, GraphLink, PairDataProps } from "./types";
-import { filterTransfersByPair } from "./filterAndSort";
-import { AssetTransfersResult } from "alchemy-sdk";
-import { getETHBalance, isContract } from "./utils";
+import { getETHBalance, isContract, filterTransfersByPair } from "./utils";
 
 
 export const pairData = async ({ pairsFromParent, transfers }: PairDataProps) => {
