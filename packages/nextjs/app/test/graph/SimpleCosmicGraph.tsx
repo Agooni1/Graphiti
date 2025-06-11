@@ -13,7 +13,7 @@ interface PositionedNode extends GraphNode {
   screenX: number;
   screenY: number;
   depth: number;
-  galaxyLayer: 'core' | 'inner' | 'outer' | 'halo'; // Add galaxy layer info
+  galaxyLayer: 'core' | 'inner' | 'outer' | 'halo';
 }
 
 export default function SimpleCosmicGraph({ graphData }: Props) {
@@ -27,75 +27,69 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
   const [orbitRotation, setOrbitRotation] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
+  const [particleMode, setParticleMode] = useState<'pulse' | 'laser'>('pulse'); // Add particle mode toggle
 
-  // Initialize node positions in galaxy distribution
+  // Initialize node positions in electron-like orbital shells
   useEffect(() => {
     if (!graphData.nodes.length) return;
 
     const positionedNodes: PositionedNode[] = graphData.nodes.map((node, index) => {
-      const nodeCount = graphData.nodes.length;
-      const normalizedIndex = index / nodeCount;
-      
-      // Determine galaxy layer based on node importance
+      // Determine orbital shell based on node importance
       const balance = parseFloat(node.balance || '0');
       let galaxyLayer: 'core' | 'inner' | 'outer' | 'halo';
-      let baseRadius: number;
-      let heightVariation: number;
+      let shellRadius: number;
+      let shellThickness: number;
       
       if (node.isContract || balance > 10) {
-        // High-value nodes go to galactic core
         galaxyLayer = 'core';
-        baseRadius = 20 + Math.random() * 40;
-        heightVariation = 10;
+        shellRadius = 40;
+        shellThickness = 20;
       } else if (balance > 1) {
-        // Medium nodes in inner galaxy
         galaxyLayer = 'inner';
-        baseRadius = 60 + Math.random() * 80;
-        heightVariation = 25;
+        shellRadius = 100;
+        shellThickness = 30;
       } else if (balance > 0.1) {
-        // Regular nodes in outer galaxy
         galaxyLayer = 'outer';
-        baseRadius = 140 + Math.random() * 120;
-        heightVariation = 40;
+        shellRadius = 180;
+        shellThickness = 40;
       } else {
-        // Small nodes in galaxy halo
         galaxyLayer = 'halo';
-        baseRadius = 260 + Math.random() * 140;
-        heightVariation = 80;
+        shellRadius = 280;
+        shellThickness = 60;
       }
 
-      // Create spiral arms (based on index for consistent positioning)
-      const spiralArms = 3; // Number of spiral arms
-      const armIndex = index % spiralArms;
-      const nodeInArm = Math.floor(index / spiralArms);
-      const totalNodesInArm = Math.ceil(nodeCount / spiralArms);
+      // Create orbital patterns within each shell
+      const numOrbitals = Math.ceil(Math.sqrt(index + 1));
+      const orbitalIndex = index % numOrbitals;
       
-      // Spiral angle calculation
-      const spiralTightness = 0.3; // How tight the spiral is
-      const armAngleOffset = (armIndex * 2 * Math.PI) / spiralArms;
-      const spiralAngle = armAngleOffset + (nodeInArm / totalNodesInArm) * spiralTightness * 4 * Math.PI;
+      const orbitalTilt = (orbitalIndex / numOrbitals) * Math.PI;
+      const orbitalRotation = Math.random() * 2 * Math.PI;
       
-      // Add some randomness to break perfect spiral
-      const randomAngleOffset = (Math.random() - 0.5) * 0.8;
-      const randomRadiusOffset = (Math.random() - 0.5) * baseRadius * 0.3;
+      const theta = Math.random() * 2 * Math.PI;
+      const phi = Math.acos(2 * Math.random() - 1);
       
-      const finalAngle = spiralAngle + randomAngleOffset;
-      const finalRadius = baseRadius + randomRadiusOffset;
+      const radiusInShell = shellRadius + (Math.random() - 0.5) * shellThickness;
       
-      // Height based on distance from center (galaxy disk shape)
-      const heightFactor = Math.exp(-finalRadius / 100); // Exponential falloff
-      const height = (Math.random() - 0.5) * heightVariation * heightFactor;
+      let x = radiusInShell * Math.sin(phi) * Math.cos(theta);
+      let y = radiusInShell * Math.sin(phi) * Math.sin(theta);
+      let z = radiusInShell * Math.cos(phi);
       
-      // Convert to 3D coordinates
-      const x = finalRadius * Math.cos(finalAngle);
-      const y = height;
-      const z = finalRadius * Math.sin(finalAngle);
+      const cosT = Math.cos(orbitalTilt);
+      const sinT = Math.sin(orbitalTilt);
+      const cosR = Math.cos(orbitalRotation);
+      const sinR = Math.sin(orbitalRotation);
+      
+      const y1 = y * cosT - z * sinT;
+      const z1 = y * sinT + z * cosT;
+      
+      const x2 = x * cosR + z1 * sinR;
+      const z2 = -x * sinR + z1 * cosR;
       
       return {
         ...node,
-        x,
-        y,
-        z,
+        x: x2,
+        y: y1,
+        z: z2,
         screenX: 0,
         screenY: 0,
         depth: 0,
@@ -108,22 +102,18 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
 
   // Project 3D coordinates to 2D screen coordinates
   const project3DTo2D = (node: PositionedNode, rotX: number, rotY: number) => {
-    // Apply orbital rotations
     const cosRotX = Math.cos(rotX);
     const sinRotX = Math.sin(rotX);
     const cosRotY = Math.cos(rotY);
     const sinRotY = Math.sin(rotY);
 
-    // Rotate around X axis (vertical orbit)
     let y1 = node.y * cosRotX - node.z * sinRotX;
     let z1 = node.y * sinRotX + node.z * cosRotX;
 
-    // Rotate around Y axis (horizontal orbit)
     let x2 = node.x * cosRotY + z1 * sinRotY;
     let z2 = -node.x * sinRotY + z1 * cosRotY;
 
-    // Perspective projection
-    const distance = 600; // Increased camera distance for better galaxy view
+    const distance = 600;
     const perspective = distance / (distance + z2);
     
     return {
@@ -142,7 +132,6 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size
     const updateCanvasSize = () => {
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width * window.devicePixelRatio;
@@ -166,7 +155,7 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
       
       // Create enhanced cosmic background with galaxy center glow
       const bgGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(canvasWidth, canvasHeight) / 2);
-      bgGradient.addColorStop(0, '#2a1810'); // Warm galaxy center
+      bgGradient.addColorStop(0, '#2a1810');
       bgGradient.addColorStop(0.3, '#1a1a2e');
       bgGradient.addColorStop(0.7, '#16213e');
       bgGradient.addColorStop(1, '#0c0c0c');
@@ -190,7 +179,7 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
       ctx.translate(centerX + panOffset.x, centerY + panOffset.y);
       ctx.scale(zoom, zoom);
 
-      // Draw galaxy dust/background first (for nodes far behind)
+      // Draw galaxy dust/background first
       projectedNodes.forEach(node => {
         if (node.depth < -300) {
           const dustOpacity = Math.max(0.02, Math.min(0.08, (600 + node.depth) / 1000));
@@ -201,21 +190,18 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
         }
       });
 
-      // Draw links (only for visible nodes)
-      graphData.links.forEach(link => {
+      // Draw links with enhanced particle system
+      graphData.links.forEach((link, linkIndex) => {
         const sourceNode = projectedNodes.find(n => n.id === link.source);
         const targetNode = projectedNodes.find(n => n.id === link.target);
         
         if (sourceNode && targetNode) {
-          // Only draw links for nodes in front of camera
           if (sourceNode.depth > -500 && targetNode.depth > -500) {
             ctx.beginPath();
             
-            // Enhanced link opacity based on galaxy layers
             const avgDepth = (sourceNode.depth + targetNode.depth) / 2;
             let baseOpacity = Math.max(0.1, Math.min(0.5, (500 + avgDepth) / 1000));
             
-            // Boost opacity for core connections
             if (sourceNode.galaxyLayer === 'core' || targetNode.galaxyLayer === 'core') {
               baseOpacity *= 1.5;
             }
@@ -227,18 +213,52 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
             ctx.lineTo(targetNode.screenX, targetNode.screenY);
             ctx.stroke();
 
-            // Enhanced particles for core connections
+            // Enhanced particle system with mode toggle
             if (baseOpacity > 0.25) {
-              const particlePos = (animationTime * 0.5) % 1;
+              let particlePos;
+              
+              if (particleMode === 'pulse') {
+                // Synchronized pulse mode (original)
+                particlePos = (animationTime * 0.5) % 1;
+              } else {
+                // Laser mode - slower, asynchronous particles
+                const linkSpeed = 1.2 + (linkIndex * 0.2) % 0.8; // Slower speeds: 1.2-2.0x instead of 3-5x
+                const linkOffset = (linkIndex * 0.7) % 1; // Different starting positions
+                particlePos = (animationTime * linkSpeed + linkOffset) % 1;
+              }
+              
               const px = sourceNode.screenX + (targetNode.screenX - sourceNode.screenX) * particlePos;
               const py = sourceNode.screenY + (targetNode.screenY - sourceNode.screenY) * particlePos;
               
-              ctx.beginPath();
-              ctx.fillStyle = sourceNode.galaxyLayer === 'core' ? 
-                `rgba(255, 215, 100, ${baseOpacity})` : 
-                `rgba(97, 218, 251, ${baseOpacity})`;
-              ctx.arc(px, py, 1.5 / zoom, 0, 2 * Math.PI);
-              ctx.fill();
+              // Different particle effects based on mode
+              if (particleMode === 'laser') {
+                // Laser mode: Multiple particles with trail effect (slower)
+                const numParticles = 2; // Reduced from 3 to 2 particles
+                for (let i = 0; i < numParticles; i++) {
+                  const trailOffset = i * 0.15; // Increased spacing between trail particles
+                  const trailPos = (particlePos - trailOffset + 1) % 1;
+                  if (trailPos >= 0 && trailPos <= 1) {
+                    const trailPx = sourceNode.screenX + (targetNode.screenX - sourceNode.screenX) * trailPos;
+                    const trailPy = sourceNode.screenY + (targetNode.screenY - sourceNode.screenY) * trailPos;
+                    const trailOpacity = baseOpacity * (1 - i * 0.4); // Slightly more fade
+                    
+                    ctx.beginPath();
+                    ctx.fillStyle = sourceNode.galaxyLayer === 'core' ? 
+                      `rgba(255, 100, 100, ${trailOpacity})` : 
+                      `rgba(100, 255, 255, ${trailOpacity})`;
+                    ctx.arc(trailPx, trailPy, (2 - i * 0.5) / zoom, 0, 2 * Math.PI);
+                    ctx.fill();
+                  }
+                }
+              } else {
+                // Pulse mode: Single synchronized particle (original)
+                ctx.beginPath();
+                ctx.fillStyle = sourceNode.galaxyLayer === 'core' ? 
+                  `rgba(255, 215, 100, ${baseOpacity})` : 
+                  `rgba(97, 218, 251, ${baseOpacity})`;
+                ctx.arc(px, py, 1.5 / zoom, 0, 2 * Math.PI);
+                ctx.fill();
+              }
             }
           }
         }
@@ -250,41 +270,35 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
           const balance = parseFloat(node.balance || '0');
           let color, baseSize, glowIntensity;
           
-          // Enhanced colors based on galaxy layer
           switch (node.galaxyLayer) {
             case 'core':
-              color = node.isContract ? '#ff6b6b' : '#ffd93d'; // Red giants or bright stars
+              color = node.isContract ? '#ff6b6b' : '#ffd93d';
               baseSize = 8;
               glowIntensity = 1.5;
               break;
             case 'inner':
-              color = '#74b9ff'; // Blue giants
+              color = '#74b9ff';
               baseSize = 6;
               glowIntensity = 1.2;
               break;
             case 'outer':
-              color = '#ffffff'; // Main sequence stars
+              color = '#ffffff';
               baseSize = 4;
               glowIntensity = 1.0;
               break;
             case 'halo':
-              color = '#a0a0a0'; // Dim halo stars
+              color = '#a0a0a0';
               baseSize = 3;
               glowIntensity = 0.7;
               break;
           }
 
-          // Scale size based on perspective and zoom
           const size = (baseSize * node.perspective) / zoom;
-          
-          // Enhanced depth-based opacity
           const depthOpacity = Math.max(0.2, Math.min(1, (500 + node.depth) / 700));
           
-          // Galaxy rotation effect (subtle)
           const rotationPhase = animationTime * 0.1 + (node.x + node.z) * 0.001;
           const pulse = Math.sin(rotationPhase) * 0.2 + 1;
 
-          // Enhanced glow based on galaxy layer
           const glowSize = size * 4 * glowIntensity;
           const glowGradient = ctx.createRadialGradient(
             node.screenX, node.screenY, 0, 
@@ -301,14 +315,13 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
           ctx.arc(node.screenX, node.screenY, glowSize * pulse, 0, 2 * Math.PI);
           ctx.fill();
 
-          // Draw core
           ctx.fillStyle = `${color}${Math.floor(depthOpacity * 255).toString(16).padStart(2, '0')}`;
           ctx.beginPath();
           ctx.arc(node.screenX, node.screenY, size, 0, 2 * Math.PI);
           ctx.fill();
 
-          // Enhanced labels for core objects
-          if (zoom > 1.2 && depthOpacity > 0.6 && node.galaxyLayer === 'core') {
+          // Clean labels for ALL nodes
+          if (zoom > 1.2 && depthOpacity > 0.6) {
             ctx.font = `${14 / zoom}px Inter, sans-serif`;
             ctx.textAlign = 'center';
             ctx.fillStyle = `${color}${Math.floor(depthOpacity * 200).toString(16).padStart(2, '0')}`;
@@ -328,7 +341,7 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [nodes, graphData.links, panOffset, orbitRotation, zoom]);
+  }, [nodes, graphData.links, panOffset, orbitRotation, zoom, particleMode]); // Add particleMode to dependencies
 
   // Mouse event handlers (same as before)
   const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -444,6 +457,22 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
       </div>
       
       <div className="absolute top-4 right-4 flex gap-2">
+        {/* Particle Mode Toggle */}
+        <div className="btn-group">
+          <button
+            className={`btn btn-xs ${particleMode === 'pulse' ? 'btn-primary' : 'btn-ghost'} text-white`}
+            onClick={() => setParticleMode('pulse')}
+          >
+            🌊 Pulse
+          </button>
+          <button
+            className={`btn btn-xs ${particleMode === 'laser' ? 'btn-primary' : 'btn-ghost'} text-white`}
+            onClick={() => setParticleMode('laser')}
+          >
+            ⚡ Laser
+          </button>
+        </div>
+        
         <button
           onClick={resetView}
           className="btn btn-xs btn-ghost text-white hover:bg-white/20"
@@ -459,7 +488,7 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
         Left-drag: pan • Right-drag: orbit • Scroll: zoom • Click nodes to open
       </div>
 
-      {/* Galaxy Layer Legend */}
+      {/* Enhanced Legend */}
       <div className="absolute bottom-4 right-4 text-white text-xs opacity-60">
         <div className="flex gap-3">
           <span>🔴 Contracts</span>
@@ -471,3 +500,10 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
     </div>
   );
 }
+
+//TODO:
+// Control laser speed (maybe have to add functionality to filter and pass as param)
+// fix layout issues - zoom/scroll overlapping
+// I think make center red, contracts maybe purple?
+// Add more visual effects for different node types (idk ai generated)
+// and ofc add layer/children

@@ -3,7 +3,7 @@ import type { NextPage } from "next";
 import { useState, useCallback, useEffect } from "react";
 import { AddressInput } from "~~/components/scaffold-eth";
 import VisNetworkGraph from "./graph/VisNetworkGraph";
-import CosmicForceGraph from "./graph/CosmicForceGraph"; // Add this import
+// import CosmicForceGraph from "./graph/CosmicForceGraph"; // Add this import
 import SimpleCosmicGraph from "./graph/SimpleCosmicGraph";
 import { AssetTransfersResult } from "alchemy-sdk";
 import { GraphNode, GraphLink } from "./graph-data/types";
@@ -109,7 +109,7 @@ const Test: NextPage = () => {
             <input
               type="range"
               min="1"
-              max="100"
+              max="200"
               value={txDisplayLimit}
               onChange={e => {
                 setTxDisplayLimit(Number(e.target.value));
