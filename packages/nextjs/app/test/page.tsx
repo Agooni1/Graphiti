@@ -3,22 +3,23 @@ import type { NextPage } from "next";
 import { useState, useCallback, useEffect } from "react";
 import { AddressInput } from "~~/components/scaffold-eth";
 import VisNetworkGraph from "./graph/VisNetworkGraph";
+import CosmicForceGraph from "./graph/CosmicForceGraph"; // Add this import
+import SimpleCosmicGraph from "./graph/SimpleCosmicGraph";
 import { AssetTransfersResult } from "alchemy-sdk";
 import { GraphNode, GraphLink } from "./graph-data/types";
 import { fetchAllTransfers, fetchAllTransfersCached, FilterAndSortTx } from "./graph-data/utils";
-import { generateNodesFromTx } from "./graph-data/generateNodesFromTx"; // or your graph builder
+import { generateNodesFromTx } from "./graph-data/generateNodesFromTx";
 
 const Test: NextPage = () => {
   const [inputValue, setInputValue] = useState("");
   const [address, setAddress] = useState("");
-  // const [graphData, setGraphData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
   const [layerNum, setLayerNum] = useState(1);
   const [transferDirection, setTransferDirection] = useState<"from" | "to" | "both">("both");
   const [loading, setLoading] = useState(false);
-
   const [allTransfers, setAllTransfers] = useState<AssetTransfersResult[]>([]);
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({ nodes: [], links: [] });
-  const [txDisplayLimit, setTxDisplayLimit] = useState(10); // total number of transactions
+  const [txDisplayLimit, setTxDisplayLimit] = useState(10);
+  const [useCosmicGraph, setUseCosmicGraph] = useState(false); // Add this line
 
   // Stable callback for graph data
   const handleGraphDataReady = useCallback((data: any) => {
@@ -42,7 +43,7 @@ const Test: NextPage = () => {
     const fetchGraphData = async () => {
       if (!allTransfers.length) {
         setGraphData({ nodes: [], links: [] });
-        setLoading(false); // <-- Add this
+        setLoading(false);
         return;
       }
 
@@ -54,7 +55,7 @@ const Test: NextPage = () => {
 
       const graph = await generateNodesFromTx(filtered);
       setGraphData(graph);
-      setLoading(false); // <-- Add this
+      setLoading(false);
     };
 
     fetchGraphData();
@@ -100,6 +101,7 @@ const Test: NextPage = () => {
             </button>
           </div>
         </div>
+
         {/* Sliders */}
         <div className="flex flex-col gap-4 w-48">
           <div>
@@ -111,7 +113,6 @@ const Test: NextPage = () => {
               value={txDisplayLimit}
               onChange={e => {
                 setTxDisplayLimit(Number(e.target.value));
-                // handleParamsChange();
               }}
               className="range w-full"
               disabled={loading}
@@ -134,31 +135,56 @@ const Test: NextPage = () => {
             <div className="text-center text-base-content/50 text-xs mt-1">Depth: {layerNum}</div>
           </div>
         </div>
-        {/* Direction Buttons */}
-        <div className="flex flex-col gap-2">
-          <label className="block text-base-content mb-1 font-semibold">Direction</label>
-          <div className="btn-group flex">
-            <button
-              className={`btn btn-sm ${transferDirection === "from" ? "btn-active btn-primary" : ""}`}
-              onClick={() => { setTransferDirection("from"); handleParamsChange(); }}
-              disabled={loading}
-            >
-              Sent
-            </button>
-            <button
-              className={`btn btn-sm ${transferDirection === "to" ? "btn-active btn-primary" : ""}`}
-              onClick={() => { setTransferDirection("to"); handleParamsChange(); }}
-              disabled={loading}
-            >
-              Received
-            </button>
-            <button
-              className={`btn btn-sm ${transferDirection === "both" ? "btn-active btn-primary" : ""}`}
-              onClick={() => { setTransferDirection("both"); handleParamsChange(); }}
-              disabled={loading}
-            >
-              All
-            </button>
+
+        {/* Direction + Graph Type Controls */}
+        <div className="flex flex-col gap-4">
+          {/* Direction Buttons */}
+          <div className="flex flex-col gap-2">
+            <label className="block text-base-content mb-1 font-semibold">Direction</label>
+            <div className="btn-group flex">
+              <button
+                className={`btn btn-sm ${transferDirection === "from" ? "btn-active btn-primary" : ""}`}
+                onClick={() => { setTransferDirection("from"); handleParamsChange(); }}
+                disabled={loading}
+              >
+                Sent
+              </button>
+              <button
+                className={`btn btn-sm ${transferDirection === "to" ? "btn-active btn-primary" : ""}`}
+                onClick={() => { setTransferDirection("to"); handleParamsChange(); }}
+                disabled={loading}
+              >
+                Received
+              </button>
+              <button
+                className={`btn btn-sm ${transferDirection === "both" ? "btn-active btn-primary" : ""}`}
+                onClick={() => { setTransferDirection("both"); handleParamsChange(); }}
+                disabled={loading}
+              >
+                All
+              </button>
+            </div>
+          </div>
+
+          {/* Graph Type Toggle */}
+          <div className="flex flex-col gap-2">
+            <label className="block text-base-content mb-1 font-semibold">Visualization</label>
+            <div className="btn-group flex">
+              <button
+                className={`btn btn-sm ${!useCosmicGraph ? "btn-active btn-primary" : ""}`}
+                onClick={() => setUseCosmicGraph(false)}
+                disabled={loading}
+              >
+                Network
+              </button>
+              <button
+                className={`btn btn-sm ${useCosmicGraph ? "btn-active btn-primary" : ""}`}
+                onClick={() => setUseCosmicGraph(true)}
+                disabled={loading}
+              >
+                🌌 Cosmic
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -171,8 +197,16 @@ const Test: NextPage = () => {
             <span className="loading loading-spinner loading-lg text-primary"></span>
           </div>
         )}
-        {/* Graph */}
-        <VisNetworkGraph graphData={graphData} />
+        
+        {/* Conditional Graph Rendering */}
+        {useCosmicGraph ? (
+          // <CosmicForceGraph graphData={graphData} />
+          // If CosmicForceGraph fails, you can switch to:
+          <SimpleCosmicGraph graphData={graphData} />
+        ) : (
+          <VisNetworkGraph graphData={graphData} />
+        )}
+        
         {!loading && (!address || graphData.nodes.length === 0) && (
           <div className="absolute inset-0 flex items-center justify-center text-base-content/50 text-lg">
             Enter an address to view the graph.
