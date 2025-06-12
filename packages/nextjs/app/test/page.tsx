@@ -1,9 +1,9 @@
 "use client";
 import type { NextPage } from "next";
 import { useState, useCallback, useEffect } from "react";
-import { AddressInput } from "~~/components/scaffold-eth";
+import { useAccount } from "wagmi"; // Add this import
+import { AddressInput, BlockieAvatar } from "~~/components/scaffold-eth";
 import VisNetworkGraph from "./graph/VisNetworkGraph";
-// import CosmicForceGraph from "./graph/CosmicForceGraph"; // Add this import
 import SimpleCosmicGraph from "./graph/SimpleCosmicGraph";
 import { AssetTransfersResult } from "alchemy-sdk";
 import { GraphNode, GraphLink } from "./graph-data/types";
@@ -11,6 +11,7 @@ import { fetchAllTransfers, fetchAllTransfersCached, FilterAndSortTx } from "./g
 import { generateNodesFromTx } from "./graph-data/generateNodesFromTx";
 
 const Test: NextPage = () => {
+  const { address: connectedAddress, isConnected } = useAccount(); // Add this line
   const [inputValue, setInputValue] = useState("");
   const [address, setAddress] = useState("");
   const [layerNum, setLayerNum] = useState(1);
@@ -19,7 +20,28 @@ const Test: NextPage = () => {
   const [allTransfers, setAllTransfers] = useState<AssetTransfersResult[]>([]);
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({ nodes: [], links: [] });
   const [txDisplayLimit, setTxDisplayLimit] = useState(10);
-  const [useCosmicGraph, setUseCosmicGraph] = useState(false); // Add this line
+  const [useCosmicGraph, setUseCosmicGraph] = useState(false);
+  
+  // Add state to track if we've already auto-loaded wallet address
+  const [hasAutoLoaded, setHasAutoLoaded] = useState(false);
+
+  // Auto-load connected wallet address when wallet connects
+  useEffect(() => {
+    if (isConnected && connectedAddress && !hasAutoLoaded && !address) {
+      console.log("Wallet connected, auto-loading address:", connectedAddress);
+      setAddress(connectedAddress);
+      setInputValue(""); // Clear input since we're setting from wallet
+      setHasAutoLoaded(true); // Prevent auto-loading again
+      handleParamsChange();
+    }
+  }, [isConnected, connectedAddress, hasAutoLoaded, address]);
+
+  // Reset auto-load flag when wallet disconnects
+  useEffect(() => {
+    if (!isConnected) {
+      setHasAutoLoaded(false);
+    }
+  }, [isConnected]);
 
   // Stable callback for graph data
   const handleGraphDataReady = useCallback((data: any) => {
@@ -61,17 +83,38 @@ const Test: NextPage = () => {
     fetchGraphData();
   }, [allTransfers, txDisplayLimit, transferDirection, layerNum]);
 
+  // New handler function
+  const handleSetTarget = (newAddress: string) => {
+    console.log("Setting new target address:", newAddress);
+    setAddress(newAddress);
+    setInputValue(""); // Clear input
+    handleParamsChange(); // Trigger loading
+  };
+
   return (
     <div className="min-h-screen bg-base-200 flex flex-col items-center py-6">
       {/* Controls Card */}
       <div className="w-full max-w-3xl bg-base-100 rounded-xl shadow-lg p-6 mb-6 flex flex-col md:flex-row md:items-end gap-6">
         {/* Address Input */}
         <div className="flex-1">
-          <label className="block text-base-content mb-1 font-semibold">Target Address</label>
+          <label className="block text-base-content mb-1 font-semibold">
+            Target Address
+            {/* Show current address with mini BlockieAvatar */}
+            {address && (
+              <span className="ml-2 text-xs text-success inline-flex items-center gap-1.5">
+                {address.slice(0, 6)}...{address.slice(-4)}
+                <BlockieAvatar address={address} size={14} />
+                {isConnected && connectedAddress && address.toLowerCase() === connectedAddress.toLowerCase() && (
+                  <span className="ml-0.5 opacity-70">(wallet)</span>
+                )}
+              </span>
+            )}
+          </label>
           <AddressInput
             value={inputValue}
             onChange={value => setInputValue(value)}
             name="Target Address"
+            placeholder={connectedAddress ? `Connected: ${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}` : "Enter address..."}
           />
           <div className="flex gap-2 mt-2">
             <button
@@ -88,12 +131,29 @@ const Test: NextPage = () => {
             >
               <span>Set</span>
             </button>
+            
+            {/* Add button to use connected wallet */}
+            {isConnected && connectedAddress && address.toLowerCase() !== connectedAddress.toLowerCase() && (
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setAddress(connectedAddress);
+                  setInputValue("");
+                  handleParamsChange();
+                }}
+                disabled={loading}
+              >
+                Use Wallet
+              </button>
+            )}
+            
             <button
               className="btn btn-secondary"
               onClick={() => {
                 setAddress("");
                 setInputValue("");
                 setGraphData({ nodes: [], links: [] });
+                setHasAutoLoaded(false); // Reset auto-load flag
               }}
               disabled={loading}
             >
@@ -109,7 +169,7 @@ const Test: NextPage = () => {
             <input
               type="range"
               min="1"
-              max="200"
+              max="500"
               value={txDisplayLimit}
               onChange={e => {
                 setTxDisplayLimit(Number(e.target.value));
@@ -200,16 +260,20 @@ const Test: NextPage = () => {
         
         {/* Conditional Graph Rendering */}
         {useCosmicGraph ? (
-          // <CosmicForceGraph graphData={graphData} />
-          // If CosmicForceGraph fails, you can switch to:
-          <SimpleCosmicGraph graphData={graphData} />
+          <SimpleCosmicGraph 
+            graphData={graphData} 
+            onSetTarget={handleSetTarget}
+          />
         ) : (
           <VisNetworkGraph graphData={graphData} />
         )}
         
         {!loading && (!address || graphData.nodes.length === 0) && (
           <div className="absolute inset-0 flex items-center justify-center text-base-content/50 text-lg">
-            Enter an address to view the graph.
+            {isConnected && connectedAddress ? 
+              "Connect your wallet above or enter an address to view the graph." :
+              "Connect your wallet or enter an address to view the graph."
+            }
           </div>
         )}
       </div>

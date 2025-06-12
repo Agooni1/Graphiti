@@ -2,8 +2,15 @@
 import { useEffect, useRef, useState } from "react";
 import { GraphNode, GraphLink } from "../graph-data/types";
 
+interface NodePopupData {
+  node: PositionedNode;
+  x: number;
+  y: number;
+}
+
 interface Props {
   graphData: { nodes: GraphNode[]; links: GraphLink[] };
+  onSetTarget?: (address: string) => void; // Add this prop for setting target
 }
 
 interface PositionedNode extends GraphNode {
@@ -16,89 +23,234 @@ interface PositionedNode extends GraphNode {
   galaxyLayer: 'core' | 'inner' | 'outer' | 'halo';
 }
 
-export default function SimpleCosmicGraph({ graphData }: Props) {
+export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const [nodes, setNodes] = useState<PositionedNode[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isOrbiting, setIsOrbiting] = useState(false);
+  const [isAutoOrbiting, setIsAutoOrbiting] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [orbitRotation, setOrbitRotation] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
-  const [particleMode, setParticleMode] = useState<'pulse' | 'laser'>('pulse'); // Add particle mode toggle
+  const [particleMode, setParticleMode] = useState<'pulse' | 'laser'>('pulse');
+  const [isHovered, setIsHovered] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<'shell' | 'force' | 'fibonacci'>('shell'); // ADD THIS LINE
+  const [nodePopup, setNodePopup] = useState<NodePopupData | null>(null); // ADD THIS LINE
 
   // Initialize node positions in electron-like orbital shells
   useEffect(() => {
     if (!graphData.nodes.length) return;
 
-    const positionedNodes: PositionedNode[] = graphData.nodes.map((node, index) => {
-      // Determine orbital shell based on node importance
-      const balance = parseFloat(node.balance || '0');
-      let galaxyLayer: 'core' | 'inner' | 'outer' | 'halo';
-      let shellRadius: number;
-      let shellThickness: number;
-      
-      if (node.isContract || balance > 10) {
-        galaxyLayer = 'core';
-        shellRadius = 40;
-        shellThickness = 20;
-      } else if (balance > 1) {
-        galaxyLayer = 'inner';
-        shellRadius = 100;
-        shellThickness = 30;
-      } else if (balance > 0.1) {
-        galaxyLayer = 'outer';
-        shellRadius = 180;
-        shellThickness = 40;
-      } else {
-        galaxyLayer = 'halo';
-        shellRadius = 280;
-        shellThickness = 60;
-      }
+    // Helper functions
+    const getShellRadius = (balance: number, isContract: boolean) => {
+      if (isContract || balance > 10) return 40;
+      if (balance > 1) return 100;
+      if (balance > 0.1) return 180;
+      return 280;
+    };
 
-      // Create orbital patterns within each shell
-      const numOrbitals = Math.ceil(Math.sqrt(index + 1));
-      const orbitalIndex = index % numOrbitals;
+    const getGalaxyLayer = (balance: number, isContract: boolean): 'core' | 'inner' | 'outer' | 'halo' => {
+      if (isContract || balance > 10) return 'core';
+      if (balance > 1) return 'inner';
+      if (balance > 0.1) return 'outer';
+      return 'halo';
+    };
+
+    // Option 1: Original Shell-based Layout
+    const createShellLayout = (): PositionedNode[] => {
+      return graphData.nodes.map((node, index) => {
+        const balance = parseFloat(node.balance || '0');
+        let galaxyLayer: 'core' | 'inner' | 'outer' | 'halo';
+        let shellRadius: number;
+        let shellThickness: number;
+        
+        if (node.isContract || balance > 10) {
+          galaxyLayer = 'core';
+          shellRadius = 40;
+          shellThickness = 20;
+        } else if (balance > 1) {
+          galaxyLayer = 'inner';
+          shellRadius = 100;
+          shellThickness = 30;
+        } else if (balance > 0.1) {
+          galaxyLayer = 'outer';
+          shellRadius = 180;
+          shellThickness = 40;
+        } else {
+          galaxyLayer = 'halo';
+          shellRadius = 280;
+          shellThickness = 60;
+        }
+
+        const numOrbitals = Math.ceil(Math.sqrt(index + 1));
+        const orbitalIndex = index % numOrbitals;
+        
+        const orbitalTilt = (orbitalIndex / numOrbitals) * Math.PI;
+        const orbitalRotation = Math.random() * 2 * Math.PI;
+        
+        const theta = Math.random() * 2 * Math.PI;
+        const phi = Math.acos(2 * Math.random() - 1);
+        
+        const radiusInShell = shellRadius + (Math.random() - 0.5) * shellThickness;
+        
+        let x = radiusInShell * Math.sin(phi) * Math.cos(theta);
+        let y = radiusInShell * Math.sin(phi) * Math.sin(theta);
+        let z = radiusInShell * Math.cos(phi);
+        
+        const cosT = Math.cos(orbitalTilt);
+        const sinT = Math.sin(orbitalTilt);
+        const cosR = Math.cos(orbitalRotation);
+        const sinR = Math.sin(orbitalRotation);
+        
+        const y1 = y * cosT - z * sinT;
+        const z1 = y * sinT + z * cosT;
+        
+        const x2 = x * cosR + z1 * sinR;
+        const z2 = -x * sinR + z1 * cosR;
+        
+        return {
+          ...node,
+          x: x2,
+          y: y1,
+          z: z2,
+          screenX: 0,
+          screenY: 0,
+          depth: 0,
+          galaxyLayer
+        };
+      });
+    };
+
+    // Option 2: Force-based Layout
+    const createForceLayout = (): PositionedNode[] => {
+      // Initial random placement
+      let workingNodes: PositionedNode[] = graphData.nodes.map((node, index) => {
+        const balance = parseFloat(node.balance || '0');
+        const shellRadius = getShellRadius(balance, !!node.isContract);
+        
+        // Start with random positions
+        const angle = Math.random() * 2 * Math.PI;
+        const radius = shellRadius * (0.5 + Math.random() * 0.5);
+        
+        return {
+          ...node,
+          x: Math.cos(angle) * radius,
+          y: (Math.random() - 0.5) * radius,
+          z: Math.sin(angle) * radius,
+          screenX: 0,
+          screenY: 0,
+          depth: 0,
+          galaxyLayer: getGalaxyLayer(balance, !!node.isContract)
+        };
+      });
+
+      // Apply force simulation
+      const iterations = 100;
+      const repulsionStrength = 2000;
+      const centerAttraction = 0.05;
       
-      const orbitalTilt = (orbitalIndex / numOrbitals) * Math.PI;
-      const orbitalRotation = Math.random() * 2 * Math.PI;
+      for (let iter = 0; iter < iterations; iter++) {
+        workingNodes.forEach((node, i) => {
+          let fx = 0, fy = 0, fz = 0;
+          const balance = parseFloat(node.balance || '0');
+          const targetRadius = getShellRadius(balance, !!node.isContract);
+          
+          // Repulsion from other nodes
+          workingNodes.forEach((other, j) => {
+            if (i !== j) {
+              const dx = node.x - other.x;
+              const dy = node.y - other.y;
+              const dz = node.z - other.z;
+              const distance = Math.sqrt(dx*dx + dy*dy + dz*dz) + 1;
+              const force = repulsionStrength / (distance * distance);
+              
+              fx += (dx / distance) * force;
+              fy += (dy / distance) * force;
+              fz += (dz / distance) * force;
+            }
+          });
+          
+          // Attraction to target shell radius
+          const currentRadius = Math.sqrt(node.x*node.x + node.y*node.y + node.z*node.z);
+          if (currentRadius > 0) {
+            const radiusForce = (targetRadius - currentRadius) * centerAttraction;
+            fx += (node.x / currentRadius) * radiusForce;
+            fy += (node.y / currentRadius) * radiusForce;
+            fz += (node.z / currentRadius) * radiusForce;
+          }
+          
+          // Apply forces with damping
+          const damping = 0.02;
+          node.x += fx * damping;
+          node.y += fy * damping;
+          node.z += fz * damping;
+        });
+      }
       
-      const theta = Math.random() * 2 * Math.PI;
-      const phi = Math.acos(2 * Math.random() - 1);
+      return workingNodes;
+    };
+
+    // Option 3: Fibonacci Spiral Layout
+    const createFibonacciLayout = (): PositionedNode[] => {
+      const goldenAngle = Math.PI * (3 - Math.sqrt(5));
       
-      const radiusInShell = shellRadius + (Math.random() - 0.5) * shellThickness;
+      // Sort nodes by importance for better spiral placement
+      const sortedNodes = [...graphData.nodes].sort((a, b) => {
+        const balanceA = parseFloat(a.balance || '0');
+        const balanceB = parseFloat(b.balance || '0');
+        const scoreA = a.isContract ? 1000 + balanceA : balanceA;
+        const scoreB = b.isContract ? 1000 + balanceB : balanceB;
+        return scoreB - scoreA;
+      });
       
-      let x = radiusInShell * Math.sin(phi) * Math.cos(theta);
-      let y = radiusInShell * Math.sin(phi) * Math.sin(theta);
-      let z = radiusInShell * Math.cos(phi);
-      
-      const cosT = Math.cos(orbitalTilt);
-      const sinT = Math.sin(orbitalTilt);
-      const cosR = Math.cos(orbitalRotation);
-      const sinR = Math.sin(orbitalRotation);
-      
-      const y1 = y * cosT - z * sinT;
-      const z1 = y * sinT + z * cosT;
-      
-      const x2 = x * cosR + z1 * sinR;
-      const z2 = -x * sinR + z1 * cosR;
-      
-      return {
-        ...node,
-        x: x2,
-        y: y1,
-        z: z2,
-        screenX: 0,
-        screenY: 0,
-        depth: 0,
-        galaxyLayer
-      };
-    });
+      return sortedNodes.map((node, index) => {
+        const balance = parseFloat(node.balance || '0');
+        const baseRadius = getShellRadius(balance, !!node.isContract);
+        
+        // Fibonacci spiral distribution
+        const t = index / (graphData.nodes.length - 1);
+        const y = (1 - 2 * t) * baseRadius * 0.8;
+        const radiusAtY = Math.sqrt(Math.max(0, baseRadius * baseRadius - y * y));
+        const angle = goldenAngle * index;
+        
+        // Add some controlled randomness
+        const randomScale = 1 + (Math.random() - 0.5) * 0.3;
+        const x = Math.cos(angle) * radiusAtY * randomScale;
+        const z = Math.sin(angle) * radiusAtY * randomScale;
+        
+        return {
+          ...node,
+          x,
+          y,
+          z,
+          screenX: 0,
+          screenY: 0,
+          depth: 0,
+          galaxyLayer: getGalaxyLayer(balance, !!node.isContract)
+        };
+      });
+    };
+
+    // Choose layout based on mode
+    let positionedNodes: PositionedNode[];
+    switch (layoutMode) {
+      case 'force':
+        positionedNodes = createForceLayout();
+        break;
+      case 'fibonacci':
+        positionedNodes = createFibonacciLayout();
+        break;
+      case 'shell':
+      default:
+        positionedNodes = createShellLayout();
+        break;
+    }
 
     setNodes(positionedNodes);
-  }, [graphData.nodes]);
+  }, [graphData.nodes, layoutMode]); // Add layoutMode to dependencies
 
   // Project 3D coordinates to 2D screen coordinates
   const project3DTo2D = (node: PositionedNode, rotX: number, rotY: number) => {
@@ -144,9 +296,20 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
     updateCanvasSize();
 
     let animationTime = 0;
+    let lastFrameTime = performance.now();
 
-    const animate = () => {
-      animationTime += 0.01;
+    const animate = (currentTime: number) => {
+      const deltaTime = (currentTime - lastFrameTime) / 1000;
+      animationTime += deltaTime * 0.6;
+      lastFrameTime = currentTime;
+      
+      // AUTO-ORBIT: Update rotation if auto-orbiting is enabled
+      if (isAutoOrbiting && !isDragging && !isOrbiting) {
+        setOrbitRotation(prev => ({
+          x: prev.x + deltaTime * 0.15, // Gentle vertical rotation
+          y: prev.y + deltaTime * 0.25  // Slightly faster horizontal rotation
+        }));
+      }
       
       const canvasWidth = canvas.width / window.devicePixelRatio;
       const canvasHeight = canvas.height / window.devicePixelRatio;
@@ -334,14 +497,14 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
       animationRef.current = requestAnimationFrame(animate);
     };
 
-    animate();
+    animationRef.current = requestAnimationFrame(animate);
 
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [nodes, graphData.links, panOffset, orbitRotation, zoom, particleMode]); // Add particleMode to dependencies
+  }, [nodes, graphData.links, panOffset, orbitRotation, zoom, particleMode, isAutoOrbiting, isDragging, isOrbiting]); // ADD the new dependencies
 
   // Mouse event handlers (same as before)
   const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -388,11 +551,24 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
     event.preventDefault();
   };
 
-  const handleWheel = (event: React.WheelEvent<HTMLCanvasElement>) => {
-    event.preventDefault();
-    const delta = event.deltaY > 0 ? 0.9 : 1.1;
-    setZoom(prev => Math.max(0.1, Math.min(5, prev * delta)));
-  };
+  // Native wheel event listener to prevent browser scroll
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!isHovered) return;
+      e.preventDefault(); // This stops the page scroll
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      setZoom(prev => Math.max(0.1, Math.min(5, prev * delta)));
+    };
+
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      canvas.removeEventListener("wheel", handleWheel);
+    };
+  }, [isHovered, setZoom]); // Dependencies: isHovered and setZoom
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (isDragging || isOrbiting) return;
@@ -425,10 +601,45 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
     });
 
     if (clickedNode) {
-      console.log('Clicked node:', clickedNode);
-      window.open(`https://sepolia.etherscan.io/address/${clickedNode.id}`, "_blank");
+      // console.log('Clicked node:', clickedNode);
+      
+      // Show popup instead of directly opening etherscan
+      setNodePopup({
+        node: clickedNode,
+        x: canvasX,
+        y: canvasY
+      });
+    } else {
+      // Close popup if clicking elsewhere
+      setNodePopup(null);
     }
   };
+
+  // Close popup if clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const canvas = canvasRef.current;
+      const target = event.target as Element;
+      
+      // Don't close if clicking on the popup itself or its children
+      if (nodePopup) {
+        const popupElement = target.closest('.node-popup');
+        if (popupElement) {
+          return; // Don't close popup if clicking inside it
+        }
+      }
+      
+      // Only close if clicking outside the canvas AND not on the popup
+      if (canvas && !canvas.contains(target)) {
+        setNodePopup(null);
+      }
+    };
+
+    if (nodePopup) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [nodePopup]);
 
   const resetView = () => {
     setPanOffset({ x: 0, y: 0 });
@@ -436,18 +647,36 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
     setZoom(1);
   };
 
+  const formatBalance = (balance: string | undefined): string => {
+    if (!balance) return '0';
+    const num = parseFloat(balance);
+    if (num === 0) return '0';
+    if (num < 0.001) return num.toExponential(2);
+    if (num < 1) return num.toFixed(4);
+    if (num < 1000) return num.toFixed(2);
+    if (num < 1000000) return (num / 1000).toFixed(1) + 'K';
+    return (num / 1000000).toFixed(1) + 'M';
+  };
+
+  // ADD this function to toggle auto-orbit
+  const toggleAutoOrbit = () => {
+    setIsAutoOrbiting(prev => !prev);
+  };
+
   return (
     <div className="w-full h-full relative">
       <canvas
         ref={canvasRef}
-        className="w-full h-full cursor-grab active:cursor-grabbing"
+        className={`w-full h-full cursor-grab active:cursor-grabbing ${
+          isHovered ? 'ring-2 ring-blue-400 ring-opacity-30' : ''
+        }`}
         style={{ borderRadius: "12px" }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
         onContextMenu={handleContextMenu}
-        onWheel={handleWheel}
         onClick={handleCanvasClick}
       />
       
@@ -457,6 +686,31 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
       </div>
       
       <div className="absolute top-4 right-4 flex gap-2">
+        {/* Layout Mode Toggle - ADD THIS */}
+        <div className="btn-group">
+          <button
+            className={`btn btn-xs ${layoutMode === 'shell' ? 'btn-secondary' : 'btn-ghost'} text-white`}
+            onClick={() => setLayoutMode('shell')}
+            title="Shell-based layout"
+          >
+            🌌 Shell
+          </button>
+          <button
+            className={`btn btn-xs ${layoutMode === 'force' ? 'btn-secondary' : 'btn-ghost'} text-white`}
+            onClick={() => setLayoutMode('force')}
+            title="Force-directed layout"
+          >
+            ⚡ Force
+          </button>
+          <button
+            className={`btn btn-xs ${layoutMode === 'fibonacci' ? 'btn-secondary' : 'btn-ghost'} text-white`}
+            onClick={() => setLayoutMode('fibonacci')}
+            title="Fibonacci spiral layout"
+          >
+            🌀 Spiral
+          </button>
+        </div>
+
         {/* Particle Mode Toggle */}
         <div className="btn-group">
           <button
@@ -472,6 +726,15 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
             ⚡ Laser
           </button>
         </div>
+
+        {/* AUTO-ORBIT BUTTON - ADD THIS */}
+        <button
+          className={`btn btn-xs ${isAutoOrbiting ? 'btn-accent' : 'btn-ghost'} text-white`}
+          onClick={toggleAutoOrbit}
+          title={isAutoOrbiting ? "Stop auto-orbit" : "Start auto-orbit"}
+        >
+          {isAutoOrbiting ? '⏸️' : '🪐'} Orbit
+        </button>
         
         <button
           onClick={resetView}
@@ -485,8 +748,201 @@ export default function SimpleCosmicGraph({ graphData }: Props) {
       </div>
       
       <div className="absolute bottom-4 left-4 text-white text-xs opacity-50">
-        Left-drag: pan • Right-drag: orbit • Scroll: zoom • Click nodes to open
+        {isHovered ? (
+          "🎯 Hover active • Scroll to zoom • Left-drag: pan • Right-drag: orbit"
+        ) : (
+          "Hover over graph to enable zoom • Left-drag: pan • Right-drag: orbit"
+        )}
       </div>
+
+      {/* ADD THE NODE POPUP */}
+      {nodePopup && (
+        <div 
+          className="absolute z-50 pointer-events-auto node-popup"
+          style={{ 
+            left: Math.min(nodePopup.x, window.innerWidth - 220),
+            top: Math.max(10, Math.min(nodePopup.y - 80, window.innerHeight - 160))
+          }}
+        >
+          {/* Cosmic-themed popup with glow effect */}
+          <div 
+            className="relative rounded-lg shadow-2xl p-3 w-[200px] border"
+            style={{
+              background: 'linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 50%, rgba(42, 24, 16, 0.95) 100%)',
+              borderColor: 'rgba(97, 218, 251, 0.3)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 0 30px rgba(97, 218, 251, 0.2), 0 0 60px rgba(97, 218, 251, 0.1)'
+            }}
+          >
+            {/* Cosmic header with enhanced glow indicator */}
+            <div className="flex items-center gap-2 mb-2 pb-2 border-b" style={{ borderColor: 'rgba(97, 218, 251, 0.2)' }}>
+              {(() => {
+                const balance = parseFloat(nodePopup.node.balance || '0');
+                let indicatorColor;
+                
+                switch (nodePopup.node.galaxyLayer) {
+                  case 'core':
+                    indicatorColor = nodePopup.node.isContract ? '#ff6b6b' : '#ffd93d';
+                    break;
+                  case 'inner':
+                    indicatorColor = '#74b9ff';
+                    break;
+                  case 'outer':
+                    indicatorColor = '#ffffff';
+                    break;
+                  case 'halo':
+                    indicatorColor = '#a0a0a0';
+                    break;
+                  default:
+                    indicatorColor = '#a0a0a0';
+                }
+
+                return (
+                  <div 
+                    className="w-2 h-2 rounded-full relative"
+                    style={{ 
+                      backgroundColor: indicatorColor,
+                      boxShadow: `0 0 8px ${indicatorColor}, 0 0 16px ${indicatorColor}40`
+                    }}
+                  >
+                    {/* Pulsing glow effect */}
+                    <div 
+                      className="absolute inset-0 w-2 h-2 rounded-full animate-pulse"
+                      style={{ 
+                        backgroundColor: indicatorColor,
+                        filter: 'blur(1px)',
+                        opacity: 0.6
+                      }}
+                    />
+                  </div>
+                );
+              })()}
+              
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold truncate" style={{ color: '#e1e5f2' }}>
+                  {nodePopup.node.isContract ? '📋' : '👤'} {nodePopup.node.id.slice(0, 6)}...{nodePopup.node.id.slice(-4)}
+                </div>
+              </div>
+              <button
+                onClick={() => setNodePopup(null)}
+                className="btn btn-ghost btn-xs btn-circle p-0 min-h-4 h-4 w-4 hover:bg-white/10"
+                style={{ color: 'rgba(225, 229, 242, 0.5)' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Enhanced balance section */}
+            <div className="mb-3">
+              <div className="text-[10px] mb-1" style={{ color: 'rgba(97, 218, 251, 0.7)' }}>
+                Balance
+              </div>
+              <div 
+                className="text-sm font-bold"
+                style={{ 
+                  color: '#e1e5f2',
+                  textShadow: '0 0 10px rgba(97, 218, 251, 0.5)'
+                }}
+              >
+                {formatBalance(nodePopup.node.balance)} ETH
+              </div>
+            </div>
+
+            {/* Cosmic stats grid */}
+            <div className="grid grid-cols-2 gap-1 mb-3 text-[10px]">
+              <div 
+                className="rounded p-1.5 border"
+                style={{
+                  background: 'rgba(97, 218, 251, 0.05)',
+                  borderColor: 'rgba(97, 218, 251, 0.2)'
+                }}
+              >
+                <div style={{ color: 'rgba(97, 218, 251, 0.7)' }}>Type</div>
+                <div className="font-semibold text-xs" style={{ color: '#e1e5f2' }}>
+                  {nodePopup.node.isContract ? 'Contract' : 'Wallet'}
+                </div>
+              </div>
+              <div 
+                className="rounded p-1.5 border"
+                style={{
+                  background: 'rgba(97, 218, 251, 0.05)',
+                  borderColor: 'rgba(97, 218, 251, 0.2)'
+                }}
+              >
+                <div style={{ color: 'rgba(97, 218, 251, 0.7)' }}>Links</div>
+                <div className="font-semibold text-xs" style={{ color: '#e1e5f2' }}>
+                  {graphData.links.filter(link => 
+                    link.source === nodePopup.node.id || link.target === nodePopup.node.id
+                  ).length}
+                </div>
+              </div>
+            </div>
+
+            {/* Cosmic action buttons */}
+            <div className="flex gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(`https://sepolia.etherscan.io/address/${nodePopup.node.id}`, "_blank");
+                }}
+                className="flex-1 text-[10px] h-6 rounded transition-all duration-200 font-medium cursor-pointer"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(97, 218, 251, 0.8) 0%, rgba(116, 185, 255, 0.8) 100%)',
+                  color: '#0a0a0a',
+                  border: '1px solid rgba(97, 218, 251, 0.5)',
+                  boxShadow: '0 0 10px rgba(97, 218, 251, 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = '0 0 15px rgba(97, 218, 251, 0.5)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = '0 0 10px rgba(97, 218, 251, 0.3)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                🔗 Scan
+              </button>
+              
+              {onSetTarget && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSetTarget(nodePopup.node.id);
+                    setNodePopup(null);
+                  }}
+                  className="flex-1 text-[10px] h-6 rounded transition-all duration-200 font-medium cursor-pointer"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255, 215, 100, 0.8) 0%, rgba(255, 107, 107, 0.8) 100%)',
+                    color: '#0a0a0a',
+                    border: '1px solid rgba(255, 215, 100, 0.5)',
+                    boxShadow: '0 0 10px rgba(255, 215, 100, 0.3)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = '0 0 15px rgba(255, 215, 100, 0.5)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = '0 0 10px rgba(255, 215, 100, 0.3)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  🔍 Analyze
+                </button>
+              )}
+            </div>
+
+            {/* Subtle cosmic border glow */}
+            <div 
+              className="absolute inset-0 rounded-lg pointer-events-none"
+              style={{
+                background: 'linear-gradient(135deg, transparent 0%, rgba(97, 218, 251, 0.1) 50%, transparent 100%)',
+                zIndex: -1
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Enhanced Legend */}
       <div className="absolute bottom-4 right-4 text-white text-xs opacity-60">
