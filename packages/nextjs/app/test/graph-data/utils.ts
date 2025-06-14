@@ -194,12 +194,12 @@ export async function fetchAllTransfers(address: string): Promise<AssetTransfers
       return true;
     });
     
-    console.log("API Deduplicated transfers:", deduped);
+    // console.log("API Deduplicated transfers:", deduped);
 
     return deduped;
     // return [];
   } catch (err) {
-    console.error("Failed to fetch transfers:", err);
+    // console.error("Failed to fetch transfers:", err);
     return [];
   }
 }

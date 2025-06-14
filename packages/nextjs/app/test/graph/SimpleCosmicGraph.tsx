@@ -1,6 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { GraphNode, GraphLink } from "../graph-data/types";
+import { generateLayout, shouldRegenerateLayout, LayoutConfig, PositionedNode } from './graphLayouts';
+
+// Extend the Window interface to include customSetTarget
+declare global {
+  interface Window {
+    customSetTarget?: (address: string) => void;
+  }
+}
 
 interface NodePopupData {
   node: PositionedNode;
@@ -12,19 +20,10 @@ interface Props {
   graphData: { nodes: GraphNode[]; links: GraphLink[] };
   onSetTarget?: (address: string) => void;
   isFullscreen?: boolean;
+  targetNode?: string; // Add this prop
 }
 
-interface PositionedNode extends GraphNode {
-  x: number;
-  y: number;
-  z: number;
-  screenX: number;
-  screenY: number;
-  depth: number;
-  galaxyLayer: 'core' | 'inner' | 'outer' | 'halo';
-}
-
-export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen = false }: Props) {
+export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen = false, targetNode }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
@@ -42,6 +41,9 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
   const [layoutMode, setLayoutMode] = useState<'shell' | 'force' | 'fibonacci'>('shell');
   const [nodePopup, setNodePopup] = useState<NodePopupData | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  // Add target node state and find target node
+  const [targetNodeId, setTargetNodeId] = useState<string | null>(null);
+  const [layoutConfig, setLayoutConfig] = useState<LayoutConfig | null>(null);
 
   // Enhanced resize handler that uses direct window dimensions in fullscreen
   useEffect(() => {
@@ -64,7 +66,7 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
       
       // Only update if size actually changed
       if (newWidth !== canvasSize.width || newHeight !== canvasSize.height) {
-        console.log(`Canvas resizing: ${newWidth}x${newHeight} (fullscreen: ${isFullscreen})`);
+        // console.log(`Canvas resizing: ${newWidth}x${newHeight} (fullscreen: ${isFullscreen})`);
         setCanvasSize({ width: newWidth, height: newHeight });
         
         canvas.width = newWidth * window.devicePixelRatio;
@@ -132,7 +134,7 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
         newHeight = rect.height;
       }
       
-      console.log(`Force resize for fullscreen change: ${newWidth}x${newHeight}`);
+      // console.log(`Force resize for fullscreen change: ${newWidth}x${newHeight}`);
       setCanvasSize({ width: newWidth, height: newHeight });
       
       canvas.width = newWidth * window.devicePixelRatio;
@@ -153,230 +155,42 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
     setTimeout(updateSize, 300);
   }, [isFullscreen]);
 
-  // Initialize node positions in electron-like orbital shells
+  // Initialize node positions using the layout generator
   useEffect(() => {
-    if (!graphData.nodes.length) return;
+    if (!graphData.nodes.length || !targetNodeId) return;
 
-    // Helper functions
-    const getShellRadius = (balance: number, isContract: boolean) => {
-      if (isContract || balance > 10) return 40;
-      if (balance > 1) return 100;
-      if (balance > 0.1) return 180;
-      return 280;
+    const newConfig: LayoutConfig = {
+      layoutMode,
+      targetNodeId,
+      graphData
     };
 
-    const getGalaxyLayer = (balance: number, isContract: boolean): 'core' | 'inner' | 'outer' | 'halo' => {
-      if (isContract || balance > 10) return 'core';
-      if (balance > 1) return 'inner';
-      if (balance > 0.1) return 'outer';
-      return 'halo';
-    };
-
-    // Option 1: Original Shell-based Layout
-    const createShellLayout = (): PositionedNode[] => {
-      return graphData.nodes.map((node, index) => {
-        const balance = parseFloat(node.balance || '0');
-        let galaxyLayer: 'core' | 'inner' | 'outer' | 'halo';
-        let shellRadius: number;
-        let shellThickness: number;
-        
-        if (node.isContract || balance > 10) {
-          galaxyLayer = 'core';
-          shellRadius = 40;
-          shellThickness = 20;
-        } else if (balance > 1) {
-          galaxyLayer = 'inner';
-          shellRadius = 100;
-          shellThickness = 30;
-        } else if (balance > 0.1) {
-          galaxyLayer = 'outer';
-          shellRadius = 180;
-          shellThickness = 40;
-        } else {
-          galaxyLayer = 'halo';
-          shellRadius = 280;
-          shellThickness = 60;
-        }
-
-        const numOrbitals = Math.ceil(Math.sqrt(index + 1));
-        const orbitalIndex = index % numOrbitals;
-        
-        const orbitalTilt = (orbitalIndex / numOrbitals) * Math.PI;
-        const orbitalRotation = Math.random() * 2 * Math.PI;
-        
-        const theta = Math.random() * 2 * Math.PI;
-        const phi = Math.acos(2 * Math.random() - 1);
-        
-        const radiusInShell = shellRadius + (Math.random() - 0.5) * shellThickness;
-        
-        let x = radiusInShell * Math.sin(phi) * Math.cos(theta);
-        let y = radiusInShell * Math.sin(phi) * Math.sin(theta);
-        let z = radiusInShell * Math.cos(phi);
-        
-        const cosT = Math.cos(orbitalTilt);
-        const sinT = Math.sin(orbitalTilt);
-        const cosR = Math.cos(orbitalRotation);
-        const sinR = Math.sin(orbitalRotation);
-        
-        const y1 = y * cosT - z * sinT;
-        const z1 = y * sinT + z * cosT;
-        
-        const x2 = x * cosR + z1 * sinR;
-        const z2 = -x * sinR + z1 * cosR;
-        
-        return {
-          ...node,
-          x: x2,
-          y: y1,
-          z: z2,
-          screenX: 0,
-          screenY: 0,
-          depth: 0,
-          galaxyLayer
-        };
-      });
-    };
-
-    // Option 2: Force-based Layout
-    const createForceLayout = (): PositionedNode[] => {
-      // Initial random placement
-      let workingNodes: PositionedNode[] = graphData.nodes.map((node, index) => {
-        const balance = parseFloat(node.balance || '0');
-        const shellRadius = getShellRadius(balance, !!node.isContract);
-        
-        // Start with random positions
-        const angle = Math.random() * 2 * Math.PI;
-        const radius = shellRadius * (0.5 + Math.random() * 0.5);
-        
-        return {
-          ...node,
-          x: Math.cos(angle) * radius,
-          y: (Math.random() - 0.5) * radius,
-          z: Math.sin(angle) * radius,
-          screenX: 0,
-          screenY: 0,
-          depth: 0,
-          galaxyLayer: getGalaxyLayer(balance, !!node.isContract)
-        };
-      });
-
-      // Apply force simulation
-      const iterations = 100;
-      const repulsionStrength = 2000;
-      const centerAttraction = 0.05;
-      
-      for (let iter = 0; iter < iterations; iter++) {
-        workingNodes.forEach((node, i) => {
-          let fx = 0, fy = 0, fz = 0;
-          const balance = parseFloat(node.balance || '0');
-          const targetRadius = getShellRadius(balance, !!node.isContract);
-          
-          // Repulsion from other nodes
-          workingNodes.forEach((other, j) => {
-            if (i !== j) {
-              const dx = node.x - other.x;
-              const dy = node.y - other.y;
-              const dz = node.z - other.z;
-              const distance = Math.sqrt(dx*dx + dy*dy + dz*dz) + 1;
-              const force = repulsionStrength / (distance * distance);
-              
-              fx += (dx / distance) * force;
-              fy += (dy / distance) * force;
-              fz += (dz / distance) * force;
-            }
-          });
-          
-          // Attraction to target shell radius
-          const currentRadius = Math.sqrt(node.x*node.x + node.y*node.y + node.z*node.z);
-          if (currentRadius > 0) {
-            const radiusForce = (targetRadius - currentRadius) * centerAttraction;
-            fx += (node.x / currentRadius) * radiusForce;
-            fy += (node.y / currentRadius) * radiusForce;
-            fz += (node.z / currentRadius) * radiusForce;
-          }
-          
-          // Apply forces with damping
-          const damping = 0.02;
-          node.x += fx * damping;
-          node.y += fy * damping;
-          node.z += fz * damping;
-        });
-      }
-      
-      return workingNodes;
-    };
-
-    // Option 3: Fibonacci Spiral Layout
-    const createFibonacciLayout = (): PositionedNode[] => {
-      const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-      
-      // Sort nodes by importance for better spiral placement
-      const sortedNodes = [...graphData.nodes].sort((a, b) => {
-        const balanceA = parseFloat(a.balance || '0');
-        const balanceB = parseFloat(b.balance || '0');
-        const scoreA = a.isContract ? 1000 + balanceA : balanceA;
-        const scoreB = b.isContract ? 1000 + balanceB : balanceB;
-        return scoreB - scoreA;
-      });
-      
-      return sortedNodes.map((node, index) => {
-        const balance = parseFloat(node.balance || '0');
-        const baseRadius = getShellRadius(balance, !!node.isContract);
-        
-        // Fibonacci spiral distribution
-        const t = index / (graphData.nodes.length - 1);
-        const y = (1 - 2 * t) * baseRadius * 0.8;
-        const radiusAtY = Math.sqrt(Math.max(0, baseRadius * baseRadius - y * y));
-        const angle = goldenAngle * index;
-        
-        // Add some controlled randomness
-        const randomScale = 1 + (Math.random() - 0.5) * 0.3;
-        const x = Math.cos(angle) * radiusAtY * randomScale;
-        const z = Math.sin(angle) * radiusAtY * randomScale;
-        
-        return {
-          ...node,
-          x,
-          y,
-          z,
-          screenX: 0,
-          screenY: 0,
-          depth: 0,
-          galaxyLayer: getGalaxyLayer(balance, !!node.isContract)
-        };
-      });
-    };
-
-    // Choose layout based on mode
-    let positionedNodes: PositionedNode[];
-    switch (layoutMode) {
-      case 'force':
-        positionedNodes = createForceLayout();
-        break;
-      case 'fibonacci':
-        positionedNodes = createFibonacciLayout();
-        break;
-      case 'shell':
-      default:
-        positionedNodes = createShellLayout();
-        break;
+    // Only regenerate if configuration changed
+    if (shouldRegenerateLayout(layoutConfig, newConfig)) {
+      // console.log('Generating layout with config:', newConfig);
+      const positionedNodes = generateLayout(newConfig);
+      setNodes(positionedNodes);
+      setLayoutConfig(newConfig);
     }
-
-    setNodes(positionedNodes);
-  }, [graphData.nodes, layoutMode]);
+  }, [graphData.nodes, layoutMode, targetNodeId, layoutConfig]);
 
   // Project 3D coordinates to 2D screen coordinates
   const project3DTo2D = (node: PositionedNode, rotX: number, rotY: number) => {
+    // Use node coordinates directly since target is already at origin
+    const offsetX = node.x;
+    const offsetY = node.y;
+    const offsetZ = node.z;
+
     const cosRotX = Math.cos(rotX);
     const sinRotX = Math.sin(rotX);
     const cosRotY = Math.cos(rotY);
     const sinRotY = Math.sin(rotY);
 
-    let y1 = node.y * cosRotX - node.z * sinRotX;
-    let z1 = node.y * sinRotX + node.z * cosRotX;
+    let y1 = offsetY * cosRotX - offsetZ * sinRotX;
+    let z1 = offsetY * sinRotX + offsetZ * cosRotX;
 
-    let x2 = node.x * cosRotY + z1 * sinRotY;
-    let z2 = -node.x * sinRotY + z1 * cosRotY;
+    let x2 = offsetX * cosRotY + z1 * sinRotY;
+    let z2 = -offsetX * sinRotY + z1 * cosRotY;
 
     const distance = 600;
     const perspective = distance / (distance + z2);
@@ -430,6 +244,9 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
       bgGradient.addColorStop(1, '#0c0c0c');
       ctx.fillStyle = bgGradient;
       ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+      // Find the target node by id
+      const targetNode = nodes.find(n => n.id === targetNodeId);
 
       // Project all nodes to 2D and sort by depth
       const projectedNodes = nodes.map(node => {
@@ -593,6 +410,13 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
         }
       });
 
+      // Enhanced target node indicator
+      projectedNodes.forEach(node => {
+        if (targetNode && node.id === targetNodeId) {
+          // Target node indicator removed - functionality preserved
+        }
+      });
+
       ctx.restore();
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -685,6 +509,9 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
     const worldX = (canvasX - centerX - panOffset.x) / zoom;
     const worldY = (canvasY - centerY - panOffset.y) / zoom;
 
+    // Find the target node by id
+    const targetNode = nodes.find(n => n.id === targetNodeId);
+
     const projectedNodes = nodes.map(node => ({
       ...node,
       ...project3DTo2D(node, orbitRotation.x, orbitRotation.y)
@@ -745,6 +572,36 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
     if (num < 1000000) return (num / 1000).toFixed(1) + 'K';
     return (num / 1000000).toFixed(1) + 'M';
   };
+
+  // Update the onSetTarget prop handling
+  useEffect(() => {
+    if (graphData.nodes.length > 0 && !targetNodeId && !targetNode) {
+      // Only set fallback if no target prop is provided
+      // console.log('Setting fallback target node:', graphData.nodes[0].id);
+      setTargetNodeId(graphData.nodes[0].id);
+    }
+  }, [graphData.nodes, targetNodeId, targetNode]);
+
+  // Update the targetNode prop handling - this should run FIRST
+  useEffect(() => {
+    if (targetNode && targetNode !== targetNodeId) {
+      // console.log('Setting target node from prop:', targetNode);
+      setTargetNodeId(targetNode);
+    }
+  }, [targetNode]); // Remove targetNodeId from dependencies to avoid conflicts
+
+  // Update the onSetTarget prop handler
+  useEffect(() => {
+    if (onSetTarget) {
+      // Create a wrapper function that also updates our internal target
+      const originalOnSetTarget = onSetTarget;
+      // Override the prop behavior
+      window.customSetTarget = (address: string) => {
+        setTargetNodeId(address);
+        originalOnSetTarget(address);
+      };
+    }
+  }, [onSetTarget]);
 
   return (
     <div className="w-full h-full relative">
@@ -829,6 +686,7 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
             setPanOffset({ x: 0, y: 0 });
             setOrbitRotation({ x: 0, y: 0 });
             setZoom(1);
+            // Keep the target node centered
           }}
           className="btn btn-xs btn-ghost text-white hover:bg-white/20"
         >
@@ -1000,7 +858,10 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSetTarget(nodePopup.node.id);
+                    setTargetNodeId(nodePopup.node.id);
+                    if (onSetTarget) {
+                      onSetTarget(nodePopup.node.id);
+                    }
                     setNodePopup(null);
                   }}
                   className="flex-1 text-[10px] h-6 rounded transition-all duration-200 font-medium cursor-pointer"
@@ -1019,7 +880,7 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  🔍 Analyze
+                  🎯 Target
                 </button>
               )}
             </div>
@@ -1050,8 +911,6 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
 }
 
 //TODO:
-// Control laser speed (maybe have to add functionality to filter and pass as param)
-// fix layout issues - zoom/scroll overlapping
-// I think make center red, contracts maybe purple?
-// Add more visual effects for different node types (idk ai generated)
-// and ofc add layer/children
+// fix whale/active/regular definitons.. Im seeign wahles withzero to no baalnce
+// move on to contract/nft stuff we've done enough
+// Prob remove graph depth for now

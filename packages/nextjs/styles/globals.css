@@ -121,3 +121,36 @@
 button:disabled {
   cursor: not-allowed;
 }
+
+/* Cosmic Background Animation */
+@keyframes move-twinkle-back {
+  from { background-position: 0 0; }
+  to { background-position: -10000px 5000px; }
+}
+
+@keyframes move-clouds-back {
+  from { background-position: 0 0; }
+  to { background-position: 10000px 0; }
+}
+
+.stars, .twinkling {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.stars {
+  background: #000 url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><circle cx="100" cy="100" r="1" fill="white"/><circle cx="300" cy="200" r="0.5" fill="white"/><circle cx="500" cy="150" r="1" fill="white"/><circle cx="700" cy="300" r="0.5" fill="white"/><circle cx="200" cy="400" r="1" fill="white"/><circle cx="800" cy="450" r="0.5" fill="white"/><circle cx="150" cy="600" r="1" fill="white"/><circle cx="600" cy="650" r="0.5" fill="white"/><circle cx="400" cy="750" r="1" fill="white"/><circle cx="900" cy="800" r="0.5" fill="white"/></svg>') repeat;
+  background-size: 1000px 1000px;
+}
+
+.twinkling {
+  background: transparent url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><circle cx="200" cy="150" r="1" fill="rgba(255,255,255,0.8)"/><circle cx="500" cy="300" r="0.8" fill="rgba(135,206,235,0.6)"/><circle cx="800" cy="200" r="1.2" fill="rgba(255,182,193,0.4)"/><circle cx="350" cy="500" r="0.6" fill="rgba(255,255,255,0.7)"/><circle cx="750" cy="600" r="1" fill="rgba(173,216,230,0.5)"/></svg>') repeat;
+  background-size: 1000px 1000px;
+  animation: move-twinkle-back 200s linear infinite;
+}
