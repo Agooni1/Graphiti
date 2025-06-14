@@ -1,9 +1,8 @@
 "use client";
 import type { NextPage } from "next";
-import { useState, useCallback, useEffect } from "react";
-import { useAccount } from "wagmi"; // Add this import
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useAccount } from "wagmi";
 import { AddressInput, BlockieAvatar } from "~~/components/scaffold-eth";
-import VisNetworkGraph from "./graph/VisNetworkGraph";
 import SimpleCosmicGraph from "./graph/SimpleCosmicGraph";
 import { AssetTransfersResult } from "alchemy-sdk";
 import { GraphNode, GraphLink } from "./graph-data/types";
@@ -11,7 +10,7 @@ import { fetchAllTransfers, fetchAllTransfersCached, FilterAndSortTx } from "./g
 import { generateNodesFromTx } from "./graph-data/generateNodesFromTx";
 
 const Test: NextPage = () => {
-  const { address: connectedAddress, isConnected } = useAccount(); // Add this line
+  const { address: connectedAddress, isConnected } = useAccount();
   const [inputValue, setInputValue] = useState("");
   const [address, setAddress] = useState("");
   const [layerNum, setLayerNum] = useState(1);
@@ -20,10 +19,13 @@ const Test: NextPage = () => {
   const [allTransfers, setAllTransfers] = useState<AssetTransfersResult[]>([]);
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({ nodes: [], links: [] });
   const [txDisplayLimit, setTxDisplayLimit] = useState(10);
-  const [useCosmicGraph, setUseCosmicGraph] = useState(false);
   
   // Add state to track if we've already auto-loaded wallet address
   const [hasAutoLoaded, setHasAutoLoaded] = useState(false);
+  
+  // Add ref for fullscreen functionality
+  const graphWrapperRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Auto-load connected wallet address when wallet connects
   useEffect(() => {
@@ -42,6 +44,16 @@ const Test: NextPage = () => {
       setHasAutoLoaded(false);
     }
   }, [isConnected]);
+
+  // Track fullscreen state changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   // Stable callback for graph data
   const handleGraphDataReady = useCallback((data: any) => {
@@ -89,6 +101,22 @@ const Test: NextPage = () => {
     setAddress(newAddress);
     setInputValue(""); // Clear input
     handleParamsChange(); // Trigger loading
+  };
+
+  // Fullscreen toggle handler
+  const handleFullscreenToggle = () => {
+    const el = graphWrapperRef.current;
+    if (!el) return;
+
+    if (!document.fullscreenElement) {
+      el.requestFullscreen().catch(err => {
+        console.error("Failed to enter fullscreen:", err);
+      });
+    } else {
+      document.exitFullscreen().catch(err => {
+        console.error("Failed to exit fullscreen:", err);
+      });
+    }
   };
 
   return (
@@ -196,7 +224,7 @@ const Test: NextPage = () => {
           </div>
         </div>
 
-        {/* Direction + Graph Type Controls */}
+        {/* Direction Controls */}
         <div className="flex flex-col gap-4">
           {/* Direction Buttons */}
           <div className="flex flex-col gap-2">
@@ -225,32 +253,37 @@ const Test: NextPage = () => {
               </button>
             </div>
           </div>
-
-          {/* Graph Type Toggle */}
-          <div className="flex flex-col gap-2">
-            <label className="block text-base-content mb-1 font-semibold">Visualization</label>
-            <div className="btn-group flex">
-              <button
-                className={`btn btn-sm ${!useCosmicGraph ? "btn-active btn-primary" : ""}`}
-                onClick={() => setUseCosmicGraph(false)}
-                disabled={loading}
-              >
-                Network
-              </button>
-              <button
-                className={`btn btn-sm ${useCosmicGraph ? "btn-active btn-primary" : ""}`}
-                onClick={() => setUseCosmicGraph(true)}
-                disabled={loading}
-              >
-                🌌 Cosmic
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Graph Area */}
-      <div className="w-full max-w-6xl h-[70vh] bg-base-100 rounded-xl shadow-lg flex items-center justify-center relative">
+      {/* Graph Area - Updated with dynamic sizing */}
+      <div
+        ref={graphWrapperRef}
+        className={`relative bg-base-100 flex items-center justify-center overflow-hidden ${
+          isFullscreen 
+            ? "w-screen h-screen fixed top-0 left-0 z-50" 
+            : "w-full max-w-6xl h-[70vh] rounded-xl shadow-lg"
+        }`}
+      >
+        {/* Fullscreen Button */}
+        <button
+          onClick={handleFullscreenToggle}
+          className="absolute top-3 right-3 btn btn-sm btn-outline z-20"
+          title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+        >
+          {isFullscreen ? (
+            // Exit fullscreen icon
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9V4.5M15 9h4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15v4.5M15 15h4.5M15 15l5.5 5.5" />
+            </svg>
+          ) : (
+            // Enter fullscreen icon
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+          )}
+        </button>
+        
         {/* Loading Spinner */}
         {loading && address && (
           <div className="absolute inset-0 flex items-center justify-center bg-base-100 bg-opacity-80 z-10 rounded-xl">
@@ -258,15 +291,12 @@ const Test: NextPage = () => {
           </div>
         )}
         
-        {/* Conditional Graph Rendering */}
-        {useCosmicGraph ? (
-          <SimpleCosmicGraph 
-            graphData={graphData} 
-            onSetTarget={handleSetTarget}
-          />
-        ) : (
-          <VisNetworkGraph graphData={graphData} />
-        )}
+        {/* SimpleCosmicGraph - Pass fullscreen state */}
+        <SimpleCosmicGraph 
+          graphData={graphData} 
+          onSetTarget={handleSetTarget}
+          isFullscreen={isFullscreen}
+        />
         
         {!loading && (!address || graphData.nodes.length === 0) && (
           <div className="absolute inset-0 flex items-center justify-center text-base-content/50 text-lg">

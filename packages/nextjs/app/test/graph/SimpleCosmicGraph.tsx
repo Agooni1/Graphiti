@@ -10,7 +10,8 @@ interface NodePopupData {
 
 interface Props {
   graphData: { nodes: GraphNode[]; links: GraphLink[] };
-  onSetTarget?: (address: string) => void; // Add this prop for setting target
+  onSetTarget?: (address: string) => void;
+  isFullscreen?: boolean;
 }
 
 interface PositionedNode extends GraphNode {
@@ -23,9 +24,10 @@ interface PositionedNode extends GraphNode {
   galaxyLayer: 'core' | 'inner' | 'outer' | 'halo';
 }
 
-export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
+export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const [nodes, setNodes] = useState<PositionedNode[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isOrbiting, setIsOrbiting] = useState(false);
@@ -37,8 +39,119 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [particleMode, setParticleMode] = useState<'pulse' | 'laser'>('pulse');
   const [isHovered, setIsHovered] = useState(false);
-  const [layoutMode, setLayoutMode] = useState<'shell' | 'force' | 'fibonacci'>('shell'); // ADD THIS LINE
-  const [nodePopup, setNodePopup] = useState<NodePopupData | null>(null); // ADD THIS LINE
+  const [layoutMode, setLayoutMode] = useState<'shell' | 'force' | 'fibonacci'>('shell');
+  const [nodePopup, setNodePopup] = useState<NodePopupData | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+
+  // Enhanced resize handler that uses direct window dimensions in fullscreen
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const updateCanvasSize = () => {
+      let newWidth, newHeight;
+      
+      if (isFullscreen) {
+        // In fullscreen, use window dimensions directly
+        newWidth = window.innerWidth;
+        newHeight = window.innerHeight;
+      } else {
+        // Normal mode, use container dimensions
+        const rect = canvas.getBoundingClientRect();
+        newWidth = rect.width;
+        newHeight = rect.height;
+      }
+      
+      // Only update if size actually changed
+      if (newWidth !== canvasSize.width || newHeight !== canvasSize.height) {
+        console.log(`Canvas resizing: ${newWidth}x${newHeight} (fullscreen: ${isFullscreen})`);
+        setCanvasSize({ width: newWidth, height: newHeight });
+        
+        canvas.width = newWidth * window.devicePixelRatio;
+        canvas.height = newHeight * window.devicePixelRatio;
+        canvas.style.width = newWidth + 'px';
+        canvas.style.height = newHeight + 'px';
+        
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+      }
+    };
+
+    // Initial size update
+    updateCanvasSize();
+
+    // Set up ResizeObserver for normal mode
+    if (!isFullscreen) {
+      resizeObserverRef.current = new ResizeObserver(() => {
+        updateCanvasSize();
+      });
+      resizeObserverRef.current.observe(canvas);
+    }
+
+    // Window resize listener for fullscreen mode
+    const handleWindowResize = () => {
+      if (isFullscreen) {
+        updateCanvasSize();
+      }
+    };
+
+    // Fullscreen change listener
+    const handleFullscreenChange = () => {
+      setTimeout(updateCanvasSize, 100);
+    };
+
+    window.addEventListener('resize', handleWindowResize);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+      }
+      window.removeEventListener('resize', handleWindowResize);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [canvasSize.width, canvasSize.height, isFullscreen]);
+
+  // Force resize when fullscreen prop changes
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Force immediate resize when fullscreen state changes
+    const updateSize = () => {
+      let newWidth, newHeight;
+      
+      if (isFullscreen) {
+        newWidth = window.innerWidth;
+        newHeight = window.innerHeight;
+      } else {
+        const rect = canvas.getBoundingClientRect();
+        newWidth = rect.width;
+        newHeight = rect.height;
+      }
+      
+      console.log(`Force resize for fullscreen change: ${newWidth}x${newHeight}`);
+      setCanvasSize({ width: newWidth, height: newHeight });
+      
+      canvas.width = newWidth * window.devicePixelRatio;
+      canvas.height = newHeight * window.devicePixelRatio;
+      canvas.style.width = newWidth + 'px';
+      canvas.style.height = newHeight + 'px';
+      
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      }
+    };
+
+    // Multiple attempts to ensure resize happens
+    updateSize();
+    setTimeout(updateSize, 50);
+    setTimeout(updateSize, 150);
+    setTimeout(updateSize, 300);
+  }, [isFullscreen]);
 
   // Initialize node positions in electron-like orbital shells
   useEffect(() => {
@@ -250,7 +363,7 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
     }
 
     setNodes(positionedNodes);
-  }, [graphData.nodes, layoutMode]); // Add layoutMode to dependencies
+  }, [graphData.nodes, layoutMode]);
 
   // Project 3D coordinates to 2D screen coordinates
   const project3DTo2D = (node: PositionedNode, rotX: number, rotY: number) => {
@@ -276,24 +389,13 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
     };
   };
 
-  // Animation loop
+  // Animation loop - updated to use canvasSize state
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !nodes.length) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    const updateCanvasSize = () => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * window.devicePixelRatio;
-      canvas.height = rect.height * window.devicePixelRatio;
-      canvas.style.width = rect.width + 'px';
-      canvas.style.height = rect.height + 'px';
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    };
-
-    updateCanvasSize();
 
     let animationTime = 0;
     let lastFrameTime = performance.now();
@@ -306,15 +408,19 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
       // AUTO-ORBIT: Update rotation if auto-orbiting is enabled
       if (isAutoOrbiting && !isDragging && !isOrbiting) {
         setOrbitRotation(prev => ({
-          x: prev.x + deltaTime * 0.15, // Gentle vertical rotation
-          y: prev.y + deltaTime * 0.25  // Slightly faster horizontal rotation
+          x: prev.x + deltaTime * 0.15,
+          y: prev.y + deltaTime * 0.25
         }));
       }
       
-      const canvasWidth = canvas.width / window.devicePixelRatio;
-      const canvasHeight = canvas.height / window.devicePixelRatio;
+      // Use the stored canvas size
+      const canvasWidth = canvasSize.width;
+      const canvasHeight = canvasSize.height;
       const centerX = canvasWidth / 2;
       const centerY = canvasHeight / 2;
+      
+      // Clear canvas with proper dimensions
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
       
       // Create enhanced cosmic background with galaxy center glow
       const bgGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(canvasWidth, canvasHeight) / 2);
@@ -381,29 +487,25 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
               let particlePos;
               
               if (particleMode === 'pulse') {
-                // Synchronized pulse mode (original)
                 particlePos = (animationTime * 0.5) % 1;
               } else {
-                // Laser mode - slower, asynchronous particles
-                const linkSpeed = 1.2 + (linkIndex * 0.2) % 0.8; // Slower speeds: 1.2-2.0x instead of 3-5x
-                const linkOffset = (linkIndex * 0.7) % 1; // Different starting positions
+                const linkSpeed = 1.2 + (linkIndex * 0.2) % 0.8;
+                const linkOffset = (linkIndex * 0.7) % 1;
                 particlePos = (animationTime * linkSpeed + linkOffset) % 1;
               }
               
               const px = sourceNode.screenX + (targetNode.screenX - sourceNode.screenX) * particlePos;
               const py = sourceNode.screenY + (targetNode.screenY - sourceNode.screenY) * particlePos;
               
-              // Different particle effects based on mode
               if (particleMode === 'laser') {
-                // Laser mode: Multiple particles with trail effect (slower)
-                const numParticles = 2; // Reduced from 3 to 2 particles
+                const numParticles = 2;
                 for (let i = 0; i < numParticles; i++) {
-                  const trailOffset = i * 0.15; // Increased spacing between trail particles
+                  const trailOffset = i * 0.15;
                   const trailPos = (particlePos - trailOffset + 1) % 1;
                   if (trailPos >= 0 && trailPos <= 1) {
                     const trailPx = sourceNode.screenX + (targetNode.screenX - sourceNode.screenX) * trailPos;
                     const trailPy = sourceNode.screenY + (targetNode.screenY - sourceNode.screenY) * trailPos;
-                    const trailOpacity = baseOpacity * (1 - i * 0.4); // Slightly more fade
+                    const trailOpacity = baseOpacity * (1 - i * 0.4);
                     
                     ctx.beginPath();
                     ctx.fillStyle = sourceNode.galaxyLayer === 'core' ? 
@@ -414,7 +516,6 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
                   }
                 }
               } else {
-                // Pulse mode: Single synchronized particle (original)
                 ctx.beginPath();
                 ctx.fillStyle = sourceNode.galaxyLayer === 'core' ? 
                   `rgba(255, 215, 100, ${baseOpacity})` : 
@@ -483,7 +584,6 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
           ctx.arc(node.screenX, node.screenY, size, 0, 2 * Math.PI);
           ctx.fill();
 
-          // Clean labels for ALL nodes
           if (zoom > 1.2 && depthOpacity > 0.6) {
             ctx.font = `${14 / zoom}px Inter, sans-serif`;
             ctx.textAlign = 'center';
@@ -504,9 +604,9 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [nodes, graphData.links, panOffset, orbitRotation, zoom, particleMode, isAutoOrbiting, isDragging, isOrbiting]); // ADD the new dependencies
+  }, [nodes, graphData.links, panOffset, orbitRotation, zoom, particleMode, isAutoOrbiting, isDragging, isOrbiting, canvasSize]);
 
-  // Mouse event handlers (same as before)
+  // Mouse event handlers
   const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
     event.preventDefault();
     setLastMousePos({ x: event.clientX, y: event.clientY });
@@ -558,7 +658,7 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
 
     const handleWheel = (e: WheelEvent) => {
       if (!isHovered) return;
-      e.preventDefault(); // This stops the page scroll
+      e.preventDefault();
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       setZoom(prev => Math.max(0.1, Math.min(5, prev * delta)));
     };
@@ -568,7 +668,7 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
     return () => {
       canvas.removeEventListener("wheel", handleWheel);
     };
-  }, [isHovered, setZoom]); // Dependencies: isHovered and setZoom
+  }, [isHovered, setZoom]);
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (isDragging || isOrbiting) return;
@@ -601,16 +701,12 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
     });
 
     if (clickedNode) {
-      // console.log('Clicked node:', clickedNode);
-      
-      // Show popup instead of directly opening etherscan
       setNodePopup({
         node: clickedNode,
         x: canvasX,
         y: canvasY
       });
     } else {
-      // Close popup if clicking elsewhere
       setNodePopup(null);
     }
   };
@@ -621,15 +717,13 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
       const canvas = canvasRef.current;
       const target = event.target as Element;
       
-      // Don't close if clicking on the popup itself or its children
       if (nodePopup) {
         const popupElement = target.closest('.node-popup');
         if (popupElement) {
-          return; // Don't close popup if clicking inside it
+          return;
         }
       }
       
-      // Only close if clicking outside the canvas AND not on the popup
       if (canvas && !canvas.contains(target)) {
         setNodePopup(null);
       }
@@ -640,12 +734,6 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [nodePopup]);
-
-  const resetView = () => {
-    setPanOffset({ x: 0, y: 0 });
-    setOrbitRotation({ x: 0, y: 0 });
-    setZoom(1);
-  };
 
   const formatBalance = (balance: string | undefined): string => {
     if (!balance) return '0';
@@ -658,11 +746,6 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
     return (num / 1000000).toFixed(1) + 'M';
   };
 
-  // ADD this function to toggle auto-orbit
-  const toggleAutoOrbit = () => {
-    setIsAutoOrbiting(prev => !prev);
-  };
-
   return (
     <div className="w-full h-full relative">
       <canvas
@@ -670,7 +753,12 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
         className={`w-full h-full cursor-grab active:cursor-grabbing ${
           isHovered ? 'ring-2 ring-blue-400 ring-opacity-30' : ''
         }`}
-        style={{ borderRadius: "12px" }}
+        style={{ 
+          borderRadius: isFullscreen ? "0px" : "12px",
+          // Force exact dimensions in fullscreen
+          width: isFullscreen ? '100vw' : '100%',
+          height: isFullscreen ? '100vh' : '100%'
+        }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onMouseDown={handleMouseDown}
@@ -686,7 +774,7 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
       </div>
       
       <div className="absolute top-4 right-4 flex gap-2">
-        {/* Layout Mode Toggle - ADD THIS */}
+        {/* Layout Mode Toggle */}
         <div className="btn-group">
           <button
             className={`btn btn-xs ${layoutMode === 'shell' ? 'btn-secondary' : 'btn-ghost'} text-white`}
@@ -727,17 +815,21 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
           </button>
         </div>
 
-        {/* AUTO-ORBIT BUTTON - ADD THIS */}
+        {/* Auto-orbit button */}
         <button
           className={`btn btn-xs ${isAutoOrbiting ? 'btn-accent' : 'btn-ghost'} text-white`}
-          onClick={toggleAutoOrbit}
+          onClick={() => setIsAutoOrbiting(prev => !prev)}
           title={isAutoOrbiting ? "Stop auto-orbit" : "Start auto-orbit"}
         >
           {isAutoOrbiting ? '⏸️' : '🪐'} Orbit
         </button>
         
         <button
-          onClick={resetView}
+          onClick={() => {
+            setPanOffset({ x: 0, y: 0 });
+            setOrbitRotation({ x: 0, y: 0 });
+            setZoom(1);
+          }}
           className="btn btn-xs btn-ghost text-white hover:bg-white/20"
         >
           Reset Orbit
@@ -755,13 +847,13 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget }: Props) {
         )}
       </div>
 
-      {/* ADD THE NODE POPUP */}
+      {/* Node Popup - preserved exactly as it was */}
       {nodePopup && (
         <div 
           className="absolute z-50 pointer-events-auto node-popup"
           style={{ 
-            left: Math.min(nodePopup.x, window.innerWidth - 220),
-            top: Math.max(10, Math.min(nodePopup.y - 80, window.innerHeight - 160))
+            left: Math.min(nodePopup.x, (isFullscreen ? window.innerWidth : canvasSize.width) - 220),
+            top: Math.max(10, Math.min(nodePopup.y - 80, (isFullscreen ? window.innerHeight : canvasSize.height) - 160))
           }}
         >
           {/* Cosmic-themed popup with glow effect */}

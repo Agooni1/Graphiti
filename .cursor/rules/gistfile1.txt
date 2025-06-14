@@ -1,0 +1,82 @@
+
+<ethereum context>
+  remember bignumbers are weird in TS/JS we are using BigInt here as much as we can and you have 
+  formatEther and parseEther in viem as usual
+  all dialogs and ui should display the token * 10 ^ 18 or using formatEther - and then when you 
+  go to send it with useScaffoldReadContract and useScaffoldWriteContract you need to 			
+  parseEther the amount in ETH back to WEI (by dividing by 10 ^18)	
+  when you “call a function” on a contract you are just making a transaction to the contract on ethereum with 
+  some specific calldata that says what function you want to call with what parameters 
+  huge bonus if your address inputs have a QR code scanner so you can scan a QR of someones address
+ </ethereum context>
+  
+  
+<solidity notes>
+  don’t ever have variables that are the same name as functions 
+
+  import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; is how you do ReentrancyGuard.sol NOT import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+</solidity notes>
+
+<scaffold context>
+
+  some context about how to use scaffold-eth (scaffoldeth.io) 
+
+	please have the frontend default to dark mode <ThemeProvider defaultTheme="dark" enableSystem>
+
+	be careful sometimes you are using a color for <input> text that is very close to the background   	spend some time looking at the code and the structure and the components that are already here in the code
+
+	there is a way to display QR codes built in to scaffold-eth so use it for displaying QRs 
+
+ 	DO NOT use ethers! PLEASE USE viem (https://viem.sh/)
+
+	when you use scaffold-eth and you create new contracts or you delete the YourContract, you also need to setup or delete their test and deploy files (in either foundry or hardhat) - be careful with all the Deploy.s.sol references and such
+
+we are using scaffold eth and the tool has recently updated so please refer to the docs about how to read and write to the contract: https://docs.scaffoldeth.io/
+
+scaffold-eth uses viem instead of ether
+
+the smart contract comes with a some example solidity for a greeter contract and you don’t need that - you can clean out the page and YourContract before you start if you need
+
+please also remove the reference to console log - we are going to production and don’t want that in the code
+ TLDR you read like this:
+ const { data: totalCounter } = useScaffoldReadContract({
+  contractName: "YourContract",
+  functionName: "userGreetingCounter",
+  args: ["0xd8da6bf26964af9d7eed9e03e53415d37aa96045"],
+}); 
+and you write like this: 
+
+const { writeContractAsync: writeYourContractAsync } = useScaffoldWriteContract({ contractName: "YourContract" });
+
+
+(once you create that “writer” once you can:)
+<button
+  className="btn btn-primary"
+  onClick={async () => {
+    try {
+      await writeYourContractAsync({
+        functionName: "setGreeting",
+        args: ["The value to set"],
+        value: parseEther("0.1"),
+      });
+    } catch (e) {
+      console.error("Error setting greeting:", e);
+    }
+  }}
+>
+  Set Greeting
+</button>
+
+
+TO BE VERY CLEAR ABOUT writeYourContractAsync and useScaffoldWriteContract
+
+
+You should only have one writeYourContractAsync for each contract 
+and you will call the function within that but this is the “contract writer” and if you are calling multiple functions on the same contract you still use the same contract writer
+
+we only have one contract here so if I see multiple useScaffoldWriteContract in the Page you have done something wrong and I will delete  WATCH OUT - DO NOT USE useScaffoldContractRead or useScaffoldContractWrite 
+DO NOT USE useScaffoldContractRead or useScaffoldContractWrite   PLEASE PLEASE PLEASE ONLY USE useScaffoldReadContract or useScaffoldWriteContract
+
+IF I SEE useScaffoldContractRead in my code i will immediately delete all DO NOT USE useScaffoldContractRead  
+</scaffold context>
