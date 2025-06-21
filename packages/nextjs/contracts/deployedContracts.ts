@@ -7,12 +7,76 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourCollectible: {
-      address: "0x4A679253410272dd5232B3Ff7cF5dbB88f295319",
+      address: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
       abi: [
         {
           inputs: [],
           stateMutability: "nonpayable",
           type: "constructor",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "numerator",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "denominator",
+              type: "uint256",
+            },
+          ],
+          name: "ERC2981InvalidDefaultRoyalty",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "receiver",
+              type: "address",
+            },
+          ],
+          name: "ERC2981InvalidDefaultRoyaltyReceiver",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "tokenId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "numerator",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "denominator",
+              type: "uint256",
+            },
+          ],
+          name: "ERC2981InvalidTokenRoyalty",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "tokenId",
+              type: "uint256",
+            },
+            {
+              internalType: "address",
+              name: "receiver",
+              type: "address",
+            },
+          ],
+          name: "ERC2981InvalidTokenRoyaltyReceiver",
+          type: "error",
         },
         {
           inputs: [],
@@ -402,6 +466,19 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
+              name: "tokenId",
+              type: "uint256",
+            },
+          ],
+          name: "burn",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
               name: "",
               type: "uint256",
             },
@@ -415,6 +492,13 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "deposit",
+          outputs: [],
+          stateMutability: "payable",
           type: "function",
         },
         {
@@ -562,25 +646,6 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [
-            {
-              internalType: "address",
-              name: "targetAddress",
-              type: "address",
-            },
-          ],
-          name: "mintCosmicGraphOFF",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "payable",
-          type: "function",
-        },
-        {
           inputs: [],
           name: "name",
           outputs: [
@@ -643,6 +708,35 @@ const deployedContracts = {
           name: "renounceOwnership",
           outputs: [],
           stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "tokenId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "salePrice",
+              type: "uint256",
+            },
+          ],
+          name: "royaltyInfo",
+          outputs: [
+            {
+              internalType: "address",
+              name: "receiver",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
           type: "function",
         },
         {
@@ -886,6 +980,24 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "address",
+              name: "receiver",
+              type: "address",
+            },
+            {
+              internalType: "uint96",
+              name: "fee",
+              type: "uint96",
+            },
+          ],
+          name: "updateDefaultRoyalty",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
               internalType: "string",
               name: "_uri",
               type: "string",
@@ -916,34 +1028,37 @@ const deployedContracts = {
       ],
       inheritedFunctions: {
         approve:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+          "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
         balanceOf:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+          "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
         getApproved:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+          "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
         isApprovedForAll:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
-        name: "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+          "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
+        name: "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
         ownerOf:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+          "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
         safeTransferFrom:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+          "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
         setApprovalForAll:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+          "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
         supportsInterface:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+          "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
         symbol:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+          "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
         tokenURI:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+          "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
         transferFrom:
-          "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+          "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
         tokenByIndex:
           "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol",
         tokenOfOwnerByIndex:
           "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol",
         totalSupply:
           "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol",
+        burn: "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol",
+        royaltyInfo:
+          "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol",
         owner: "@openzeppelin/contracts/access/Ownable.sol",
         renounceOwnership: "@openzeppelin/contracts/access/Ownable.sol",
         transferOwnership: "@openzeppelin/contracts/access/Ownable.sol",

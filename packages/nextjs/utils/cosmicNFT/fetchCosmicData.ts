@@ -45,7 +45,8 @@ export async function fetchCosmicData(address: string): Promise<AddressCosmicDat
   try {
     // Basic address data
     const balance = await provider.getBalance(address);
-    const transactionCount = await provider.getTransactionCount(address);
+    // const transactionCount = await provider.getTransactionCount(address);
+    const transactionCount = 37; // Mock transaction count for now
 
     // For now, we'll use mock data for connected addresses
     // In production, you'd fetch real transaction history

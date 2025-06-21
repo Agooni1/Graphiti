@@ -573,35 +573,36 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
     return (num / 1000000).toFixed(1) + 'M';
   };
 
-  // Update the onSetTarget prop handling
-  useEffect(() => {
-    if (graphData.nodes.length > 0 && !targetNodeId && !targetNode) {
-      // Only set fallback if no target prop is provided
-      // console.log('Setting fallback target node:', graphData.nodes[0].id);
-      setTargetNodeId(graphData.nodes[0].id);
+  // Add a unified function to handle ALL target changes
+  const handleTargetChange = (newTargetId: string, source: string = '') => {
+    console.log(`Setting new target from ${source}:`, newTargetId);
+    setTargetNodeId(newTargetId);
+    
+    // Always notify parent component of the change (unless it came FROM the parent)
+    if (onSetTarget && source !== 'prop') {
+      onSetTarget(newTargetId);
     }
-  }, [graphData.nodes, targetNodeId, targetNode]);
+    
+    // Close any open popup
+    setNodePopup(null);
+  };
 
-  // Update the targetNode prop handling - this should run FIRST
+  // Update the targetNode prop handling to use unified function
   useEffect(() => {
     if (targetNode && targetNode !== targetNodeId) {
-      // console.log('Setting target node from prop:', targetNode);
-      setTargetNodeId(targetNode);
+      console.log('External prop setting target node:', targetNode);
+      handleTargetChange(targetNode, 'prop');
     }
-  }, [targetNode]); // Remove targetNodeId from dependencies to avoid conflicts
+  }, [targetNode, targetNodeId]);
 
-  // Update the onSetTarget prop handler
+  // Update the fallback logic to use unified function
   useEffect(() => {
-    if (onSetTarget) {
-      // Create a wrapper function that also updates our internal target
-      const originalOnSetTarget = onSetTarget;
-      // Override the prop behavior
-      window.customSetTarget = (address: string) => {
-        setTargetNodeId(address);
-        originalOnSetTarget(address);
-      };
+    if (graphData.nodes.length > 0 && !targetNodeId && !targetNode) {
+      const fallbackNodeId = graphData.nodes[0].id;
+      console.log('Setting fallback target node:', fallbackNodeId);
+      handleTargetChange(fallbackNodeId, 'fallback');
     }
-  }, [onSetTarget]);
+  }, [graphData.nodes, targetNodeId, targetNode]);
 
   return (
     <div className="w-full h-full relative">
@@ -858,11 +859,7 @@ export default function SimpleCosmicGraph({ graphData, onSetTarget, isFullscreen
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setTargetNodeId(nodePopup.node.id);
-                    if (onSetTarget) {
-                      onSetTarget(nodePopup.node.id);
-                    }
-                    setNodePopup(null);
+                    handleTargetChange(nodePopup.node.id, 'user-click');
                   }}
                   className="flex-1 text-[10px] h-6 rounded transition-all duration-200 font-medium cursor-pointer"
                   style={{

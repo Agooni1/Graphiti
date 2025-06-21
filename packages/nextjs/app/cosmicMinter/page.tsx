@@ -26,7 +26,7 @@ const CosmicMinterPage: NextPage = () => {
       const cosmicData = await fetchCosmicData(targetAddress);
       
       // Generate visualization
-      const { svg, metadata } = generateCosmicSVG(cosmicData);
+      const {  metadata } = generateCosmicSVG(cosmicData, "shell");
       
       // Show preview
       setPreviewSVG(svg);
@@ -50,7 +50,8 @@ const CosmicMinterPage: NextPage = () => {
       const { svg, metadata } = generateCosmicSVG(cosmicData);
       
       // Upload to IPFS
-      const ipfsHash = await uploadToIPFS(svg, metadata);
+      const ipfsHash = await uploadToIPFS(metadata);
+      console.log("IPFS Hash:", ipfsHash);
       
       // Mint NFT
       await writeContractAsync({

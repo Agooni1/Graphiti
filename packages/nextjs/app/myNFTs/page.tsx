@@ -6,16 +6,20 @@ import { useState } from "react";
 import { useAccount } from "wagmi";
 import { parseEther } from "viem";
 import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
-import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useScaffoldReadContract, useScaffoldWriteContract, useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
+import { useWatchBalance } from "~~/hooks/scaffold-eth/useWatchBalance";
 
 // Import cosmic NFT functions
 import { fetchCosmicData } from "~~/utils/cosmicNFT/fetchCosmicData";
 import { generateCosmicSVG } from "~~/utils/cosmicNFT/cosmicVisualizer";
-import { uploadToIPFS } from "~~/utils/cosmicNFT/ipfs-upload";
+import { generateMetadata } from "~~/utils/cosmicNFT/generateMetadata";
+import { uploadFileToIPFS, uploadMetadataToIPFS } from "~~/utils/cosmicNFT/ipfs-upload";
+import { canAffordMinting } from "./_components/gasEstimation";
 
 const MyNFTs: NextPage = () => {
-  const { address: connectedAddress, isConnected, isConnecting } = useAccount();
+  const { address: connectedAddress1, isConnected, isConnecting } = useAccount();
+  const connectedAddress = "0xcC6eDeB501BbD8AD9E028BDe937B63Cdd64A1D91"; // Temporary fix, replace with connectedAddress1
   const [mintPrice, setMintPrice] = useState("0.01");
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewSVG, setPreviewSVG] = useState<string>("");
@@ -35,6 +39,21 @@ const MyNFTs: NextPage = () => {
     args: [connectedAddress],
     watch: true,
   });
+
+  // Get contract address
+  const { data: contractInfo } = useDeployedContractInfo("YourCollectible");
+
+  const {
+    data: balance,
+    isError,
+    isLoading,
+  } = useWatchBalance({
+    address: connectedAddress,
+  });
+
+  // Extract the balance value for easier use
+  const balanceValue = balance?.value ?? 0n;
+  const balanceFormatted = balance?.formatted ?? "0";
 
   const generatePreview = async () => {
     if (!connectedAddress) return;
@@ -59,42 +78,93 @@ const MyNFTs: NextPage = () => {
   };
 
   const handleMintCosmicNFT = async () => {
-    if (!connectedAddress) return;
+    if (!connectedAddress || !contractInfo?.address) return;
 
-    const notificationId = notification.loading("Generating your cosmic graph...");
+    const notificationId = notification.loading("Checking affordability...");
     setIsGenerating(true);
 
     try {
+      // Convert ETH to wei for gas estimation
+      const mintPriceWei = parseEther(mintPrice).toString();
+      
+      const canAfford = await canAffordMinting({
+        userAddress: connectedAddress,
+        balance: balanceValue,
+        contractAddress: contractInfo.address,
+        mintPrice: mintPriceWei
+      });
+
+      notification.remove(notificationId);
+
+      if (!canAfford) {
+        notification.error("❌ Insufficient funds for minting + gas fees");
+        setIsGenerating(false);
+        return;
+      }
+
+      // Only proceed with generation if they can afford it
+      const generatingNotificationId = notification.loading("Generating your cosmic graph...");
+
       // Fetch cosmic data for the connected user's address
       const cosmicData = await fetchCosmicData(connectedAddress);
       
-      // Generate cosmic visualization
-      const { svg, metadata } = generateCosmicSVG(cosmicData);
+      // Fix: Use correct path for public files
+      const gifResponse = await fetch("/test-gif.gif"); // Changed from "/-gif.gif" 
+      if (!gifResponse.ok) {
+        throw new Error(`Failed to fetch GIF: ${gifResponse.status} ${gifResponse.statusText}`);
+      }
       
-      // Update notification
-      notification.remove(notificationId);
+      // Add debugging to verify the file loads correctly
+      console.log("GIF fetch response:", {
+        ok: gifResponse.ok,
+        status: gifResponse.status,
+        contentType: gifResponse.headers.get('content-type'),
+        contentLength: gifResponse.headers.get('content-length')
+      });
+      
+      const gifBlob = await gifResponse.blob();
+      console.log("GIF blob details:", {
+        size: gifBlob.size,
+        type: gifBlob.type
+      });
+
+      // Verify the blob isn't empty
+      if (gifBlob.size === 0) {
+        throw new Error("GIF file is empty");
+      }
+
+      const gifFile = new File([gifBlob], "cosmic-graph.gif", { type: "image/gif" });
+
+      notification.remove(generatingNotificationId);
       const uploadNotificationId = notification.loading("Uploading to IPFS via Pinata...");
 
-      // Upload to IPFS
-      const ipfsHash = await uploadToIPFS(svg, metadata);
+      // Upload GIF to IPFS first
+      const gifCid = await uploadFileToIPFS(gifFile);
+      console.log("GIF uploaded to IPFS:", gifCid);
 
-      // Update notification
+      // Generate metadata with the GIF CID
+      const { metadata } = generateMetadata(cosmicData, gifCid, 'shell'); // Add layout mode
+      console.log("Generated metadata:", metadata);
+
+      // Upload metadata to IPFS
+      const metadataCid = await uploadMetadataToIPFS(metadata);
+      console.log("Metadata uploaded to IPFS:", metadataCid);
+
       notification.remove(uploadNotificationId);
       notification.success("Cosmic graph uploaded to IPFS!");
 
-      // Mint the NFT
+      // Mint the NFT with metadata CID
       const mintNotificationId = notification.loading("Minting your cosmic NFT...");
       
       await writeContractAsync({
         functionName: "mintCosmicGraph",
-        args: [connectedAddress, ipfsHash], // Target address is the connected user
+        args: [connectedAddress, metadataCid], // Use metadata CID, not GIF CID
         value: parseEther(mintPrice),
       });
 
       notification.remove(mintNotificationId);
       notification.success("🌌 Cosmic NFT minted successfully!");
       
-      // Clear preview after successful mint
       setPreviewSVG("");
 
     } catch (error) {
@@ -106,7 +176,8 @@ const MyNFTs: NextPage = () => {
   };
 
   // Check if user already has a cosmic graph
-  const userAlreadyHasGraph = hasCosmicGraph?.[0] === true;
+  // const userAlreadyHasGraph = hasCosmicGraph?.[0] === true;
+  const userAlreadyHasGraph = false; // Temporary fix, replace with actual logic
 
   return (
     <>
@@ -132,6 +203,7 @@ const MyNFTs: NextPage = () => {
               <h2 className="text-2xl font-bold text-center mb-4 text-purple-300">
                 🌌 Your Cosmic Graph
               </h2>
+              
               
               {userAlreadyHasGraph ? (
                 <div className="text-center text-yellow-500">

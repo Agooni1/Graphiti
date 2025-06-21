@@ -31,7 +31,7 @@ const Test: NextPage = () => {
   // Auto-load connected wallet address when wallet connects
   useEffect(() => {
     if (isConnected && connectedAddress && !hasAutoLoaded && !address) {
-      console.log("Wallet connected, auto-loading address:", connectedAddress);
+      // console.log("Wallet connected, auto-loading address:", connectedAddress);
       setAddress(connectedAddress);
       setInputValue(""); // Clear input since we're setting from wallet
       setHasAutoLoaded(true); // Prevent auto-loading again
@@ -184,19 +184,32 @@ const Test: NextPage = () => {
                 </button>
                 
                 {/* Add button to use connected wallet */}
-                {isConnected && connectedAddress && address.toLowerCase() !== connectedAddress.toLowerCase() && (
+                {/* {isConnected && connectedAddress && address.toLowerCase() !== connectedAddress.toLowerCase() && ( */}
                   <button
                     className="btn bg-gradient-to-r from-cyan-600 to-blue-600 border-none text-white hover:scale-105 transition-transform"
                     onClick={() => {
-                      setAddress(connectedAddress);
+                      setAddress(connectedAddress? connectedAddress : "");
                       setInputValue("");
                       handleParamsChange();
                     }}
-                    disabled={loading}
+                    // disabled={loading}
                   >
                     Use Wallet
                   </button>
-                )}
+
+                  {/* Add reload button */}
+                  {/* <button
+                    className="btn bg-gradient-to-r from-green-600 to-emerald-600 border-none text-white hover:scale-105 transition-transform"
+                    onClick={() => {
+                      if (address) {
+                        handleParamsChange(); // Reload current address
+                      }
+                    }}
+                    // disabled={!address || loading}
+                    title="Reload current address data"
+                  >
+                    🔄 Reload
+                  </button> */}
                 
                 <button
                   className="btn btn-outline border-slate-600 text-slate-300 hover:border-slate-400"
@@ -206,7 +219,7 @@ const Test: NextPage = () => {
                     setGraphData({ nodes: [], links: [] });
                     setHasAutoLoaded(false); // Reset auto-load flag
                   }}
-                  disabled={loading}
+                  // disabled={loading}
                 >
                   Reset
                 </button>

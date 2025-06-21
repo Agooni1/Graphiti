@@ -31,16 +31,6 @@ export interface Collectible extends Partial<NFTMetaData> {
   id: number;
   uri: string;
   owner: string;
-  // Cosmic NFT specific fields
-  isCosmicGraph?: boolean;
-  targetAddress?: string;
-  timestamp?: number;
-  cosmicData?: {
-    target_address: string;
-    balance_wei: string;
-    connected_addresses: string[];
-    generation_timestamp: number;
-  };
 }
 
 export const MyHoldings = () => {
@@ -78,14 +68,16 @@ export const MyHoldings = () => {
           const tokenURI = await yourCollectibleContract.read.tokenURI([tokenId]);
           console.log("🔍 Token URI:", tokenURI);
           
-          const ipfsHash = tokenURI.replace("https://ipfs.io/ipfs/", "");
-          console.log("🔍 IPFS Hash:", ipfsHash);
+          // const ipfsHash = tokenURI.replace("https://ipfs.io/ipfs/", "");
+          // const ipfsHash = tokenURI.replace("https://aqua-nearby-barracuda-607.mypinata.cloud/ipfs/", "");
+          const ipfsHash = tokenURI.replace("https://gateway.pinata.cloud/ipfs/", "");
+          // console.log("🔍 IPFS Hash:", ipfsHash);
 
           // Get metadata with error handling
           let nftMetadata: NFTMetaData;
           try {
             nftMetadata = await getMetadataFromIPFS(ipfsHash);
-            console.log("✅ Metadata loaded:", nftMetadata);
+            // console.log("✅ Metadata loaded:", nftMetadata);
           } catch (metadataError) {
             console.error(`❌ Error fetching metadata for token ${tokenId}:`, metadataError);
 
@@ -98,30 +90,12 @@ export const MyHoldings = () => {
             };
           }
 
-          // Detect if this is a cosmic graph NFT by checking metadata
-          const isCosmicGraph = !!(nftMetadata.cosmic_data);
-          console.log("🌌 Is cosmic graph:", isCosmicGraph);
-
           const collectible: Collectible = {
             id: parseInt(tokenId.toString()),
             uri: tokenURI,
             owner: connectedAddress,
             ...nftMetadata,
-            isCosmicGraph,
           };
-
-          // Add cosmic-specific data if it's a cosmic graph
-          if (isCosmicGraph && nftMetadata.cosmic_data) {
-            collectible.cosmicData = nftMetadata.cosmic_data;
-            collectible.targetAddress = nftMetadata.cosmic_data.target_address;
-            collectible.timestamp = nftMetadata.cosmic_data.generation_timestamp;
-            
-            console.log("🌌 Added cosmic data:", {
-              targetAddress: collectible.targetAddress,
-              timestamp: collectible.timestamp,
-              connections: nftMetadata.cosmic_data.connected_addresses.length
-            });
-          }
 
           collectibleUpdate.push(collectible);
 
@@ -136,7 +110,6 @@ export const MyHoldings = () => {
             name: "NFT (Loading Error)",
             description: "There was an error loading this NFT",
             image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjY2NjIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkVycm9yPC90ZXh0Pjwvc3ZnPg==",
-            isCosmicGraph: false,
           });
         }
       }
@@ -157,15 +130,11 @@ export const MyHoldings = () => {
       </div>
     );
 
-  // Separate cosmic and regular NFTs
-  const cosmicNFTs = myAllCollectibles.filter(item => item.isCosmicGraph);
-  const regularNFTs = myAllCollectibles.filter(item => !item.isCosmicGraph);
-
   return (
     <div className="w-full max-w-7xl mx-auto px-4">
       
       {/* Cosmic NFTs Section */}
-      {cosmicNFTs.length > 0 && (
+      {/* {cosmicNFTs.length > 0 && (
         <div className="mb-12">
           <h2 className="text-3xl font-bold text-center mb-6 text-purple-300">
             🌌 Your Cosmic Graph NFTs
@@ -176,10 +145,10 @@ export const MyHoldings = () => {
             ))}
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Regular NFTs Section */}
-      {regularNFTs.length > 0 && (
+      {/* {regularNFTs.length > 0 && (
         <div className="mb-12">
           <h2 className="text-3xl font-bold text-center mb-6">
             🎨 Your Other NFTs
@@ -190,10 +159,9 @@ export const MyHoldings = () => {
             ))}
           </div>
         </div>
-      )}
+      )} */}
 
-      {/* No NFTs Message */}
-      {myAllCollectibles.length === 0 && (
+      {myAllCollectibles.length === 0 ? (
         <div className="flex justify-center items-center mt-10">
           <div className="text-center">
             <div className="text-2xl text-primary-content mb-4">No NFTs found</div>
@@ -201,6 +169,12 @@ export const MyHoldings = () => {
               Create your first cosmic graph NFT using the minter above! 🌌
             </p>
           </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-4 my-8 px-5 justify-center">
+          {myAllCollectibles.map(item => (
+            <NFTCard nft={item} key={item.id} />
+          ))}
         </div>
       )}
     </div>

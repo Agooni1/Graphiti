@@ -5,11 +5,15 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol";
 
 contract YourCollectible is
     ERC721,
     ERC721Enumerable,
     ERC721URIStorage,
+	ERC721Burnable,
+	ERC721Royalty,
     Ownable
 {
     uint256 public tokenIdCounter;
@@ -32,12 +36,25 @@ contract YourCollectible is
         address indexed requester
     );
 
-    constructor() ERC721("Cosmic Graph Collection", "COSMIC") Ownable(msg.sender) {}
+    constructor() ERC721("Cosmic Graph Collection", "CSMC") Ownable(msg.sender) {
+		_setDefaultRoyalty(msg.sender, 500);
+	}
+
+	function deposit() external payable {
+    require(msg.value > 0, "Must send some ETH");
+	// require (msg.value <= msg.sender.balance, "Insufficient balance to deposit");
+	// Funds are automatically added to the contract's balance
+	}
+
+	
+	
 
     function _baseURI() internal pure override returns (string memory) {
         // return "https://ipfs.io/ipfs/";
+		// return "https://aqua-nearby-barracuda-607.mypinata.cloud/ipfs/";
 		return "https://gateway.pinata.cloud/ipfs/";
     }
+	
 
     function setPrice(uint256 _price) public onlyOwner { 
         price = _price;	
@@ -53,9 +70,11 @@ contract YourCollectible is
 		payable 
 		returns (uint256) 
 	{
+		// require(msg.sender == _targetAddress, "You can only mint for yourself"); //for now, allow anyone to mint for any address
 		require(msg.value >= price, "Insufficient payment for minting");
+		require(msg.sender.balance >= price, "Insufficient balance to mint");
 		require(_targetAddress != address(0), "Cannot create graph for zero address");
-		require(addressToTokenId[_targetAddress] == 0, "Cosmic graph already exists for this address");
+		// require(addressToTokenId[_targetAddress] == 0, "Cosmic graph already exists for this address");
 		require(bytes(_ipfsHash).length > 0, "IPFS hash cannot be empty");
 
 		tokenIdCounter++;
@@ -73,26 +92,7 @@ contract YourCollectible is
 		return _tokenId;
 	}
 
-	/**
-	 * @dev Request to mint a cosmic graph NFT (to be processed off-chain)
-	 * @param targetAddress The Ethereum address to create the cosmic graph for
-	 */
-	function mintCosmicGraphOFF(address targetAddress) public payable returns (uint256) {
-        require(msg.value >= price, "Minting requires payment");
-        
-        tokenIdCounter++;
-        uint256 tokenId = tokenIdCounter;
-        
-        // Off-chain: generate cosmic visualization and upload to IPFS
-        // Then call this function with the resulting IPFS hash
-        
-        _safeMint(msg.sender, tokenId);
-        // URI will be set by backend after processing
-        
-        emit CosmicGraphRequested(tokenId, targetAddress, msg.sender);
-        return tokenId;
-    }
-
+	
 	/**
 	 * @dev Get cosmic graph information for a token
 	 */
@@ -158,7 +158,7 @@ contract YourCollectible is
 	)
 		public
 		view
-		override(ERC721, ERC721Enumerable, ERC721URIStorage)
+		override(ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Royalty)
 		returns (bool)
 	{
 		return super.supportsInterface(_interfaceId);
@@ -173,4 +173,8 @@ contract YourCollectible is
 		require(_balance > 0, "No funds to withdraw");
 		payable(owner()).transfer(_balance);
 	}
+	// Update royalty information
+	function updateDefaultRoyalty(address receiver, uint96 fee) external onlyOwner{
+    _setDefaultRoyalty(receiver, fee);
+}
 }
