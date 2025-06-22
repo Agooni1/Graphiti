@@ -14,7 +14,7 @@ import { useWatchBalance } from "~~/hooks/scaffold-eth/useWatchBalance";
 import { fetchCosmicData } from "~~/utils/cosmicNFT/fetchCosmicData";
 import { generateCosmicSVG } from "~~/utils/cosmicNFT/cosmicVisualizer";
 import { generateMetadata } from "~~/utils/cosmicNFT/generateMetadata";
-import { uploadFileToIPFS, uploadMetadataToIPFS } from "~~/utils/cosmicNFT/ipfs-upload";
+import { uploadFileToIPFS, uploadMetadataToIPFS, uploadHtmlToIPFS } from "~~/utils/cosmicNFT/ipfs-upload";
 import { canAffordMinting } from "./_components/gasEstimation";
 
 const MyNFTs: NextPage = () => {
@@ -108,42 +108,41 @@ const MyNFTs: NextPage = () => {
       // Fetch cosmic data for the connected user's address
       const cosmicData = await fetchCosmicData(connectedAddress);
       
-      // Fix: Use correct path for public files
-      const gifResponse = await fetch("/test-gif.gif"); // Changed from "/-gif.gif" 
-      if (!gifResponse.ok) {
-        throw new Error(`Failed to fetch GIF: ${gifResponse.status} ${gifResponse.statusText}`);
+      // Fetch the HTML file instead of GIF
+      const htmlResponse = await fetch("/orbit-graph.html");
+      if (!htmlResponse.ok) {
+        throw new Error(`Failed to fetch HTML: ${htmlResponse.status} ${htmlResponse.statusText}`);
       }
       
-      // Add debugging to verify the file loads correctly
-      console.log("GIF fetch response:", {
-        ok: gifResponse.ok,
-        status: gifResponse.status,
-        contentType: gifResponse.headers.get('content-type'),
-        contentLength: gifResponse.headers.get('content-length')
+      // Add debugging to verify the HTML loads correctly
+      console.log("HTML fetch response:", {
+        ok: htmlResponse.ok,
+        status: htmlResponse.status,
+        contentType: htmlResponse.headers.get('content-type'),
+        contentLength: htmlResponse.headers.get('content-length')
       });
       
-      const gifBlob = await gifResponse.blob();
-      console.log("GIF blob details:", {
-        size: gifBlob.size,
-        type: gifBlob.type
+      const htmlContent = await htmlResponse.text();
+      console.log("HTML content details:", {
+        length: htmlContent.length,
+        hasTitle: htmlContent.includes('<title>'),
+        hasCanvas: htmlContent.includes('<canvas>')
       });
 
-      // Verify the blob isn't empty
-      if (gifBlob.size === 0) {
-        throw new Error("GIF file is empty");
+      // Verify the HTML isn't empty
+      if (htmlContent.length === 0) {
+        throw new Error("HTML file is empty");
       }
-
-      const gifFile = new File([gifBlob], "cosmic-graph.gif", { type: "image/gif" });
 
       notification.remove(generatingNotificationId);
-      const uploadNotificationId = notification.loading("Uploading to IPFS via Pinata...");
+      const uploadNotificationId = notification.loading("Uploading interactive graph to IPFS...");
 
-      // Upload GIF to IPFS first
-      const gifCid = await uploadFileToIPFS(gifFile);
-      console.log("GIF uploaded to IPFS:", gifCid);
+      // Upload HTML to IPFS
+      const htmlCid = await uploadHtmlToIPFS(htmlContent, "cosmic-graph-interactive.html");
+      console.log("HTML uploaded to IPFS:", htmlCid);
 
-      // Generate metadata with the GIF CID
-      const { metadata } = generateMetadata(cosmicData, gifCid, 'shell'); // Add layout mode
+      // Generate metadata with the HTML CID
+      const { metadata } = generateMetadata(cosmicData, htmlCid, 'shell', 'html');
       console.log("Generated metadata:", metadata);
 
       // Upload metadata to IPFS
@@ -151,19 +150,19 @@ const MyNFTs: NextPage = () => {
       console.log("Metadata uploaded to IPFS:", metadataCid);
 
       notification.remove(uploadNotificationId);
-      notification.success("Cosmic graph uploaded to IPFS!");
+      notification.success("Interactive cosmic graph uploaded to IPFS!");
 
       // Mint the NFT with metadata CID
       const mintNotificationId = notification.loading("Minting your cosmic NFT...");
       
       await writeContractAsync({
         functionName: "mintCosmicGraph",
-        args: [connectedAddress, metadataCid], // Use metadata CID, not GIF CID
+        args: [connectedAddress, metadataCid],
         value: parseEther(mintPrice),
       });
 
       notification.remove(mintNotificationId);
-      notification.success("🌌 Cosmic NFT minted successfully!");
+      notification.success("🌌 Interactive Cosmic NFT minted successfully!");
       
       setPreviewSVG("");
 

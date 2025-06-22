@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cosmic Graph NFT - Interactive</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      user-select: none;
+    }
+    
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: grab;
+    }
+    
+    canvas:active {
+      cursor: grabbing;
+    }
+    
+    .controls {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+    
+    .btn-group {
+      display: flex;
+      gap: 2px;
+    }
+    
+    .btn {
+      padding: 4px 8px;
+      font-size: 11px;
+      border: none;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+      backdrop-filter: blur(10px);
+      white-space: nowrap;
+    }
+    
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+    
+    .btn.active {
+      background: rgba(116, 185, 255, 0.8);
+      color: #000;
+    }
+    
+    .btn-secondary.active {
+      background: rgba(255, 193, 7, 0.8);
+      color: #000;
+    }
+    
+    .btn-primary.active {
+      background: rgba(0, 123, 255, 0.8);
+      color: white;
+    }
+    
+    .btn-accent.active {
+      background: rgba(255, 107, 107, 0.8);
+      color: #000;
+    }
+    
+    .info {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      color: white;
+      font-size: 14px;
+      opacity: 0.7;
+      z-index: 10;
+    }
+    
+    .legend {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      color: white;
+      font-size: 12px;
+      opacity: 0.6;
+      z-index: 10;
+    }
+    
+    .nft-metadata {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      color: white;
+      font-size: 11px;
+      opacity: 0.8;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px 12px;
+      border-radius: 8px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(97, 218, 251, 0.2);
+      z-index: 10;
+    }
+    
+    .zoom-indicator {
+      position: absolute;
+      bottom: 50px;
+      left: 16px;
+      color: white;
+      font-size: 10px;
+      opacity: 0.5;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="cosmicCanvas"></canvas>
+  
+  <!-- Info Display -->
+  <div class="info">
+    🌌 Cosmic Graph NFT - Interactive
+  </div>
+  
+  <!-- Controls -->
+  <div class="controls">
+    <!-- Layout Mode Toggle -->
+    <div class="btn-group">
+      <button class="btn btn-secondary active" id="shellBtn" title="Shell-based layout">🌌 Shell</button>
+      <button class="btn btn-secondary" id="forceBtn" title="Force-directed layout">⚡ Force</button>
+      <button class="btn btn-secondary" id="spiralBtn" title="Fibonacci spiral layout">🌀 Spiral</button>
+    </div>
+    
+    <!-- Particle Mode Toggle -->
+    <div class="btn-group">
+      <button class="btn btn-primary active" id="pulseBtn">🌊 Pulse</button>
+      <button class="btn btn-primary" id="laserBtn">⚡ Laser</button>
+    </div>
+    
+    <!-- Control buttons -->
+    <button class="btn btn-accent" id="orbitBtn">🪐 Orbit</button>
+    <button class="btn" id="resetBtn">Reset</button>
+  </div>
+  
+  <!-- NFT Metadata -->
+  <div class="nft-metadata">
+    <div><strong>Nodes:</strong> 200</div>
+    <div><strong>Layout:</strong> <span id="currentLayout">Shell</span></div>
+    <div><strong>Generated:</strong> <span id="timestamp"></span></div>
+  </div>
+  
+  <!-- Zoom indicator -->
+  <div class="zoom-indicator" id="zoomIndicator">
+    Zoom: 100%
+  </div>
+  
+  <!-- Legend -->
+  <div class="legend">
+    <div style="display: flex; gap: 16px;">
+      <span>🔴 Contracts</span>
+      <span>🟡 Whale Nodes</span>
+      <span>🔵 Active Nodes</span>
+      <span>⚪ Regular Nodes</span>
+    </div>
+  </div>
+
+  <script>
+    // Initialize canvas and context
+    const canvas = document.getElementById('cosmicCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Set canvas size with device pixel ratio for crisp rendering
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.scale(dpr, dpr);
+    
+    // Simulation parameters
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    let animationTime = 0;
+    let particleMode = 'pulse';
+    let layoutMode = 'shell';
+    let isAutoOrbiting = false;
+    let orbitRotation = { x: 0, y: 0 };
+    let zoom = 1;
+    let panOffset = { x: 0, y: 0 };
+    
+    // Mouse interaction
+    let isDragging = false;
+    let isOrbiting = false;
+    let lastMousePos = { x: 0, y: 0 };
+    let dragOffset = { x: 0, y: 0 };
+    
+    // Current nodes and links (will be regenerated when layout changes)
+    let nodes = [];
+    let links = [];
+    const targetNodeId = 'target-0x742d35b8';
+    
+    // Enhanced layout algorithms to match React component exactly
+    const getGalaxyLayer = (balance, isContract) => {
+      if (isContract || balance > 10) return 'core';
+      if (balance > 1) return 'inner';
+      if (balance > 0.1) return 'outer';
+      return 'halo';
+    };
+    
+    const getShellRadius = (balance, isContract) => {
+      if (isContract || balance > 10) return 40;
+      if (balance > 1) return 100;
+      if (balance > 0.1) return 180;
+      return 280;
+    };
+    
+    // Generate cosmic graph data that matches your React component's graphLayouts.ts EXACTLY
+    const generateCosmicData = () => {
+      const newNodes = [];
+      const newLinks = [];
+      
+      // Create base node data for NFT generation
+      const baseNodeData = [
+        // Center node
+        { id: targetNodeId, balance: 127.45, isContract: false },
+        
+        // Generate other nodes with realistic distribution
+        ...Array.from({ length: 199 }, (_, i) => {
+          let balance, isContract, layer;
+          
+          if (i < 19) { // Core layer - 20 nodes total including some contracts
+            balance = 10 + Math.random() * 40;
+            isContract = Math.random() < 0.5;
+            layer = 'core';
+          } else if (i < 69) { // Inner layer - 50 nodes
+            balance = 1 + Math.random() * 9;
+            isContract = Math.random() < 0.2;
+            layer = 'inner';
+          } else if (i < 149) { // Outer layer - 80 nodes
+            balance = 0.1 + Math.random() * 0.9;
+            isContract = Math.random() < 0.1;
+            layer = 'outer';
+          } else { // Halo layer - 50 nodes
+            balance = Math.random() * 0.1;
+            isContract = Math.random() < 0.05;
+            layer = 'halo';
+          }
+          
+          return {
+            id: `node-${i + 1}`,
+            balance: balance,
+            isContract: isContract
+          };
+        })
+      ];
+      
+      // Apply layout algorithm based on mode
+      let positionedNodes;
+      
+      if (layoutMode === 'shell') {
+        // SHELL LAYOUT - matches createShellLayout exactly
+        positionedNodes = baseNodeData.map((node, index) => {
+          // Target node at center - matches graphLayouts exactly
+          if (node.id === targetNodeId) {
+            return {
+              ...node,
+              x: 0, y: 0, z: 0,
+              galaxyLayer: getGalaxyLayer(node.balance, node.isContract)
+            };
+          }
+
+          const balance = parseFloat(node.balance);
+          let galaxyLayer, shellRadius, shellThickness;
+          
+          // Layer assignment - matches graphLayouts exactly
+          if (node.isContract || balance > 10) {
+            galaxyLayer = 'core';
+            shellRadius = 40;
+            shellThickness = 20;
+          } else if (balance > 1) {
+            galaxyLayer = 'inner';
+            shellRadius = 100;
+            shellThickness = 30;
+          } else if (balance > 0.1) {
+            galaxyLayer = 'outer';
+            shellRadius = 180;
+            shellThickness = 40;
+          } else {
+            galaxyLayer = 'halo';
+            shellRadius = 280;
+            shellThickness = 60;
+          }
+
+          // Orbital calculations - matches graphLayouts exactly
+          const numOrbitals = Math.ceil(Math.sqrt(index + 1));
+          const orbitalIndex = index % numOrbitals;
+          
+          const orbitalTilt = (orbitalIndex / numOrbitals) * Math.PI;
+          const orbitalRotation = Math.random() * 2 * Math.PI;
+          
+          // 3D spherical distribution - matches graphLayouts exactly
+          const theta = Math.random() * 2 * Math.PI;
+          const phi = Math.acos(2 * Math.random() - 1);
+          
+          const radiusInShell = shellRadius + (Math.random() - 0.5) * shellThickness;
+          
+          let x = radiusInShell * Math.sin(phi) * Math.cos(theta);
+          let y = radiusInShell * Math.sin(phi) * Math.sin(theta);
+          let z = radiusInShell * Math.cos(phi);
+          
+          // Apply orbital transformations - matches graphLayouts exactly
+          const cosT = Math.cos(orbitalTilt);
+          const sinT = Math.sin(orbitalTilt);
+          const cosR = Math.cos(orbitalRotation);
+          const sinR = Math.sin(orbitalRotation);
+          
+          const y1 = y * cosT - z * sinT;
+          const z1 = y * sinT + z * cosT;
+          
+          const x2 = x * cosR + z1 * sinR;
+          const z2 = -x * sinR + z1 * cosR;
+          
+          return {
+            ...node,
+            x: x2, y: y1, z: z2,
+            galaxyLayer: galaxyLayer
+          };
+        });
+        
+      } else if (layoutMode === 'force') {
+        // FORCE LAYOUT - matches createForceLayout exactly
+        const targetNodeData = baseNodeData.find(node => node.id === targetNodeId) || baseNodeData[0];
+        
+        // Initial random placement - matches graphLayouts exactly
+        let workingNodes = baseNodeData.map((node, index) => {
+          // Target node starts at center - matches graphLayouts exactly
+          if (node.id === targetNodeData.id) {
+            return {
+              ...node,
+              x: 0, y: 0, z: 0,
+              galaxyLayer: getGalaxyLayer(parseFloat(node.balance), node.isContract)
+            };
+          }
+
+          const balance = parseFloat(node.balance);
+          const shellRadius = getShellRadius(balance, node.isContract);
+          
+          // Start with random positions around center - matches graphLayouts exactly
+          const angle = Math.random() * 2 * Math.PI;
+          const radius = shellRadius * (0.5 + Math.random() * 0.5);
+          
+          return {
+            ...node,
+            x: Math.cos(angle) * radius,
+            y: (Math.random() - 0.5) * radius,
+            z: Math.sin(angle) * radius,
+            galaxyLayer: getGalaxyLayer(balance, node.isContract)
+          };
+        });
+
+        // Apply force simulation - matches graphLayouts exactly
+        const iterations = 100; // Exact match
+        const repulsionStrength = 2000; // Exact match
+        const centerAttraction = 0.05; // Exact match
+        
+        for (let iter = 0; iter < iterations; iter++) {
+          workingNodes.forEach((node, i) => {
+            // Keep target node fixed at center - matches graphLayouts exactly
+            if (node.id === targetNodeData.id) {
+              node.x = 0; node.y = 0; node.z = 0;
+              return;
+            }
+
+            let fx = 0, fy = 0, fz = 0;
+            const balance = parseFloat(node.balance);
+            const targetRadius = getShellRadius(balance, node.isContract);
+            
+            // Repulsion from other nodes - matches graphLayouts exactly
+            workingNodes.forEach((other, j) => {
+              if (i !== j) {
+                const dx = node.x - other.x;
+                const dy = node.y - other.y;
+                const dz = node.z - other.z;
+                const distance = Math.sqrt(dx*dx + dy*dy + dz*dz) + 1;
+                const force = repulsionStrength / (distance * distance);
+                
+                fx += (dx / distance) * force;
+                fy += (dy / distance) * force;
+                fz += (dz / distance) * force;
+              }
+            });
+            
+            // Attraction to target shell radius - matches graphLayouts exactly
+            const currentRadius = Math.sqrt(node.x*node.x + node.y*node.y + node.z*node.z);
+            if (currentRadius > 0) {
+              const radiusForce = (targetRadius - currentRadius) * centerAttraction;
+              fx += (node.x / currentRadius) * radiusForce;
+              fy += (node.y / currentRadius) * radiusForce;
+              fz += (node.z / currentRadius) * radiusForce;
+            }
+            
+            // Apply forces with damping - matches graphLayouts exactly
+            const damping = 0.02;
+            node.x += fx * damping;
+            node.y += fy * damping;
+            node.z += fz * damping;
+          });
+        }
+        
+        positionedNodes = workingNodes;
+        
+      } else { // fibonacci/spiral - matches createFibonacciLayout exactly
+        const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // Exact match
+        const targetNodeData = baseNodeData.find(node => node.id === targetNodeId) || baseNodeData[0];
+        
+        // Put target node first, then sort others by importance - matches graphLayouts exactly
+        const otherNodes = baseNodeData.filter(node => node.id !== targetNodeData.id);
+        const sortedOtherNodes = otherNodes.sort((a, b) => {
+          const balanceA = parseFloat(a.balance);
+          const balanceB = parseFloat(b.balance);
+          const scoreA = a.isContract ? 1000 + balanceA : balanceA; // Exact match
+          const scoreB = b.isContract ? 1000 + balanceB : balanceB; // Exact match
+          return scoreB - scoreA;
+        });
+        
+        // Target node at center - matches graphLayouts exactly
+        const targetPositionedNode = {
+          ...targetNodeData,
+          x: 0, y: 0, z: 0,
+          galaxyLayer: getGalaxyLayer(parseFloat(targetNodeData.balance), targetNodeData.isContract)
+        };
+        
+        // Other nodes in spiral around target - matches graphLayouts exactly
+        const otherPositionedNodes = sortedOtherNodes.map((node, index) => {
+          const balance = parseFloat(node.balance);
+          const baseRadius = getShellRadius(balance, node.isContract);
+          
+          // Fibonacci spiral distribution - matches graphLayouts exactly
+          const spiralIndex = index + 1; // Starting from index 1 since target is at 0
+          const t = spiralIndex / baseNodeData.length; // Include target in total count
+          const y = (1 - 2 * t) * baseRadius * 0.8; // Exact formula match
+          const radiusAtY = Math.sqrt(Math.max(0, baseRadius * baseRadius - y * y)); // Exact match
+          const angle = goldenAngle * spiralIndex; // Exact match
+          
+          // Add controlled randomness - matches graphLayouts exactly
+          const randomScale = 1 + (Math.random() - 0.5) * 0.3; // Exact match
+          const x = Math.cos(angle) * radiusAtY * randomScale;
+          const z = Math.sin(angle) * radiusAtY * randomScale;
+          
+          return {
+            ...node,
+            x: x, y: y, z: z,
+            galaxyLayer: getGalaxyLayer(balance, node.isContract)
+          };
+        });
+        
+        positionedNodes = [targetPositionedNode, ...otherPositionedNodes];
+      }
+      
+      // Create links - all pointing to center (hub and spoke)
+      positionedNodes.forEach(node => {
+        newNodes.push(node);
+        if (node.id !== targetNodeId) {
+          newLinks.push({ source: targetNodeId, target: node.id });
+        }
+      });
+      
+      return { nodes: newNodes, links: newLinks };
+    };
+    
+    // 3D to 2D projection (same as React component)
+    const project3DTo2D = (node, rotX, rotY) => {
+      const offsetX = node.x;
+      const offsetY = node.y;
+      const offsetZ = node.z;
+
+      const cosRotX = Math.cos(rotX);
+      const sinRotX = Math.sin(rotX);
+      const cosRotY = Math.cos(rotY);
+      const sinRotY = Math.sin(rotY);
+
+      let y1 = offsetY * cosRotX - offsetZ * sinRotX;
+      let z1 = offsetY * sinRotX + offsetZ * cosRotX;
+
+      let x2 = offsetX * cosRotY + z1 * sinRotY;
+      let z2 = -offsetX * sinRotY + z1 * cosRotY;
+
+      const distance = 600;
+      const perspective = distance / (distance + z2);
+      
+      return {
+        screenX: x2 * perspective,
+        screenY: y1 * perspective,
+        depth: z2,
+        perspective: perspective
+      };
+    };
+    
+    // Main animation loop
+    const animate = (currentTime) => {
+      animationTime = currentTime * 0.001;
+      
+      // Auto-orbit rotation - REDUCED BY HALF
+      if (isAutoOrbiting && !isDragging && !isOrbiting) {
+        orbitRotation.x += 0.0015; // Reduced from 0.003 (half speed)
+        orbitRotation.y += 0.0025; // Reduced from 0.005 (half speed)
+      }
+      
+      // Clear canvas with enhanced cosmic background
+      const bgGradient = ctx.createRadialGradient(
+        centerX, centerY, 0, 
+        centerX, centerY, Math.max(window.innerWidth, window.innerHeight) / 2
+      );
+      bgGradient.addColorStop(0, '#2a1810');
+      bgGradient.addColorStop(0.3, '#1a1a2e');
+      bgGradient.addColorStop(0.7, '#16213e');
+      bgGradient.addColorStop(1, '#0c0c0c');
+      
+      ctx.fillStyle = bgGradient;
+      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      
+      // Project all nodes to 2D and sort by depth (back to front)
+      const projectedNodes = nodes.map(node => {
+        const projected = project3DTo2D(node, orbitRotation.x, orbitRotation.y);
+        return {
+          ...node,
+          screenX: projected.screenX,
+          screenY: projected.screenY,
+          depth: projected.depth,
+          perspective: projected.perspective
+        };
+      }).sort((a, b) => a.depth - b.depth);
+      
+      // Apply transforms
+      ctx.save();
+      ctx.translate(centerX + panOffset.x, centerY + panOffset.y);
+      ctx.scale(zoom, zoom);
+      
+      // Draw galaxy dust for very distant nodes
+      projectedNodes.forEach(node => {
+        if (node.depth < -300) { // Match React exactly
+          const dustOpacity = Math.max(0.02, Math.min(0.08, (600 + node.depth) / 1000)); // Match React exactly
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(100, 150, 200, ${dustOpacity})`;
+          ctx.arc(node.screenX, node.screenY, 0.5 / zoom, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      });
+      
+      // Draw links - EXACTLY like React component
+      links.forEach((link, linkIndex) => {
+        const sourceNode = projectedNodes.find(n => n.id === link.source);
+        const targetNodeFound = projectedNodes.find(n => n.id === link.target);
+        
+        if (sourceNode && targetNodeFound) {
+          if (sourceNode.depth > -500 && targetNodeFound.depth > -500) { // Match React exactly
+            ctx.beginPath();
+            
+            const avgDepth = (sourceNode.depth + targetNodeFound.depth) / 2;
+            let baseOpacity = Math.max(0.1, Math.min(0.5, (500 + avgDepth) / 1000)); // Match React exactly
+            
+            if (sourceNode.galaxyLayer === 'core' || targetNodeFound.galaxyLayer === 'core') {
+              baseOpacity *= 1.5; // Match React exactly
+            }
+            
+            ctx.strokeStyle = `rgba(97, 218, 251, ${baseOpacity})`;
+            ctx.lineWidth = 1 / zoom; // Match React exactly
+            
+            ctx.moveTo(sourceNode.screenX, sourceNode.screenY);
+            ctx.lineTo(targetNodeFound.screenX, targetNodeFound.screenY);
+            ctx.stroke();
+
+            // Particle system - EXACTLY like React
+            if (baseOpacity > 0.25) {
+              let particlePos;
+              
+              if (particleMode === 'pulse') {
+                particlePos = (animationTime * 0.5) % 1;
+              } else {
+                const linkSpeed = 1.2 + (linkIndex * 0.2) % 0.8;
+                const linkOffset = (linkIndex * 0.7) % 1;
+                particlePos = (animationTime * linkSpeed + linkOffset) % 1;
+              }
+              
+              const px = sourceNode.screenX + (targetNodeFound.screenX - sourceNode.screenX) * particlePos;
+              const py = sourceNode.screenY + (targetNodeFound.screenY - sourceNode.screenY) * particlePos;
+              
+              if (particleMode === 'laser') {
+                const numParticles = 2; // Match React exactly
+                for (let i = 0; i < numParticles; i++) {
+                  const trailOffset = i * 0.15;
+                  const trailPos = (particlePos - trailOffset + 1) % 1;
+                  if (trailPos >= 0 && trailPos <= 1) {
+                    const trailPx = sourceNode.screenX + (targetNodeFound.screenX - sourceNode.screenX) * trailPos;
+                    const trailPy = sourceNode.screenY + (targetNodeFound.screenY - sourceNode.screenY) * trailPos;
+                    const trailOpacity = baseOpacity * (1 - i * 0.4);
+                    
+                    ctx.beginPath();
+                    ctx.fillStyle = sourceNode.galaxyLayer === 'core' ? 
+                      `rgba(255, 100, 100, ${trailOpacity})` : 
+                      `rgba(100, 255, 255, ${trailOpacity})`;
+                    ctx.arc(trailPx, trailPy, (2 - i * 0.5) / zoom, 0, 2 * Math.PI);
+                    ctx.fill();
+                  }
+                }
+              } else {
+                ctx.beginPath();
+                ctx.fillStyle = sourceNode.galaxyLayer === 'core' ? 
+                  `rgba(255, 215, 100, ${baseOpacity})` : 
+                  `rgba(97, 218, 251, ${baseOpacity})`;
+                ctx.arc(px, py, 1.5 / zoom, 0, 2 * Math.PI); // Match React exactly
+                ctx.fill();
+              }
+            }
+          }
+        }
+      });
+      
+      // Draw nodes with EXACT SimpleCosmicGraph styling
+      projectedNodes.forEach(node => {
+        if (node.depth > -500) { // Changed from -600 to -500 to match React
+          let color, baseSize, glowIntensity;
+          
+          switch (node.galaxyLayer) {
+            case 'core':
+              color = node.isContract ? '#ff6b6b' : '#ffd93d';
+              baseSize = 8;
+              glowIntensity = 1.5; // Match .tsx
+              break;
+            case 'inner':
+              color = '#74b9ff';
+              baseSize = 6;
+              glowIntensity = 1.2; // Match .tsx
+              break;
+            case 'outer':
+              color = '#ffffff';
+              baseSize = 4;
+              glowIntensity = 1.0;
+              break;
+            case 'halo':
+              color = '#a0a0a0';
+              baseSize = 3;
+              glowIntensity = 0.7;
+              break;
+          }
+          
+          const size = (baseSize * node.perspective) / zoom;
+          const depthOpacity = Math.max(0.2, Math.min(1, (500 + node.depth) / 700)); // Match React exactly
+
+          // Simple pulse - EXACTLY like React component
+          const rotationPhase = animationTime * 0.1 + (node.x + node.z) * 0.001;
+          const pulse = Math.sin(rotationPhase) * 0.2 + 1;
+
+          // Single glow layer - EXACTLY like React component  
+          const glowSize = size * 4 * glowIntensity;
+          const glowGradient = ctx.createRadialGradient(
+            node.screenX, node.screenY, 0, 
+            node.screenX, node.screenY, glowSize
+          );
+
+          const glowOpacity = depthOpacity * 0.8; // Exact match
+          glowGradient.addColorStop(0, `${color}${Math.floor(glowOpacity * 255).toString(16).padStart(2, '0')}`);
+          glowGradient.addColorStop(0.5, `${color}${Math.floor(glowOpacity * 100).toString(16).padStart(2, '0')}`);
+          glowGradient.addColorStop(1, 'transparent');
+          
+          ctx.fillStyle = glowGradient;
+          ctx.beginPath();
+          ctx.arc(node.screenX, node.screenY, glowSize * pulse, 0, 2 * Math.PI);
+          ctx.fill();
+
+          // Simple solid node core - EXACTLY like React component
+          ctx.fillStyle = `${color}${Math.floor(depthOpacity * 255).toString(16).padStart(2, '0')}`;
+          ctx.beginPath();
+          ctx.arc(node.screenX, node.screenY, size, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      });
+      
+      ctx.restore();
+      
+      // Update zoom indicator
+      document.getElementById('zoomIndicator').textContent = `Zoom: ${(zoom * 100).toFixed(0)}%`;
+      
+      requestAnimationFrame(animate);
+    };
+    
+    // Mouse interaction handlers (same as before)
+    canvas.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      lastMousePos = { x: e.clientX, y: e.clientY };
+      
+      if (e.button === 2) {
+        isOrbiting = true;
+      } else {
+        isDragging = true;
+        dragOffset = {
+          x: e.clientX - panOffset.x,
+          y: e.clientY - panOffset.y
+        };
+      }
+    });
+    
+    canvas.addEventListener('mousemove', (e) => {
+      if (isOrbiting) {
+        const deltaX = e.clientX - lastMousePos.x;
+        const deltaY = e.clientY - lastMousePos.y;
+        
+        const sensitivity = 0.012;
+        orbitRotation.x += deltaY * sensitivity;
+        orbitRotation.y += deltaX * sensitivity;
+        
+        lastMousePos = { x: e.clientX, y: e.clientY };
+      } else if (isDragging) {
+        panOffset = {
+          x: e.clientX - dragOffset.x,
+          y: e.clientY - dragOffset.y
+        };
+      }
+    });
+    
+    canvas.addEventListener('mouseup', () => {
+      isDragging = false;
+      isOrbiting = false;
+    });
+    
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      zoom = Math.max(0.1, Math.min(5, zoom * delta));
+    });
+    
+    // Enhanced control button handlers
+    const generateLayout = () => {
+      const result = generateCosmicData();
+      nodes = result.nodes;
+      links = result.links;
+      console.log(`Generated ${layoutMode} layout with ${nodes.length} nodes and ${links.length} links`);
+    };
+    
+    // Update layout buttons and metadata display
+    const updateLayoutButtons = () => {
+      document.querySelectorAll('.btn-secondary').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(layoutMode + 'Btn').classList.add('active');
+      
+      // Update layout display in metadata
+      const layoutNames = { shell: 'Shell', force: 'Force', spiral: 'Spiral' };
+      document.getElementById('currentLayout').textContent = layoutNames[layoutMode];
+    };
+    
+    const updateParticleButtons = () => {
+      document.querySelectorAll('.btn-primary').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(particleMode + 'Btn').classList.add('active');
+    };
+    
+    // Layout mode handlers
+    document.getElementById('shellBtn').addEventListener('click', () => {
+      layoutMode = 'shell';
+      generateLayout();
+      updateLayoutButtons();
+      console.log('Switched to Shell layout');
+    });
+    
+    document.getElementById('forceBtn').addEventListener('click', () => {
+      layoutMode = 'force';
+      generateLayout();
+      updateLayoutButtons();
+      console.log('Switched to Force layout');
+    });
+    
+    document.getElementById('spiralBtn').addEventListener('click', () => {
+      layoutMode = 'spiral';
+      generateLayout();
+      updateLayoutButtons();
+      console.log('Switched to Spiral layout');
+    });
+    
+    // Particle mode handlers
+    document.getElementById('pulseBtn').addEventListener('click', () => {
+      particleMode = 'pulse';
+      updateParticleButtons();
+    });
+    
+    document.getElementById('laserBtn').addEventListener('click', () => {
+      particleMode = 'laser';
+      updateParticleButtons();
+    });
+    
+    document.getElementById('orbitBtn').addEventListener('click', (e) => {
+      isAutoOrbiting = !isAutoOrbiting;
+      e.target.classList.toggle('active');
+    });
+    
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      panOffset = { x: 0, y: 0 };
+      orbitRotation = { x: 0, y: 0 };
+      zoom = 1;
+    });
+    
+    // Window resize handler
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.scale(dpr, dpr);
+    });
+    
+    // Set timestamp
+    document.getElementById('timestamp').textContent = new Date().toLocaleString();
+    
+    // Initialize and start
+    generateLayout();
+    requestAnimationFrame(animate);
+    
+    console.log('Cosmic NFT Interactive initialized - hub and spoke pattern');
+  </script>
+</body>
+</html>
+
+<!-- //to do figure out how to get this to take parameters unique to an address, 
+ similar to cosmic graph, upload it, and mint it -->
+
+<!-- 
+  Proper List:
+  -Update metadategeneration to incroporate animation URL and image - check browser histroy for metadata format example
+  - new IPFS upload function
+  - Figure out minting
+  - Figure out html for uniqiue address / parameters

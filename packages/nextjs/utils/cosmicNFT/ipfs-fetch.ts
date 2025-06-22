@@ -1,10 +1,16 @@
 const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT;
 
-const fetchFromIPFS = async (ipfsHash: string) => {
+const fetchFromIPFS = async (ipfsHashOrUrl: string) => {
+  // Extract hash if it's a full URL, otherwise use as-is
+  let hash = ipfsHashOrUrl;
+  if (ipfsHashOrUrl.includes('/ipfs/')) {
+    hash = ipfsHashOrUrl.split('/ipfs/').pop() || ipfsHashOrUrl;
+  }
+
   const gateways = [
-    `https://gateway.pinata.cloud/ipfs/${ipfsHash}`,
-    `https://ipfs.io/ipfs/${ipfsHash}`,
-    `https://cloudflare-ipfs.com/ipfs/${ipfsHash}`,
+    `https://gateway.pinata.cloud/ipfs/${hash}`,
+    `https://ipfs.io/ipfs/${hash}`,
+    `https://cloudflare-ipfs.com/ipfs/${hash}`,
   ];
 
   for (const gateway of gateways) {

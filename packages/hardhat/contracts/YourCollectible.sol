@@ -52,7 +52,8 @@ contract YourCollectible is
     function _baseURI() internal pure override returns (string memory) {
         // return "https://ipfs.io/ipfs/";
 		// return "https://aqua-nearby-barracuda-607.mypinata.cloud/ipfs/";
-		return "https://gateway.pinata.cloud/ipfs/";
+		// return "https://gateway.pinata.cloud/ipfs/";
+		return "";
     }
 	
 

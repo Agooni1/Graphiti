@@ -156,3 +156,62 @@ async function uploadMetadataWithAPIKey(metadata: any): Promise<string> {
 
   return result.IpfsHash;
 }
+
+// Upload HTML file to IPFS
+export async function uploadHtmlToIPFS(htmlContent: string, filename: string = "cosmic-graph-interactive.html"): Promise<string> {
+  console.log("📤 Uploading HTML to Pinata...", filename);
+  
+  if (!PINATA_JWT) {
+    console.warn("🚧 Using mock HTML upload - No Pinata JWT found");
+    const mockHash = "QmHtml" + Math.random().toString(36).substring(2, 15);
+    console.log("📦 Mock HTML hash:", mockHash);
+    return mockHash;
+  }
+
+  try {
+    const formData = new FormData();
+    
+    // Create HTML file blob
+    const htmlBlob = new Blob([htmlContent], { type: "text/html" });
+    const htmlFile = new File([htmlBlob], filename, { type: "text/html" });
+    
+    formData.append('file', htmlFile);
+
+    const pinataMetadata = JSON.stringify({
+      name: filename,
+      keyvalues: {
+        type: 'cosmic-nft-interactive-html',
+        fileType: 'text/html',
+        contentType: 'interactive-visualization',
+        timestamp: new Date().toISOString()
+      }
+    });
+    formData.append('pinataMetadata', pinataMetadata);
+
+    const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${PINATA_JWT}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTML upload failed: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log("✅ HTML uploaded to IPFS:", result.IpfsHash);
+
+    return result.IpfsHash;
+
+  } catch (error) {
+    console.error("HTML upload error:", error);
+    
+    if (error instanceof Error) {
+      throw new Error(`HTML upload failed: ${error.message}`);
+    }
+    throw new Error("HTML upload failed: Unknown error");
+  }
+}
