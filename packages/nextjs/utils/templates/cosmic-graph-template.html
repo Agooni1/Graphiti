@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cosmic Graph NFT - {{ADDRESS_SHORT}}</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: grab;
+    }
+    
+    canvas:active {
+      cursor: grabbing;
+    }
+    
+    .info {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      color: white;
+      font-size: 14px;
+      opacity: 0.7;
+      z-index: 10;
+    }
+    
+    .controls {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+    
+    .control-btn {
+      background: rgba(97, 218, 251, 0.1);
+      border: 1px solid rgba(97, 218, 251, 0.3);
+      color: #61dafb;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      backdrop-filter: blur(10px);
+      transition: all 0.2s ease;
+    }
+    
+    .control-btn:hover {
+      background: rgba(97, 218, 251, 0.2);
+      border-color: rgba(97, 218, 251, 0.5);
+    }
+    
+    .control-btn.active {
+      background: rgba(97, 218, 251, 0.3);
+      border-color: #61dafb;
+    }
+    
+    .nft-metadata {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      color: white;
+      font-size: 11px;
+      opacity: 0.8;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px 12px;
+      border-radius: 8px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(97, 218, 251, 0.2);
+      z-index: 10;
+    }
+    
+    .zoom-indicator {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      color: white;
+      font-size: 10px;
+      opacity: 0.6;
+      z-index: 10;
+    }
+    
+    .legend {
+      position: absolute;
+      bottom: 60px;
+      right: 16px;
+      color: white;
+      font-size: 10px;
+      opacity: 0.7;
+      z-index: 10;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    
+    .legend-color {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="cosmicCanvas"></canvas>
+  
+  <!-- Info Display -->
+  <div class="info">
+    🌌 {{ADDRESS_SHORT}} Universe
+  </div>
+  
+  <!-- Controls -->
+  <div class="controls">
+    <button class="control-btn active" id="shellBtn">🌀 Shell</button>
+    <button class="control-btn" id="forceBtn">⚡ Force</button>
+    <button class="control-btn" id="spiralBtn">🌀 Spiral</button>
+    <button class="control-btn" id="pulseBtn">💫 Pulse</button>
+    <button class="control-btn" id="laserBtn">⚡ Laser</button>
+    <button class="control-btn" id="orbitBtn">🪐 Orbit</button>
+    <button class="control-btn" id="resetBtn">Reset</button>
+  </div>
+  
+  <!-- NFT Metadata -->
+  <div class="nft-metadata">
+    <div><strong>Address:</strong> {{ADDRESS_SHORT}}</div>
+    <div><strong>Nodes:</strong> {{NODE_COUNT}}</div>
+    <div><strong>Links:</strong> {{LINK_COUNT}}</div>
+    <div><strong>Balance:</strong> {{TARGET_BALANCE}} ETH</div>
+    <div><strong>Layout:</strong> <span id="currentLayout">Shell</span></div>
+    <div><strong>Generated:</strong> <span id="timestamp">{{TIMESTAMP}}</span></div>
+  </div>
+  
+  <!-- Zoom indicator -->
+  <div class="zoom-indicator" id="zoomIndicator">
+    Zoom: 100%
+  </div>
+  
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-color" style="background: #ff6b6b;"></div>
+      <span>🎯 Target Node</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #4ecdc4;"></div>
+      <span>🏦 Contracts</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #45b7d1;"></div>
+      <span>🐋 Whale Nodes</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #96ceb4;"></div>
+      <span>🔗 Active Nodes</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #ffeaa7;"></div>
+      <span>⚪ Regular Nodes</span>
+    </div>
+  </div>
+
+  <script>
+    // === INJECTED DATA FROM TEMPLATE ENGINE ===
+    const INJECTED_TARGET_ADDRESS = "{{TARGET_ADDRESS}}";
+    const INJECTED_NODES = JSON.parse('{{NODE_DATA_JSON | safe }}');
+    const INJECTED_LINKS = JSON.parse('{{LINK_DATA_JSON | safe }}');
+    const INJECTED_BALANCE = parseFloat('{{TARGET_BALANCE | safe }}');
+    
+    console.log('🌌 Cosmic Graph initialized with injected data:', {
+      targetAddress: INJECTED_TARGET_ADDRESS,
+      nodeCount: INJECTED_NODES.length,
+      linkCount: INJECTED_LINKS.length,
+      balance: INJECTED_BALANCE
+    });
+    
+    // === CANVAS SETUP ===
+    const canvas = document.getElementById('cosmicCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let width, height;
+    let centerX, centerY;
+    let camera = { x: 0, y: 0, z: 1000, zoom: 1 };
+    let mouse = { x: 0, y: 0, down: false, lastX: 0, lastY: 0 };
+    let time = 0;
+    let currentMode = 'shell';
+    let animationId;
+    
+    // === DATA PROCESSING ===
+    function processInjectedData() {
+      console.log('🔄 Processing injected nodes and links...');
+      
+      // Convert injected nodes to cosmic format
+      const processedNodes = INJECTED_NODES.map((node, index) => ({
+        id: node.id,
+        balance: parseFloat(node.balance) || 0,
+        isContract: node.isContract || false,
+        x: node.x || 0,
+        y: node.y || 0,
+        z: node.z || 0,
+        vx: 0,
+        vy: 0,
+        vz: 0,
+        size: node.id === INJECTED_TARGET_ADDRESS ? 8 : (node.isContract ? 6 : 4),
+        color: getNodeColor(node, INJECTED_TARGET_ADDRESS),
+        galaxyLayer: node.id === INJECTED_TARGET_ADDRESS ? 0 : Math.floor(Math.random() * 3) + 1,
+        angle: (index / INJECTED_NODES.length) * Math.PI * 2,
+        radius: node.id === INJECTED_TARGET_ADDRESS ? 0 : 100 + (Math.floor(Math.random() * 3) * 150)
+      }));
+      
+      // Convert injected links
+      const processedLinks = INJECTED_LINKS.map(link => ({
+        source: link.source,
+        target: link.target,
+        strength: link.value || 1
+      }));
+      
+      console.log('✅ Processed data:', {
+        nodes: processedNodes.length,
+        links: processedLinks.length,
+        targetNode: processedNodes.find(n => n.id === INJECTED_TARGET_ADDRESS) ? 'Found' : 'Not found'
+      });
+      
+      return { nodes: processedNodes, links: processedLinks };
+    }
+    
+    function getNodeColor(node, targetAddress) {
+      if (node.id === targetAddress) return '#ff6b6b'; // Target node - red
+      if (node.isContract) return '#4ecdc4'; // Contracts - teal
+      
+      const balance = parseFloat(node.balance) || 0;
+      if (balance > 100) return '#45b7d1'; // Whale nodes - blue
+      if (balance > 1) return '#96ceb4'; // Active nodes - green
+      return '#ffeaa7'; // Regular nodes - yellow
+    }
+    
+    // === LAYOUT ALGORITHMS ===
+    function applyShellLayout(nodes, links) {
+      const targetNode = nodes.find(n => n.id === INJECTED_TARGET_ADDRESS);
+      if (targetNode) {
+        targetNode.x = 0;
+        targetNode.y = 0;
+        targetNode.z = 0;
+      }
+      
+      nodes.forEach((node, index) => {
+        if (node.id !== INJECTED_TARGET_ADDRESS) {
+          const layer = node.galaxyLayer;
+          const radius = 150 + (layer * 200);
+          const angle = node.angle + (time * 0.001 * (layer + 1));
+          const elevation = Math.sin(angle * 2) * 50;
+          
+          node.x = Math.cos(angle) * radius;
+          node.y = Math.sin(angle) * radius;
+          node.z = elevation + (layer * 100 - 200);
+        }
+      });
+    }
+    
+    function applyForceLayout(nodes, links) {
+      // Simple force-directed layout
+      nodes.forEach(node => {
+        node.vx *= 0.95;
+        node.vy *= 0.95;
+        node.vz *= 0.95;
+      });
+      
+      // Repulsion between nodes
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].x - nodes[j].x;
+          const dy = nodes[i].y - nodes[j].y;
+          const dz = nodes[i].z - nodes[j].z;
+          const distance = Math.sqrt(dx*dx + dy*dy + dz*dz) + 1;
+          const force = 1000 / (distance * distance);
+          
+          nodes[i].vx += (dx / distance) * force;
+          nodes[i].vy += (dy / distance) * force;
+          nodes[i].vz += (dz / distance) * force;
+          
+          nodes[j].vx -= (dx / distance) * force;
+          nodes[j].vy -= (dy / distance) * force;
+          nodes[j].vz -= (dz / distance) * force;
+        }
+      }
+      
+      // Apply velocities
+      nodes.forEach(node => {
+        node.x += node.vx;
+        node.y += node.vy;
+        node.z += node.vz;
+      });
+    }
+    
+    // === RENDERING ===
+    function render() {
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, width, height);
+      
+      // Sort nodes by z-depth for proper 3D rendering
+      const sortedNodes = [...data.nodes].sort((a, b) => b.z - a.z);
+      
+      // Draw links
+      ctx.strokeStyle = 'rgba(97, 218, 251, 0.1)';
+      ctx.lineWidth = 1;
+      data.links.forEach(link => {
+        const sourceNode = data.nodes.find(n => n.id === link.source);
+        const targetNode = data.nodes.find(n => n.id === link.target);
+        
+        if (sourceNode && targetNode) {
+          const source3D = project3D(sourceNode.x, sourceNode.y, sourceNode.z);
+          const target3D = project3D(targetNode.x, targetNode.y, targetNode.z);
+          
+          ctx.beginPath();
+          ctx.moveTo(source3D.x, source3D.y);
+          ctx.lineTo(target3D.x, target3D.y);
+          ctx.stroke();
+        }
+      });
+      
+      // Draw nodes
+      sortedNodes.forEach(node => {
+        const projected = project3D(node.x, node.y, node.z);
+        const scale = projected.scale;
+        
+        ctx.fillStyle = node.color;
+        ctx.globalAlpha = Math.max(0.3, scale);
+        
+        ctx.beginPath();
+        ctx.arc(projected.x, projected.y, node.size * scale, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Add glow effect for target node
+        if (node.id === INJECTED_TARGET_ADDRESS) {
+          ctx.shadowColor = node.color;
+          ctx.shadowBlur = 20 * scale;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      });
+      
+      ctx.globalAlpha = 1;
+    }
+    
+    function project3D(x, y, z) {
+      const adjustedZ = z + camera.z;
+      const scale = Math.max(0.1, 1000 / (adjustedZ + 1000));
+      
+      return {
+        x: centerX + (x - camera.x) * scale * camera.zoom,
+        y: centerY + (y - camera.y) * scale * camera.zoom,
+        scale: scale
+      };
+    }
+    
+    // === ANIMATION LOOP ===
+    function animate() {
+      time++;
+      
+      // Apply current layout
+      switch(currentMode) {
+        case 'shell':
+          applyShellLayout(data.nodes, data.links);
+          break;
+        case 'force':
+          applyForceLayout(data.nodes, data.links);
+          break;
+        case 'spiral':
+          applySpiralLayout(data.nodes, data.links);
+          break;
+      }
+      
+      render();
+      animationId = requestAnimationFrame(animate);
+    }
+    
+    function applySpiralLayout(nodes, links) {
+      nodes.forEach((node, index) => {
+        const t = time * 0.01 + index * 0.1;
+        const radius = 50 + index * 5;
+        node.x = Math.cos(t) * radius;
+        node.y = Math.sin(t) * radius;
+        node.z = index * 10 - 200;
+      });
+    }
+    
+    // === EVENT HANDLERS ===
+    function setupEventListeners() {
+      // Mouse controls
+      canvas.addEventListener('mousedown', (e) => {
+        mouse.down = true;
+        mouse.lastX = e.clientX;
+        mouse.lastY = e.clientY;
+      });
+      
+      canvas.addEventListener('mousemove', (e) => {
+        if (mouse.down) {
+          const deltaX = e.clientX - mouse.lastX;
+          const deltaY = e.clientY - mouse.lastY;
+          
+          camera.x -= deltaX * 2 / camera.zoom;
+          camera.y -= deltaY * 2 / camera.zoom;
+          
+          mouse.lastX = e.clientX;
+          mouse.lastY = e.clientY;
+        }
+      });
+      
+      canvas.addEventListener('mouseup', () => {
+        mouse.down = false;
+      });
+      
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+        camera.zoom = Math.max(0.1, Math.min(5, camera.zoom * zoomFactor));
+        document.getElementById('zoomIndicator').textContent = `Zoom: ${Math.round(camera.zoom * 100)}%`;
+      });
+      
+      // Control buttons
+      document.getElementById('shellBtn').addEventListener('click', () => setMode('shell'));
+      document.getElementById('forceBtn').addEventListener('click', () => setMode('force'));
+      document.getElementById('spiralBtn').addEventListener('click', () => setMode('spiral'));
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        camera = { x: 0, y: 0, z: 1000, zoom: 1 };
+        document.getElementById('zoomIndicator').textContent = 'Zoom: 100%';
+      });
+    }
+    
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById('currentLayout').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+      
+      // Update button states
+      document.querySelectorAll('.control-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(mode + 'Btn').classList.add('active');
+    }
+    
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      centerX = width / 2;
+      centerY = height / 2;
+      
+      canvas.width = width;
+      canvas.height = height;
+    }
+    
+    // === INITIALIZATION ===
+    let data;
+    
+    function init() {
+      console.log('🚀 Initializing Cosmic Graph NFT...');
+      
+      // Process the injected data
+      data = processInjectedData();
+      
+      // Setup canvas
+      resize();
+      window.addEventListener('resize', resize);
+      
+      // Setup controls
+      setupEventListeners();
+      
+      // Start animation
+      animate();
+      
+      console.log('✅ Cosmic Graph NFT initialized successfully!');
+    }
+    
+    // Start when page loads
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>

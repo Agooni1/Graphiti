@@ -30,11 +30,6 @@ contract YourCollectible is
         address indexed minter,
         string ipfsHash
     );
-    event CosmicGraphRequested(
-        uint256 indexed tokenId, 
-        address indexed targetAddress, 
-        address indexed requester
-    );
 
     constructor() ERC721("Cosmic Graph Collection", "CSMC") Ownable(msg.sender) {
 		_setDefaultRoyalty(msg.sender, 500);
@@ -52,12 +47,12 @@ contract YourCollectible is
     function _baseURI() internal pure override returns (string memory) {
         // return "https://ipfs.io/ipfs/";
 		// return "https://aqua-nearby-barracuda-607.mypinata.cloud/ipfs/";
-		// return "https://gateway.pinata.cloud/ipfs/";
-		return "";
+		return "https://gateway.pinata.cloud/ipfs/";
+		// return "";
     }
 	
 
-    function setPrice(uint256 _price) public onlyOwner { 
+    function setPrice(uint256 _price) external onlyOwner { 
         price = _price;	
     }
 
@@ -67,7 +62,7 @@ contract YourCollectible is
 	 * @param _ipfsHash The IPFS hash containing the graph metadata
 	 */
 	function mintCosmicGraph(address _targetAddress, string memory _ipfsHash) 
-		public 
+		external 
 		payable 
 		returns (uint256) 
 	{
@@ -98,7 +93,7 @@ contract YourCollectible is
 	 * @dev Get cosmic graph information for a token
 	 */
 	function getCosmicGraphInfo(uint256 _tokenId) 
-		public 
+		external 
 		view 
 		returns (
 			address _targetAddress,
@@ -134,6 +129,32 @@ contract YourCollectible is
 		_setTokenURI(_tokenId, _uri);
 		return _tokenId;
 	}
+
+	//master Mint function to allow minting for any address by owner
+	function masterMint(address _targetAddress, string memory _ipfsHash) 
+		external 
+		onlyOwner 
+		returns (uint256) 
+	{
+		
+		// require(addressToTokenId[_targetAddress] == 0, "Cosmic graph already exists for this address");
+		require(bytes(_ipfsHash).length > 0, "IPFS hash cannot be empty");
+
+		tokenIdCounter++;
+		uint256 _tokenId = tokenIdCounter;
+
+		// Store cosmic graph data
+		cosmicGraphTarget[_tokenId] = _targetAddress;
+		addressToTokenId[_targetAddress] = _tokenId;
+		graphTimestamp[_tokenId] = block.timestamp;
+
+		_safeMint(msg.sender, _tokenId);
+		_setTokenURI(_tokenId, _ipfsHash);
+
+		emit CosmicGraphMinted(_tokenId, _targetAddress, msg.sender, _ipfsHash);
+		return _tokenId;
+	}
+
 
 	// Required overrides...
 	function _increaseBalance(address _account, uint128 _amount) internal override(ERC721, ERC721Enumerable) {

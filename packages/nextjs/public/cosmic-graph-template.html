@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cosmic Graph NFT - {{ADDRESS_SHORT}}</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      user-select: none;
+    }
+    
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: grab;
+    }
+    
+    canvas:active {
+      cursor: grabbing;
+    }
+    
+    .controls {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+    
+    .btn-group {
+      display: flex;
+      gap: 2px;
+    }
+    
+    .btn {
+      padding: 4px 8px;
+      font-size: 11px;
+      border: none;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+      backdrop-filter: blur(10px);
+      white-space: nowrap;
+    }
+    
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+    
+    .btn.active {
+      background: rgba(116, 185, 255, 0.8);
+      color: #000;
+    }
+    
+    .btn-secondary.active {
+      background: rgba(255, 193, 7, 0.8);
+      color: #000;
+    }
+    
+    .btn-primary.active {
+      background: rgba(0, 123, 255, 0.8);
+      color: white;
+    }
+    
+    .btn-accent.active {
+      background: rgba(255, 107, 107, 0.8);
+      color: #000;
+    }
+    
+    .info {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      color: white;
+      font-size: 14px;
+      opacity: 0.7;
+      z-index: 10;
+    }
+    
+    .legend {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      color: white;
+      font-size: 12px;
+      opacity: 0.6;
+      z-index: 10;
+    }
+    
+    .nft-metadata {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      color: white;
+      font-size: 11px;
+      opacity: 0.8;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px 12px;
+      border-radius: 8px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(97, 218, 251, 0.2);
+      z-index: 10;
+    }
+    
+    .zoom-indicator {
+      position: absolute;
+      bottom: 50px;
+      left: 16px;
+      color: white;
+      font-size: 10px;
+      opacity: 0.5;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="cosmicCanvas"></canvas>
+  
+  <!-- Info Display -->
+  <div class="info">
+    🌌 {{ADDRESS_SHORT}} Universe
+  </div>
+  
+  <!-- Controls -->
+  <div class="controls">
+    <!-- Layout Mode Toggle -->
+    <div class="btn-group">
+      <button class="btn btn-secondary active" id="shellBtn" title="Shell-based layout">🌌 Shell</button>
+      <button class="btn btn-secondary" id="forceBtn" title="Force-directed layout">⚡ Force</button>
+      <button class="btn btn-secondary" id="spiralBtn" title="Fibonacci spiral layout">🌀 Spiral</button>
+    </div>
+    
+    <!-- Particle Mode Toggle -->
+    <div class="btn-group">
+      <button class="btn btn-primary active" id="pulseBtn">🌊 Pulse</button>
+      <button class="btn btn-primary" id="laserBtn">⚡ Laser</button>
+    </div>
+    
+    <!-- Control buttons -->
+    <button class="btn btn-accent" id="orbitBtn">🪐 Orbit</button>
+    <button class="btn" id="resetBtn">Reset</button>
+  </div>
+  
+  <!-- NFT Metadata -->
+  <div class="nft-metadata">
+    <div><strong>Address:</strong> {{ADDRESS_SHORT}}</div>
+    <div><strong>Nodes:</strong> {{NODE_COUNT}}</div>
+    <div><strong>Balance:</strong> {{TARGET_BALANCE}} ETH</div>
+    <div><strong>Layout:</strong> <span id="currentLayout">Shell</span></div>
+    <div><strong>Generated:</strong> {{TIMESTAMP}}</div>
+  </div>
+  
+  <!-- Zoom indicator -->
+  <div class="zoom-indicator" id="zoomIndicator">
+    Zoom: 100%
+  </div>
+  
+  <!-- Legend -->
+  <div class="legend">
+    <div style="display: flex; gap: 16px;">
+      <span>🔴 Contracts</span>
+      <span>🟡 Whale Nodes</span>
+      <span>🔵 Active Nodes</span>
+      <span>⚪ Regular Nodes</span>
+    </div>
+  </div>
+
+  <script>
+    // Injected data from template engine
+    const ADDRESS_DATA = "{{ADDRESS_DATA_JSON}}"; // Ensure this is replaced with valid JSON, e.g., {"foo":"bar"}
+    const TARGET_ADDRESS = "{{TARGET_ADDRESS}}";
+    const NODE_DATA = JSON.parse('{{NODE_DATA_JSON}}'); // Ensure this is replaced with valid JSON string, e.g., '[{"id":"0x..."}]'
+    const LINK_DATA = JSON.parse('{{LINK_DATA_JSON}}'); // Ensure this is replaced with valid JSON string, e.g., '[{"source":"0x...","target":"0x..."}]'
+    
+    // Initialize canvas and context
+    const canvas = document.getElementById('cosmicCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Set canvas size with device pixel ratio for crisp rendering
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.scale(dpr, dpr);
+    
+    // Simulation parameters
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    let animationTime = 0;
+    let particleMode = 'pulse';
+    let layoutMode = 'shell';
+    let isAutoOrbiting = false;
+    let orbitRotation = { x: 0, y: 0 };
+    let zoom = 1;
+    let panOffset = { x: 0, y: 0 };
+    
+    // Mouse interaction
+    let isDragging = false;
+    let isOrbiting = false;
+    let lastMousePos = { x: 0, y: 0 };
+    let dragOffset = { x: 0, y: 0 };
+    
+    // Use injected data
+    let nodes = [...NODE_DATA];
+    let links = [...LINK_DATA];
+    const targetNodeId = TARGET_ADDRESS;
+    
+    // Enhanced layout algorithms to match React component exactly
+    const getGalaxyLayer = (balance, isContract) => {
+      if (isContract || balance > 10) return 'core';
+      if (balance > 1) return 'inner';
+      if (balance > 0.1) return 'outer';
+      return 'halo';
+    };
+    
+    const getShellRadius = (balance, isContract) => {
+      if (isContract || balance > 10) return 40;
+      if (balance > 1) return 100;
+      if (balance > 0.1) return 180;
+      return 280;
+    };
+    
+    // Generate layout from injected data
+    const generateCosmicData = () => {
+      const newNodes = [];
+      const newLinks = [];
+      
+      // Use the injected node data as base
+      const baseNodeData = NODE_DATA.map(node => ({
+        id: node.id,
+        balance: node.balance || 0,
+        isContract: node.isContract || false,
+        type: node.type || 'regular',
+        txCount: node.txCount || 0,
+        label: node.label || node.id.slice(0, 6) + '...' + node.id.slice(-4)
+      }));
+      
+      // Apply layout algorithm based on mode
+      let positionedNodes;
+      
+      if (layoutMode === 'shell') {
+        // SHELL LAYOUT - matches createShellLayout exactly
+        positionedNodes = baseNodeData.map((node, index) => {
+          const isTarget = node.id === targetNodeId;
+          
+          if (isTarget) {
+            return {
+              ...node,
+              x: 0, y: 0, z: 0,
+              layer: 'core',
+              size: 8,
+              color: '#61dafb'
+            };
+          }
+          
+          const layer = getGalaxyLayer(node.balance, node.isContract);
+          const baseRadius = getShellRadius(node.balance, node.isContract);
+          const radiusVariation = 0.7 + Math.random() * 0.6;
+          const radius = baseRadius * radiusVariation;
+          
+          const phi = Math.acos(1 - 2 * Math.random());
+          const theta = 2 * Math.PI * Math.random();
+          
+          const x = radius * Math.sin(phi) * Math.cos(theta);
+          const y = radius * Math.sin(phi) * Math.sin(theta);
+          const z = radius * Math.cos(phi);
+          
+          let color = '#94a3b8';
+          let size = 3;
+          
+          if (node.isContract) {
+            color = '#ef4444';
+            size = 6;
+          } else if (node.balance > 10) {
+            color = '#fbbf24';
+            size = 5;
+          } else if (node.balance > 0.1) {
+            color = '#3b82f6';
+            size = 4;
+          }
+          
+          return {
+            ...node,
+            x, y, z, layer, size, color
+          };
+        });
+        
+      } else if (layoutMode === 'force') {
+        // FORCE LAYOUT - matches createForceLayout exactly
+        const targetNodeData = baseNodeData.find(node => node.id === targetNodeId) || baseNodeData[0];
+        
+        // Initial random placement
+        let workingNodes = baseNodeData.map((node, index) => {
+          const isTarget = node.id === targetNodeId;
+          
+          if (isTarget) {
+            return {
+              ...node,
+              x: 0, y: 0, z: 0,
+              size: 8,
+              color: '#61dafb'
+            };
+          }
+          
+          const angle = (index / baseNodeData.length) * 2 * Math.PI;
+          const radius = 50 + Math.random() * 200;
+          const height = (Math.random() - 0.5) * 100;
+          
+          let color = '#94a3b8';
+          let size = 3;
+          
+          if (node.isContract) {
+            color = '#ef4444';
+            size = 6;
+          } else if (node.balance > 10) {
+            color = '#fbbf24';
+            size = 5;
+          } else if (node.balance > 0.1) {
+            color = '#3b82f6';
+            size = 4;
+          }
+          
+          return {
+            ...node,
+            x: Math.cos(angle) * radius,
+            y: Math.sin(angle) * radius,
+            z: height,
+            vx: 0, vy: 0, vz: 0,
+            size, color
+          };
+        });
+
+        // Apply force simulation
+        const iterations = 100;
+        const repulsionStrength = 2000;
+        const centerAttraction = 0.05;
+        
+        for (let iter = 0; iter < iterations; iter++) {
+          workingNodes.forEach((node, i) => {
+            if (node.id === targetNodeId) return;
+            
+            let fx = 0, fy = 0, fz = 0;
+            
+            // Repulsion from other nodes
+            workingNodes.forEach((other, j) => {
+              if (i === j) return;
+              
+              const dx = node.x - other.x;
+              const dy = node.y - other.y;
+              const dz = node.z - other.z;
+              const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+              
+              if (distance > 0) {
+                const force = repulsionStrength / (distance * distance);
+                fx += (dx / distance) * force;
+                fy += (dy / distance) * force;
+                fz += (dz / distance) * force;
+              }
+            });
+            
+            // Attraction to center
+            fx -= node.x * centerAttraction;
+            fy -= node.y * centerAttraction;
+            fz -= node.z * centerAttraction;
+            
+            // Update velocity and position
+            node.vx = (node.vx + fx) * 0.8;
+            node.vy = (node.vy + fy) * 0.8;
+            node.vz = (node.vz + fz) * 0.8;
+            
+            node.x += node.vx;
+            node.y += node.vy;
+            node.z += node.vz;
+          });
+        }
+        
+        positionedNodes = workingNodes;
+        
+      } else { // fibonacci/spiral
+        const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+        const targetNodeData = baseNodeData.find(node => node.id === targetNodeId) || baseNodeData[0];
+        
+        // Put target node first, then sort others by importance
+        const otherNodes = baseNodeData.filter(node => node.id !== targetNodeData.id);
+        const sortedOtherNodes = otherNodes.sort((a, b) => {
+          const scoreA = (a.balance || 0) + (a.isContract ? 100 : 0) + (a.txCount || 0) * 0.1;
+          const scoreB = (b.balance || 0) + (b.isContract ? 100 : 0) + (b.txCount || 0) * 0.1;
+          return scoreB - scoreA;
+        });
+        
+        // Target node at center
+        const targetPositionedNode = {
+          ...targetNodeData,
+          x: 0, y: 0, z: 0,
+          size: 8,
+          color: '#61dafb'
+        };
+        
+        // Other nodes in spiral around target
+        const otherPositionedNodes = sortedOtherNodes.map((node, index) => {
+          const i = index + 1;
+          const radius = 15 * Math.sqrt(i);
+          const theta = i * goldenAngle;
+          const phi = Math.acos(1 - 2 * (i / sortedOtherNodes.length));
+          
+          const x = radius * Math.cos(theta);
+          const y = radius * Math.sin(theta);
+          const z = (Math.random() - 0.5) * 50;
+          
+          let color = '#94a3b8';
+          let size = 3;
+          
+          if (node.isContract) {
+            color = '#ef4444';
+            size = 6;
+          } else if (node.balance > 10) {
+            color = '#fbbf24';
+            size = 5;
+          } else if (node.balance > 0.1) {
+            color = '#3b82f6';
+            size = 4;
+          }
+          
+          return {
+            ...node,
+            x, y, z, size, color
+          };
+        });
+        
+        positionedNodes = [targetPositionedNode, ...otherPositionedNodes];
+      }
+      
+      // Create links from injected data or default hub-and-spoke
+      const newLinksData = LINK_DATA.length > 0 ? LINK_DATA : 
+        positionedNodes.filter(node => node.id !== targetNodeId).map(node => ({
+          source: node.id,
+          target: targetNodeId,
+          value: 1
+        }));
+      
+      positionedNodes.forEach(node => {
+        newNodes.push(node);
+      });
+      
+      newLinksData.forEach(link => {
+        newLinks.push(link);
+      });
+      
+      return { nodes: newNodes, links: newLinks };
+    };
+    
+    // 3D to 2D projection (same as React component)
+    const project3DTo2D = (node, rotX, rotY) => {
+      const offsetX = node.x;
+      const offsetY = node.y;
+      const offsetZ = node.z;
+
+      const cosRotX = Math.cos(rotX);
+      const sinRotX = Math.sin(rotX);
+      const cosRotY = Math.cos(rotY);
+      const sinRotY = Math.sin(rotY);
+
+      let y1 = offsetY * cosRotX - offsetZ * sinRotX;
+      let z1 = offsetY * sinRotX + offsetZ * cosRotX;
+
+      let x2 = offsetX * cosRotY + z1 * sinRotY;
+      let z2 = -offsetX * sinRotY + z1 * cosRotY;
+
+      const distance = 600;
+      const perspective = distance / (distance + z2);
+      
+      return {
+        screenX: x2 * perspective,
+        screenY: y1 * perspective,
+        depth: z2,
+        perspective: perspective
+      };
+    };
+    
+    // Main animation loop (exactly the same as original)
+    const animate = (currentTime) => {
+      animationTime = currentTime * 0.001;
+      
+      // Auto-orbit rotation - REDUCED BY HALF
+      if (isAutoOrbiting && !isDragging && !isOrbiting) {
+        orbitRotation.x += 0.0015;
+        orbitRotation.y += 0.0025;
+      }
+      
+      // Clear canvas with enhanced cosmic background
+      const bgGradient = ctx.createRadialGradient(
+        centerX, centerY, 0, 
+        centerX, centerY, Math.max(window.innerWidth, window.innerHeight) / 2
+      );
+      bgGradient.addColorStop(0, '#2a1810');
+      bgGradient.addColorStop(0.3, '#1a1a2e');
+      bgGradient.addColorStop(0.7, '#16213e');
+      bgGradient.addColorStop(1, '#0c0c0c');
+      
+      ctx.fillStyle = bgGradient;
+      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      
+      // Project all nodes to 2D and sort by depth (back to front)
+      const projectedNodes = nodes.map(node => {
+        const projected = project3DTo2D(node, orbitRotation.x, orbitRotation.y);
+        return {
+          ...node,
+          screenX: projected.screenX,
+          screenY: projected.screenY,
+          depth: projected.depth,
+          perspective: projected.perspective
+        };
+      }).sort((a, b) => a.depth - b.depth);
+      
+      // Apply transforms
+      ctx.save();
+      ctx.translate(centerX + panOffset.x, centerY + panOffset.y);
+      ctx.scale(zoom, zoom);
+      
+      // Draw galaxy dust for very distant nodes
+      projectedNodes.forEach(node => {
+        if (node.depth < -300) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${0.1 * node.perspective})`;
+          ctx.fillRect(node.screenX - 0.5, node.screenY - 0.5, 1, 1);
+        }
+      });
+      
+      // Draw links
+      links.forEach((link, linkIndex) => {
+        const sourceNode = projectedNodes.find(n => n.id === link.source);
+        const targetNodeFound = projectedNodes.find(n => n.id === link.target);
+        
+        if (sourceNode && targetNodeFound) {
+          const opacity = Math.min(sourceNode.perspective, targetNodeFound.perspective) * 0.3;
+          
+          if (particleMode === 'pulse') {
+            const pulsePhase = (animationTime * 2 + linkIndex * 0.5) % (Math.PI * 2);
+            const pulseIntensity = (Math.sin(pulsePhase) + 1) * 0.5;
+            const glowOpacity = opacity * (0.3 + pulseIntensity * 0.7);
+            
+            ctx.strokeStyle = `rgba(97, 218, 251, ${glowOpacity})`;
+            ctx.lineWidth = 0.5 + pulseIntensity * 1.5;
+            
+            ctx.beginPath();
+            ctx.moveTo(sourceNode.screenX, sourceNode.screenY);
+            ctx.lineTo(targetNodeFound.screenX, targetNodeFound.screenY);
+            ctx.stroke();
+            
+          } else {
+            const laserPhase = (animationTime * 3 + linkIndex * 0.3) % 1;
+            const progress = laserPhase;
+            
+            const startX = sourceNode.screenX;
+            const startY = sourceNode.screenY;
+            const endX = targetNodeFound.screenX;
+            const endY = targetNodeFound.screenY;
+            
+            const currentX = startX + (endX - startX) * progress;
+            const currentY = startY + (endY - startY) * progress;
+            
+            const gradient = ctx.createLinearGradient(startX, startY, currentX, currentY);
+            gradient.addColorStop(0, 'rgba(97, 218, 251, 0)');
+            gradient.addColorStop(0.7, `rgba(97, 218, 251, ${opacity * 0.8})`);
+            gradient.addColorStop(1, `rgba(255, 255, 255, ${opacity})`);
+            
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 1.5;
+            
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+          }
+        }
+      });
+      
+      // Draw nodes
+      projectedNodes.forEach(node => {
+        if (node.depth > -500) {
+          const size = node.size * node.perspective * 0.8;
+          const opacity = Math.max(0.1, node.perspective * 0.9);
+          
+          // Glow effect
+          const glowSize = size * 2;
+          const glowGradient = ctx.createRadialGradient(
+            node.screenX, node.screenY, 0,
+            node.screenX, node.screenY, glowSize
+          );
+          glowGradient.addColorStop(0, `${node.color}80`);
+          glowGradient.addColorStop(1, `${node.color}00`);
+          
+          ctx.fillStyle = glowGradient;
+          ctx.beginPath();
+          ctx.arc(node.screenX, node.screenY, glowSize, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Main node
+          ctx.fillStyle = node.color;
+          ctx.globalAlpha = opacity;
+          ctx.beginPath();
+          ctx.arc(node.screenX, node.screenY, size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          
+          // Target node special effect
+          if (node.id === targetNodeId) {
+            const pulseSize = size + Math.sin(animationTime * 4) * size * 0.3;
+            ctx.strokeStyle = `rgba(97, 218, 251, ${opacity * 0.6})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(node.screenX, node.screenY, pulseSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      });
+      
+      ctx.restore();
+      
+      // Update zoom indicator
+      document.getElementById('zoomIndicator').textContent = `Zoom: ${(zoom * 100).toFixed(0)}%`;
+      
+      requestAnimationFrame(animate);
+    };
+    
+    // Mouse interaction handlers (exactly the same)
+    canvas.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      lastMousePos = { x: e.clientX, y: e.clientY };
+      
+      if (e.button === 2) {
+        isOrbiting = true;
+      } else {
+        isDragging = true;
+        dragOffset = {
+          x: panOffset.x - e.clientX,
+          y: panOffset.y - e.clientY
+        };
+      }
+    });
+    
+    canvas.addEventListener('mousemove', (e) => {
+      if (isOrbiting) {
+        const deltaX = e.clientX - lastMousePos.x;
+        const deltaY = e.clientY - lastMousePos.y;
+        
+        const sensitivity = 0.012;
+        orbitRotation.x += deltaY * sensitivity;
+        orbitRotation.y += deltaX * sensitivity;
+        
+        lastMousePos = { x: e.clientX, y: e.clientY };
+      } else if (isDragging) {
+        panOffset = {
+          x: e.clientX + dragOffset.x,
+          y: e.clientY + dragOffset.y
+        };
+      }
+    });
+    
+    canvas.addEventListener('mouseup', () => {
+      isDragging = false;
+      isOrbiting = false;
+    });
+    
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      zoom = Math.max(0.1, Math.min(5, zoom * delta));
+    });
+    
+    // Layout regeneration using injected data
+    const regenerateLayout = () => {
+      const result = generateCosmicData();
+      nodes = result.nodes;
+      links = result.links;
+      console.log(`Regenerated ${layoutMode} layout with ${nodes.length} nodes and ${links.length} links`);
+    };
+    
+    // Update layout buttons and metadata display
+    const updateLayoutButtons = () => {
+      document.querySelectorAll('.btn-secondary').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(layoutMode + 'Btn').classList.add('active');
+      
+      const layoutNames = { shell: 'Shell', force: 'Force', spiral: 'Spiral' };
+      document.getElementById('currentLayout').textContent = layoutNames[layoutMode];
+    };
+    
+    const updateParticleButtons = () => {
+      document.querySelectorAll('.btn-primary').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(particleMode + 'Btn').classList.add('active');
+    };
+    
+    // Layout mode handlers
+    document.getElementById('shellBtn').addEventListener('click', () => {
+      layoutMode = 'shell';
+      regenerateLayout();
+      updateLayoutButtons();
+    });
+    
+    document.getElementById('forceBtn').addEventListener('click', () => {
+      layoutMode = 'force';
+      regenerateLayout();
+      updateLayoutButtons();
+    });
+    
+    document.getElementById('spiralBtn').addEventListener('click', () => {
+      layoutMode = 'spiral';
+      regenerateLayout();
+      updateLayoutButtons();
+    });
+    
+    // Particle mode handlers
+    document.getElementById('pulseBtn').addEventListener('click', () => {
+      particleMode = 'pulse';
+      updateParticleButtons();
+    });
+    
+    document.getElementById('laserBtn').addEventListener('click', () => {
+      particleMode = 'laser';
+      updateParticleButtons();
+    });
+    
+    document.getElementById('orbitBtn').addEventListener('click', (e) => {
+      isAutoOrbiting = !isAutoOrbiting;
+      e.target.classList.toggle('active');
+    });
+    
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      panOffset = { x: 0, y: 0 };
+      orbitRotation = { x: 0, y: 0 };
+      zoom = 1;
+    });
+    
+    // Window resize handler
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.scale(dpr, dpr);
+    });
+    
+    // Initialize and start
+    requestAnimationFrame(animate);
+    
+    console.log(`Cosmic NFT for ${TARGET_ADDRESS} initialized with ${nodes.length} nodes`);
+  </script>
+</body>
+</html>

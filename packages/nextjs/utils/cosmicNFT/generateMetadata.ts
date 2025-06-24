@@ -52,3 +52,45 @@ export function generateMetadata(
 
   return { metadata };
 }
+
+/**
+ * NEW: Generate metadata using Pinata gateway format (matches current page.tsx)
+ */
+export function generateNFTMetadata(
+  address: string,
+  graphData: { nodes: any[], links: any[] },
+  balance: string,
+  htmlCid: string,
+  layoutMode: 'shell' | 'force' | 'fibonacci' = 'shell'
+): any {
+  
+  // Validate address
+  if (!address || !address.startsWith('0x') || address.length !== 42) {
+    console.error("Invalid address in generateNFTMetadata:", address);
+    throw new Error(`Invalid address: ${address}`);
+  }
+
+  // Use ipfs.io gateway that supports HTML files
+  const ipfsUrl = `https://ipfs.io/ipfs/${htmlCid}`;
+
+  const metadata = {
+    name: `Interactive Cosmic Graph: ${address.slice(0, 8)}...${address.slice(-6)}`, // Match original format
+    description: `An interactive ${layoutMode} layout visualization of Ethereum address ${address} showing ${graphData.links.length} connections and ${graphData.nodes.length} transactions. Experience a fully interactive 3D cosmic graph with multiple viewing modes and real-time animations.`, // Match original format
+    image: ipfsUrl,
+    animation_url: ipfsUrl, // Include animation_url for HTML
+    attributes: [
+      { trait_type: "Target Address", value: address }, // Match original
+      { trait_type: "Layout Type", value: layoutMode }, // Match original
+      { trait_type: "Content Type", value: "Interactive HTML" }, // Match original
+      { trait_type: "Transaction Count", value: graphData.nodes.length }, // Match original
+      { trait_type: "Connected Addresses", value: graphData.links.length }, // Match original
+      { trait_type: "Balance (ETH)", value: parseFloat(balance).toFixed(4) }, // Match original format
+      { trait_type: "Generation Date", value: new Date().toISOString().split('T')[0] }, // Match original
+      { trait_type: "Interactive", value: "Yes" }, // Match original
+      { trait_type: "Features", value: "3D Navigation, Multiple Layouts, Real-time Animation" }, // Match original
+      { trait_type: "Technology", value: "HTML5 Canvas" } // Match original
+    ],
+  };
+
+  return metadata;
+}

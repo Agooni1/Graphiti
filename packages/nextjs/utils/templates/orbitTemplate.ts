@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+export const orbitTemplate = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -126,32 +126,26 @@
 <body>
   <canvas id="cosmicCanvas"></canvas>
   
-  <!-- Info Display -->
   <div class="info">
     🌌 {{ADDRESS_SHORT}} Universe
   </div>
   
-  <!-- Controls -->
   <div class="controls">
-    <!-- Layout Mode Toggle -->
     <div class="btn-group">
       <button class="btn btn-secondary active" id="shellBtn" title="Shell-based layout">🌌 Shell</button>
       <button class="btn btn-secondary" id="forceBtn" title="Force-directed layout">⚡ Force</button>
       <button class="btn btn-secondary" id="spiralBtn" title="Fibonacci spiral layout">🌀 Spiral</button>
     </div>
     
-    <!-- Particle Mode Toggle -->
     <div class="btn-group">
       <button class="btn btn-primary active" id="pulseBtn">🌊 Pulse</button>
       <button class="btn btn-primary" id="laserBtn">⚡ Laser</button>
     </div>
     
-    <!-- Control buttons -->
     <button class="btn btn-accent" id="orbitBtn">🪐 Orbit</button>
     <button class="btn" id="resetBtn">Reset</button>
   </div>
   
-  <!-- NFT Metadata -->
   <div class="nft-metadata">
     <div><strong>Address:</strong> {{TARGET_ADDRESS_SHORT}}</div>
     <div><strong>Nodes:</strong> {{NODE_COUNT}}</div>
@@ -161,12 +155,10 @@
     <div><strong>Generated:</strong> <span id="timestamp">{{TIMESTAMP}}</span></div>
   </div>
   
-  <!-- Zoom indicator -->
   <div class="zoom-indicator" id="zoomIndicator">
     Zoom: 100%
   </div>
   
-  <!-- Legend -->
   <div class="legend">
     <div style="display: flex; gap: 16px;">
       <span>🔴 Contracts</span>
@@ -177,26 +169,49 @@
   </div>
 
   <script>
-    // === SIMPLIFIED DATA INJECTION ===
+    // === DATA INJECTION POINT ===
+    console.log('🚀 Starting data injection...');
+    
+    // Direct data injection - no JSON parsing needed
+    const REAL_ADDRESS = "{{TARGET_ADDRESS}}";
+    const REAL_BALANCE = {{TARGET_BALANCE_RAW}};
+    const REAL_NODE_DATA = {{NODE_DATA_JSON}};
+    const REAL_LINK_DATA = {{LINK_DATA_JSON}};
+    const REAL_TIMESTAMP = "{{TIMESTAMP}}";
+    
+    console.log('Raw data check:', {
+      address: REAL_ADDRESS,
+      addressLength: REAL_ADDRESS ? REAL_ADDRESS.length : 0,
+      balance: REAL_BALANCE,
+      nodeCount: REAL_NODE_DATA ? REAL_NODE_DATA.length : 0,
+      linkCount: REAL_LINK_DATA ? REAL_LINK_DATA.length : 0
+    });
+    
+    // Check if data was properly injected
+    const hasValidData = REAL_ADDRESS && 
+                        REAL_ADDRESS.length === 42 && 
+                        REAL_NODE_DATA && 
+                        Array.isArray(REAL_NODE_DATA) && 
+                        REAL_NODE_DATA.length > 0;
+    
     let INJECTED_DATA;
     
-    try {
-      // Use string checks to avoid syntax errors when placeholders aren't replaced
-      const addressValue = "{{TARGET_ADDRESS}}";
-      const balanceValue = "{{TARGET_BALANCE_RAW}}";
-      const nodeDataValue = "{{NODE_DATA_JSON}}";
-      const linkDataValue = "{{LINK_DATA_JSON}}";
-      const timestampValue = "{{TIMESTAMP}}";
-      
+    if (hasValidData) {
       INJECTED_DATA = {
-        address: addressValue.includes('{{') ? null : addressValue,
-        balance: balanceValue.includes('{{') ? 0 : parseFloat(balanceValue),
-        nodes: nodeDataValue.includes('{{') ? [] : JSON.parse(nodeDataValue),
-        links: linkDataValue.includes('{{') ? [] : JSON.parse(linkDataValue),
-        timestamp: timestampValue.includes('{{') ? new Date().toISOString() : timestampValue
+        address: REAL_ADDRESS,
+        balance: REAL_BALANCE || 0,
+        nodes: REAL_NODE_DATA,
+        links: REAL_LINK_DATA || [],
+        timestamp: REAL_TIMESTAMP
       };
-    } catch (error) {
-      console.warn('Error parsing injected data, using defaults:', error);
+      console.log('✅ Using REAL blockchain data:', {
+        address: INJECTED_DATA.address,
+        nodeCount: INJECTED_DATA.nodes.length,
+        linkCount: INJECTED_DATA.links.length,
+        sampleNode: INJECTED_DATA.nodes[0]
+      });
+    } else {
+      console.log('❌ Real data invalid, using fallback');
       INJECTED_DATA = {
         address: null,
         balance: 0,
@@ -206,25 +221,12 @@
       };
     }
     
-    // Check if data was actually injected (placeholders were replaced)
-    const hasInjectedData = INJECTED_DATA.address && 
-                           INJECTED_DATA.nodes && 
-                           Array.isArray(INJECTED_DATA.nodes) &&
-                           INJECTED_DATA.nodes.length > 0;
+    const hasInjectedData = hasValidData;
     
-    console.log('Data injection status:', hasInjectedData ? 'USING REAL DATA' : 'USING DEMO DATA');
-    
-    if (hasInjectedData) {
-      console.log(`Using real data for ${INJECTED_DATA.address}: ${INJECTED_DATA.nodes.length} nodes, ${INJECTED_DATA.links.length} links`);
-    } else {
-      console.log('Falling back to demo data');
-    }
-
-    // Initialize canvas and context
+    // Initialize canvas and context - COPIED FROM WORKING HTML
     const canvas = document.getElementById('cosmicCanvas');
     const ctx = canvas.getContext('2d');
     
-    // Set canvas size with device pixel ratio for crisp rendering
     const dpr = window.devicePixelRatio || 1;
     canvas.width = window.innerWidth * dpr;
     canvas.height = window.innerHeight * dpr;
@@ -232,7 +234,7 @@
     canvas.style.height = window.innerHeight + 'px';
     ctx.scale(dpr, dpr);
     
-    // Simulation parameters
+    // Simulation parameters - COPIED FROM WORKING HTML
     const centerX = window.innerWidth / 2;
     const centerY = window.innerHeight / 2;
     let animationTime = 0;
@@ -243,18 +245,21 @@
     let zoom = 1;
     let panOffset = { x: 0, y: 0 };
     
-    // Mouse interaction
+    // Mouse interaction - COPIED FROM WORKING HTML
     let isDragging = false;
     let isOrbiting = false;
     let lastMousePos = { x: 0, y: 0 };
     let dragOffset = { x: 0, y: 0 };
     
-    // Current nodes and links (will be set by generateCosmicData)
+    // Current nodes and links
     let nodes = [];
     let links = [];
-    let targetNodeId = hasInjectedData ? INJECTED_DATA.address : 'target-0x742d35b8';
+    // FIXED: Target node ID should match the injected address exactly
+    const targetNodeId = hasInjectedData ? INJECTED_DATA.address : 'target-0x742d35b8';
     
-    // Enhanced layout algorithms to match React component exactly
+    console.log('🎯 Target node ID set to:', targetNodeId);
+    
+    // COPIED FROM SimpleCosmicGraph - Enhanced layout algorithms
     const getGalaxyLayer = (balance, isContract) => {
       if (isContract || balance > 10) return 'core';
       if (balance > 1) return 'inner';
@@ -269,11 +274,11 @@
       return 280;
     };
     
-    // Generate cosmic graph data that matches your React component's graphLayouts.ts EXACTLY
+    // FIXED - Generate cosmic graph data with proper target finding
     const generateCosmicData = () => {
       if (hasInjectedData) {
-        // Use real injected data
         console.log('🌌 Using injected real blockchain data');
+        console.log('Looking for target node:', targetNodeId);
         
         const convertedNodes = INJECTED_DATA.nodes.map(node => ({
           id: node.id,
@@ -290,96 +295,174 @@
           target: link.target
         }));
         
-        // Apply the selected layout to the real data
+        // VERIFY target node exists
+        const foundTarget = convertedNodes.find(n => n.id === targetNodeId);
+        console.log('Target node found in data:', foundTarget ? 'YES' : 'NO', foundTarget?.id);
+        
         return applyLayoutToNodes(convertedNodes, convertedLinks);
         
       } else {
-        // Use original demo data generation
         console.log('🎭 Using demo data generation');
         return generateDemoData();
       }
     };
     
-    // NEW: Apply layout algorithm to existing nodes
+    // COMPLETELY REWRITTEN - Apply layout matching SimpleCosmicGraph exactly
     const applyLayoutToNodes = (nodeData, linkData) => {
-      const targetNode = nodeData.find(n => n.id === targetNodeId) || nodeData[0];
+      console.log('🔧 Applying layout:', layoutMode, 'to', nodeData.length, 'nodes');
+      console.log('🎯 Target node ID:', targetNodeId);
+      
+      // CRITICAL: Find target node in the data
+      const targetNodeData = nodeData.find(n => n.id === targetNodeId);
+      if (!targetNodeData) {
+        console.error('❌ Target node not found in data!', {
+          targetNodeId,
+          availableIds: nodeData.map(n => n.id).slice(0, 5)
+        });
+        // Fallback to first node
+        const fallbackTarget = nodeData[0];
+        console.log('Using fallback target:', fallbackTarget?.id);
+      }
+      
+      const actualTarget = targetNodeData || nodeData[0];
       
       if (layoutMode === 'shell') {
-        // Apply shell layout to real nodes
-        const positionedNodes = nodeData.map(node => {
-          if (node.id === targetNodeId) {
-            return { ...node, x: 0, y: 0, z: 0 };
+        console.log('🌌 Applying Shell layout - matching SimpleCosmicGraph');
+        
+        const positionedNodes = nodeData.map((node, index) => {
+          // TARGET NODE: Always at exact origin (0,0,0) - MATCHING SimpleCosmicGraph
+          if (node.id === actualTarget.id) {
+            console.log('✅ Shell: Positioning target at origin:', node.id);
+            return { 
+              ...node, 
+              x: 0, 
+              y: 0, 
+              z: 0, 
+              galaxyLayer: getGalaxyLayer(parseFloat(node.balance || '0'), node.isContract || false)
+            };
           }
+
+          const balance = parseFloat(node.balance || '0');
+          let galaxyLayer, shellRadius, shellThickness;
           
-          const balance = parseFloat(node.balance);
-          let shellRadius, shellThickness;
-          
+          // EXACT SAME LOGIC as SimpleCosmicGraph
           if (node.isContract || balance > 10) {
+            galaxyLayer = 'core';
             shellRadius = 40;
             shellThickness = 20;
           } else if (balance > 1) {
+            galaxyLayer = 'inner';
             shellRadius = 100;
             shellThickness = 30;
           } else if (balance > 0.1) {
+            galaxyLayer = 'outer';
             shellRadius = 180;
             shellThickness = 40;
           } else {
+            galaxyLayer = 'halo';
             shellRadius = 280;
             shellThickness = 60;
           }
+
+          // EXACT SAME orbital mechanics as SimpleCosmicGraph
+          const numOrbitals = Math.ceil(Math.sqrt(index + 1));
+          const orbitalIndex = index % numOrbitals;
           
-          // 3D spherical distribution
+          const orbitalTilt = (orbitalIndex / numOrbitals) * Math.PI;
+          const orbitalRotation = Math.random() * 2 * Math.PI;
+          
           const theta = Math.random() * 2 * Math.PI;
           const phi = Math.acos(2 * Math.random() - 1);
+          
           const radiusInShell = shellRadius + (Math.random() - 0.5) * shellThickness;
           
-          const x = radiusInShell * Math.sin(phi) * Math.cos(theta);
-          const y = radiusInShell * Math.sin(phi) * Math.sin(theta);
-          const z = radiusInShell * Math.cos(phi);
+          let x = radiusInShell * Math.sin(phi) * Math.cos(theta);
+          let y = radiusInShell * Math.sin(phi) * Math.sin(theta);
+          let z = radiusInShell * Math.cos(phi);
           
-          return { ...node, x, y, z };
+          // Apply orbital transformations - EXACT SAME as SimpleCosmicGraph
+          const cosT = Math.cos(orbitalTilt);
+          const sinT = Math.sin(orbitalTilt);
+          const cosR = Math.cos(orbitalRotation);
+          const sinR = Math.sin(orbitalRotation);
+          
+          const y1 = y * cosT - z * sinT;
+          const z1 = y * sinT + z * cosT;
+          
+          const x2 = x * cosR + z1 * sinR;
+          const z2 = -x * sinR + z1 * cosR;
+          
+          return { ...node, x: x2, y: y1, z: z2, galaxyLayer };
         });
         
         return { nodes: positionedNodes, links: linkData };
         
       } else if (layoutMode === 'force') {
-        // Apply force layout to real nodes
-        let workingNodes = nodeData.map(node => {
-          if (node.id === targetNodeId) {
-            return { ...node, x: 0, y: 0, z: 0 };
+        console.log('🌊 Applying Force layout - matching SimpleCosmicGraph');
+        
+        // EXACT SAME initial placement as SimpleCosmicGraph
+        const positionedNodes = nodeData.map((node, index) => {
+          if (node.id === actualTarget.id) {
+            console.log('✅ Force: Target at origin:', node.id);
+            return { 
+              ...node, 
+              x: 0, y: 0, z: 0, 
+              vx: 0, vy: 0, vz: 0,
+              galaxyLayer: getGalaxyLayer(parseFloat(node.balance || '0'), node.isContract || false)
+            };
           }
+
+          const balance = parseFloat(node.balance || '0');
+          const shellRadius = balance > 10 || node.isContract ? 40 : 
+                              balance > 1 ? 100 : 
+                              balance > 0.1 ? 180 : 280;
           
-          const balance = parseFloat(node.balance);
-          const shellRadius = getShellRadius(balance, node.isContract);
+          // EXACT SAME starting positions as SimpleCosmicGraph
           const angle = Math.random() * 2 * Math.PI;
           const radius = shellRadius * (0.5 + Math.random() * 0.5);
           
-          return {
-            ...node,
+          return { 
+            ...node, 
             x: Math.cos(angle) * radius,
             y: (Math.random() - 0.5) * radius,
-            z: Math.sin(angle) * radius
+            z: Math.sin(angle) * radius,
+            vx: 0, vy: 0, vz: 0,
+            galaxyLayer: getGalaxyLayer(parseFloat(node.balance || '0'), node.isContract || false)
           };
         });
+
+        // EXACT SAME force simulation as SimpleCosmicGraph
+        const iterations = 100;
+        const repulsionStrength = 2000;
+        const centerAttraction = 0.05;
         
-        // Apply force simulation (simplified version)
-        const iterations = 50;
         for (let iter = 0; iter < iterations; iter++) {
-          workingNodes.forEach((node, i) => {
-            if (node.id === targetNodeId) return;
-            
+          positionedNodes.forEach((node, i) => {
+            // CRITICAL: Keep target node absolutely fixed at origin
+            if (node.id === actualTarget.id) {
+              node.x = 0;
+              node.y = 0;
+              node.z = 0;
+              node.vx = 0;
+              node.vy = 0;
+              node.vz = 0;
+              return;
+            }
+
             let fx = 0, fy = 0, fz = 0;
-            const balance = parseFloat(node.balance);
-            const targetRadius = getShellRadius(balance, node.isContract);
+            const balance = parseFloat(node.balance || '0');
+            const targetRadius = balance > 10 || node.isContract ? 40 : 
+                               balance > 1 ? 100 : 
+                               balance > 0.1 ? 180 : 280;
             
-            // Simple repulsion and attraction forces
-            workingNodes.forEach((other, j) => {
+            // EXACT SAME repulsion logic
+            positionedNodes.forEach((other, j) => {
               if (i !== j) {
                 const dx = node.x - other.x;
                 const dy = node.y - other.y;
                 const dz = node.z - other.z;
                 const distance = Math.sqrt(dx*dx + dy*dy + dz*dz) + 1;
-                const force = 1000 / (distance * distance);
+                const force = repulsionStrength / (distance * distance);
                 
                 fx += (dx / distance) * force;
                 fy += (dy / distance) * force;
@@ -387,98 +470,89 @@
               }
             });
             
-            // Apply forces
-            node.x += fx * 0.01;
-            node.y += fy * 0.01;
-            node.z += fz * 0.01;
+            // EXACT SAME center attraction
+            const currentRadius = Math.sqrt(node.x*node.x + node.y*node.y + node.z*node.z);
+            if (currentRadius > 0) {
+              const radiusForce = (targetRadius - currentRadius) * centerAttraction;
+              fx += (node.x / currentRadius) * radiusForce;
+              fy += (node.y / currentRadius) * radiusForce;
+              fz += (node.z / currentRadius) * radiusForce;
+            }
+            
+            // EXACT SAME force application
+            const damping = 0.02;
+            node.vx = (node.vx + fx * damping) * 0.9;
+            node.vy = (node.vy + fy * damping) * 0.9;
+            node.vz = (node.vz + fz * damping) * 0.9;
+            
+            node.x += node.vx;
+            node.y += node.vy;
+            node.z += node.vz;
           });
         }
         
-        return { nodes: workingNodes, links: linkData };
+        return { nodes: positionedNodes, links: linkData };
         
-      } else { // spiral
-        // Apply spiral layout to real nodes
+      } else if (layoutMode === 'spiral') {
+        console.log('🌀 Applying Spiral layout - matching SimpleCosmicGraph');
+        
         const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-        const sortedNodes = [...nodeData].sort((a, b) => {
-          const balanceA = parseFloat(a.balance);
-          const balanceB = parseFloat(b.balance);
+        
+        // EXACT SAME sorting as SimpleCosmicGraph
+        const otherNodes = nodeData.filter(n => n.id !== actualTarget.id);
+        const sortedOtherNodes = otherNodes.sort((a, b) => {
+          const balanceA = parseFloat(a.balance || '0');
+          const balanceB = parseFloat(b.balance || '0');
           const scoreA = a.isContract ? 1000 + balanceA : balanceA;
           const scoreB = b.isContract ? 1000 + balanceB : balanceB;
           return scoreB - scoreA;
         });
         
-        const positionedNodes = sortedNodes.map((node, index) => {
-          if (node.id === targetNodeId) {
-            return { ...node, x: 0, y: 0, z: 0 };
-          }
+        // TARGET NODE: Always at exact origin - MATCHING SimpleCosmicGraph
+        const targetPositioned = {
+          ...actualTarget,
+          x: 0, y: 0, z: 0,
+          galaxyLayer: getGalaxyLayer(parseFloat(actualTarget.balance || '0'), actualTarget.isContract || false)
+        };
+        
+        console.log('✅ Spiral: Target at origin:', targetPositioned.id);
+        
+        // EXACT SAME spiral positioning as SimpleCosmicGraph  
+        const otherPositioned = sortedOtherNodes.map((node, index) => {
+          const balance = parseFloat(node.balance || '0');
+          const baseRadius = balance > 10 || node.isContract ? 40 : 
+                           balance > 1 ? 100 : 
+                           balance > 0.1 ? 180 : 280;
           
-          const balance = parseFloat(node.balance);
-          const baseRadius = getShellRadius(balance, node.isContract);
-          const t = index / sortedNodes.length;
+          // EXACT SAME Fibonacci spiral logic
+          const spiralIndex = index + 1;
+          const t = spiralIndex / nodeData.length;
           const y = (1 - 2 * t) * baseRadius * 0.8;
           const radiusAtY = Math.sqrt(Math.max(0, baseRadius * baseRadius - y * y));
-          const angle = goldenAngle * index;
+          const angle = goldenAngle * spiralIndex;
           
-          const x = Math.cos(angle) * radiusAtY;
-          const z = Math.sin(angle) * radiusAtY;
-          
-          return { ...node, x, y, z };
-        });
-        
-        return { nodes: positionedNodes, links: linkData };
-      }
-    };
-    
-    // ORIGINAL: Demo data generation (unchanged)
-    const generateDemoData = () => {
-      // ...your existing generateCosmicData logic for demo data...
-      const newNodes = [];
-      const newLinks = [];
-      
-      // Create base node data for demo
-      const baseNodeData = [
-        { id: targetNodeId, balance: 127.45, isContract: false },
-        ...Array.from({ length: 199 }, (_, i) => {
-          let balance, isContract;
-          
-          if (i < 19) {
-            balance = 10 + Math.random() * 40;
-            isContract = Math.random() < 0.5;
-          } else if (i < 69) {
-            balance = 1 + Math.random() * 9;
-            isContract = Math.random() < 0.2;
-          } else if (i < 149) {
-            balance = 0.1 + Math.random() * 0.9;
-            isContract = Math.random() < 0.1;
-          } else {
-            balance = Math.random() * 0.1;
-            isContract = Math.random() < 0.05;
-          }
+          // EXACT SAME randomness
+          const randomScale = 1 + (Math.random() - 0.5) * 0.3;
+          const x = Math.cos(angle) * radiusAtY * randomScale;
+          const z = Math.sin(angle) * radiusAtY * randomScale;
           
           return {
-            id: `node-${i + 1}`,
-            balance: balance,
-            isContract: isContract
+            ...node, x, y, z,
+            galaxyLayer: getGalaxyLayer(balance, node.isContract || false)
           };
-        })
-      ];
+        });
+        
+        return { nodes: [targetPositioned, ...otherPositioned], links: linkData };
+      }
       
-      // Apply layout and create links
-      const result = applyLayoutToNodes(baseNodeData, []);
-      
-      // Create hub-and-spoke links for demo
-      result.nodes.forEach(node => {
-        newNodes.push(node);
-        if (node.id !== targetNodeId) {
-          newLinks.push({ source: targetNodeId, target: node.id });
-        }
-      });
-      
-      return { nodes: newNodes, links: newLinks };
+      // Fallback
+      console.log('⚠️ Using fallback shell layout');
+      return { nodes: nodeData, links: linkData };
     };
     
-    // 3D to 2D projection (same as React component)
+    // EXACT SAME 3D projection as SimpleCosmicGraph
     const project3DTo2D = (node, rotX, rotY) => {
+      // CRITICAL: Use node coordinates directly since target is already at origin
       const offsetX = node.x;
       const offsetY = node.y;
       const offsetZ = node.z;
@@ -505,17 +579,17 @@
       };
     };
     
-    // Main animation loop
+    // COPIED FROM WORKING HTML - Main animation loop with target-centered rotation
     const animate = (currentTime) => {
       animationTime = currentTime * 0.001;
       
-      // Auto-orbit rotation - REDUCED BY HALF
+      // Auto-orbit rotation
       if (isAutoOrbiting && !isDragging && !isOrbiting) {
-        orbitRotation.x += 0.0015; // Reduced from 0.003 (half speed)
-        orbitRotation.y += 0.0025; // Reduced from 0.005 (half speed)
+        orbitRotation.x += 0.0015;
+        orbitRotation.y += 0.0025;
       }
       
-      // FIX: Enhanced cosmic background with proper gradient values
+      // Enhanced cosmic background
       const maxDimension = Math.max(window.innerWidth, window.innerHeight);
       const bgGradient = ctx.createRadialGradient(
         centerX, centerY, 0, 
@@ -529,7 +603,10 @@
       ctx.fillStyle = bgGradient;
       ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
       
-      // Project all nodes to 2D and sort by depth (back to front)
+      // Find the target node
+      const targetNode = nodes.find(n => n.id === targetNodeId);
+      
+      // Project all nodes to 2D and sort by depth - MATCHING SimpleCosmicGraph
       const projectedNodes = nodes.map(node => {
         const projected = project3DTo2D(node, orbitRotation.x, orbitRotation.y);
         return {
@@ -541,46 +618,51 @@
         };
       }).sort((a, b) => a.depth - b.depth);
       
-      // Apply transforms
+      // Apply transforms - SIMPLIFIED to match SimpleCosmicGraph
       ctx.save();
       ctx.translate(centerX + panOffset.x, centerY + panOffset.y);
       ctx.scale(zoom, zoom);
       
+      // IMPORTANT: No additional target offset needed here because:
+      // 1. Target node is already at (0,0,0) in 3D space
+      // 2. project3DTo2D will project it to (0,0) in screen space
+      // 3. The translate above centers (0,0) at screen center
+      
       // Draw galaxy dust for very distant nodes
       projectedNodes.forEach(node => {
-        if (node.depth < -300) { // Match React exactly
-          const dustOpacity = Math.max(0.02, Math.min(0.08, (600 + node.depth) / 1000)); // Match React exactly
+        if (node.depth < -300) {
+          const dustOpacity = Math.max(0.02, Math.min(0.08, (600 + node.depth) / 1000));
           ctx.beginPath();
-          ctx.fillStyle = `rgba(100, 150, 200, ${dustOpacity})`;
+          ctx.fillStyle = 'rgba(100, 150, 200, ' + dustOpacity + ')';
           ctx.arc(node.screenX, node.screenY, 0.5 / zoom, 0, 2 * Math.PI);
           ctx.fill();
         }
       });
       
-      // Draw links - EXACTLY like React component
+      // Draw links with particles
       links.forEach((link, linkIndex) => {
         const sourceNode = projectedNodes.find(n => n.id === link.source);
         const targetNodeFound = projectedNodes.find(n => n.id === link.target);
         
         if (sourceNode && targetNodeFound) {
-          if (sourceNode.depth > -500 && targetNodeFound.depth > -500) { // Match React exactly
+          if (sourceNode.depth > -500 && targetNodeFound.depth > -500) {
             ctx.beginPath();
             
             const avgDepth = (sourceNode.depth + targetNodeFound.depth) / 2;
-            let baseOpacity = Math.max(0.1, Math.min(0.5, (500 + avgDepth) / 1000)); // Match React exactly
+            let baseOpacity = Math.max(0.1, Math.min(0.5, (500 + avgDepth) / 1000));
             
             if (sourceNode.galaxyLayer === 'core' || targetNodeFound.galaxyLayer === 'core') {
-              baseOpacity *= 1.5; // Match React exactly
+              baseOpacity *= 1.5;
             }
             
-            ctx.strokeStyle = `rgba(97, 218, 251, ${baseOpacity})`;
-            ctx.lineWidth = 1 / zoom; // Match React exactly
+            ctx.strokeStyle = 'rgba(97, 218, 251, ' + baseOpacity + ')';
+            ctx.lineWidth = 1 / zoom;
             
             ctx.moveTo(sourceNode.screenX, sourceNode.screenY);
             ctx.lineTo(targetNodeFound.screenX, targetNodeFound.screenY);
             ctx.stroke();
 
-            // Particle system - EXACTLY like React
+            // Particle system
             if (baseOpacity > 0.25) {
               let particlePos;
               
@@ -596,7 +678,7 @@
               const py = sourceNode.screenY + (targetNodeFound.screenY - sourceNode.screenY) * particlePos;
               
               if (particleMode === 'laser') {
-                const numParticles = 2; // Match React exactly
+                const numParticles = 2;
                 for (let i = 0; i < numParticles; i++) {
                   const trailOffset = i * 0.15;
                   const trailPos = (particlePos - trailOffset + 1) % 1;
@@ -607,8 +689,8 @@
                     
                     ctx.beginPath();
                     ctx.fillStyle = sourceNode.galaxyLayer === 'core' ? 
-                      `rgba(255, 100, 100, ${trailOpacity})` : 
-                      `rgba(100, 255, 255, ${trailOpacity})`;
+                      'rgba(255, 100, 100, ' + trailOpacity + ')' : 
+                      'rgba(100, 255, 255, ' + trailOpacity + ')';
                     ctx.arc(trailPx, trailPy, (2 - i * 0.5) / zoom, 0, 2 * Math.PI);
                     ctx.fill();
                   }
@@ -616,9 +698,9 @@
               } else {
                 ctx.beginPath();
                 ctx.fillStyle = sourceNode.galaxyLayer === 'core' ? 
-                  `rgba(255, 215, 100, ${baseOpacity})` : 
-                  `rgba(97, 218, 251, ${baseOpacity})`;
-                ctx.arc(px, py, 1.5 / zoom, 0, 2 * Math.PI); // Match React exactly
+                  'rgba(255, 215, 100, ' + baseOpacity + ')' : 
+                  'rgba(97, 218, 251, ' + baseOpacity + ')';
+                ctx.arc(px, py, 1.5 / zoom, 0, 2 * Math.PI);
                 ctx.fill();
               }
             }
@@ -626,21 +708,21 @@
         }
       });
       
-      // Draw nodes with EXACT SimpleCosmicGraph styling
+      // Draw nodes with full 3D effects
       projectedNodes.forEach(node => {
-        if (node.depth > -500) { // Changed from -600 to -500 to match React
+        if (node.depth > -500) {
           let color, baseSize, glowIntensity;
           
           switch (node.galaxyLayer) {
             case 'core':
               color = node.isContract ? '#ff6b6b' : '#ffd93d';
               baseSize = 8;
-              glowIntensity = 1.5; // Match .tsx
+              glowIntensity = 1.5;
               break;
             case 'inner':
               color = '#74b9ff';
               baseSize = 6;
-              glowIntensity = 1.2; // Match .tsx
+              glowIntensity = 1.2;
               break;
             case 'outer':
               color = '#ffffff';
@@ -654,52 +736,83 @@
               break;
           }
           
+          // Make target node extra prominent and centered
+          if (node.id === targetNodeId) {
+            baseSize = 12; // Larger target node
+            glowIntensity = 2.0; // Extra glow
+            color = '#ff4444'; // Special target color
+            
+            // DEBUG: Log target node position to verify centering
+            if (Math.floor(animationTime) % 2 === 0 && Math.floor(animationTime * 10) % 10 === 0) {
+              console.log('Target node screen position:', {
+                screenX: node.screenX.toFixed(1),
+                screenY: node.screenY.toFixed(1),
+                shouldBe: '(0, 0)',
+                centerX: centerX,
+                centerY: centerY
+              });
+            }
+          }
+          
           const size = (baseSize * node.perspective) / zoom;
-          const depthOpacity = Math.max(0.2, Math.min(1, (500 + node.depth) / 700)); // Match React exactly
+          const depthOpacity = Math.max(0.2, Math.min(1, (500 + node.depth) / 700));
 
-          // Simple pulse - EXACTLY like React component
+          // Pulsing effect
           const rotationPhase = animationTime * 0.1 + (node.x + node.z) * 0.001;
           const pulse = Math.sin(rotationPhase) * 0.2 + 1;
 
-          // Single glow layer - EXACTLY like React component  
-          const glowSize = Math.max(1, size * 4 * glowIntensity); // Ensure minimum size
-          if (!isFinite(glowSize)) {
-            console.warn('Invalid glowSize:', glowSize, 'for node:', node.id);
-            return; // Skip this node
+          // Glow effect
+          const glowSize = Math.max(1, size * 4 * glowIntensity);
+          if (isFinite(glowSize)) {
+            const glowGradient = ctx.createRadialGradient(
+              node.screenX, node.screenY, 0, 
+              node.screenX, node.screenY, glowSize
+            );
+
+            const glowOpacity = depthOpacity * 0.8;
+            const glowHex = Math.floor(glowOpacity * 255).toString(16).padStart(2, '0');
+            glowGradient.addColorStop(0, color + glowHex);
+            glowGradient.addColorStop(0.5, color + Math.floor(glowOpacity * 100).toString(16).padStart(2, '0'));
+            glowGradient.addColorStop(1, 'transparent');
+            
+            ctx.fillStyle = glowGradient;
+            ctx.beginPath();
+            ctx.arc(node.screenX, node.screenY, glowSize * pulse, 0, 2 * Math.PI);
+            ctx.fill();
           }
-          
-          const glowGradient = ctx.createRadialGradient(
-            node.screenX, node.screenY, 0, 
-            node.screenX, node.screenY, glowSize
-          );
 
-          const glowOpacity = depthOpacity * 0.8; // Exact match
-          glowGradient.addColorStop(0, `${color}${Math.floor(glowOpacity * 255).toString(16).padStart(2, '0')}`);
-          glowGradient.addColorStop(0.5, `${color}${Math.floor(glowOpacity * 100).toString(16).padStart(2, '0')}`);
-          glowGradient.addColorStop(1, 'transparent');
-          
-          ctx.fillStyle = glowGradient;
-          ctx.beginPath();
-          ctx.arc(node.screenX, node.screenY, glowSize * pulse, 0, 2 * Math.PI);
-          ctx.fill();
-
-          // Simple solid node core - EXACTLY like React component
-          ctx.fillStyle = `${color}${Math.floor(depthOpacity * 255).toString(16).padStart(2, '0')}`;
+          // Node core
+          const nodeHex = Math.floor(depthOpacity * 255).toString(16).padStart(2, '0');
+          ctx.fillStyle = color + nodeHex;
           ctx.beginPath();
           ctx.arc(node.screenX, node.screenY, size, 0, 2 * Math.PI);
           ctx.fill();
+          
+          // Target node label - always show for target
+          if (node.id === targetNodeId) {
+            ctx.fillStyle = 'white';
+            ctx.font = (16 / zoom) + 'px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('TARGET', node.screenX, node.screenY + size + 20 / zoom);
+            
+            // Also show the address
+            ctx.font = (12 / zoom) + 'px Arial';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            const shortAddr = node.id.slice(0, 6) + '...' + node.id.slice(-4);
+            ctx.fillText(shortAddr, node.screenX, node.screenY + size + 35 / zoom);
+          }
         }
       });
       
       ctx.restore();
       
       // Update zoom indicator
-      document.getElementById('zoomIndicator').textContent = `Zoom: ${(zoom * 100).toFixed(0)}%`;
+      document.getElementById('zoomIndicator').textContent = 'Zoom: ' + (zoom * 100).toFixed(0) + '%';
       
       requestAnimationFrame(animate);
     };
     
-    // Mouse interaction handlers (same as before)
+    // COPIED FROM WORKING HTML - Mouse interaction handlers
     canvas.addEventListener('mousedown', (e) => {
       e.preventDefault();
       lastMousePos = { x: e.clientX, y: e.clientY };
@@ -746,52 +859,49 @@
       zoom = Math.max(0.1, Math.min(5, zoom * delta));
     });
     
-    // Enhanced control button handlers
+    // Control functions
     const generateLayout = () => {
       const result = generateCosmicData();
       nodes = result.nodes;
       links = result.links;
-      console.log(`Generated ${layoutMode} layout with ${nodes.length} nodes and ${links.length} links`);
+      console.log('Generated ' + layoutMode + ' layout with ' + nodes.length + ' nodes and ' + links.length + ' links');
     };
     
-    // Update layout buttons and metadata display
     const updateLayoutButtons = () => {
       document.querySelectorAll('.btn-secondary').forEach(btn => btn.classList.remove('active'));
-      document.getElementById(layoutMode + 'Btn').classList.add('active');
+      const activeBtn = document.getElementById(layoutMode + 'Btn');
+      if (activeBtn) activeBtn.classList.add('active');
       
-      // Update layout display in metadata
       const layoutNames = { shell: 'Shell', force: 'Force', spiral: 'Spiral' };
-      document.getElementById('currentLayout').textContent = layoutNames[layoutMode];
+      const layoutElement = document.getElementById('currentLayout');
+      if (layoutElement) layoutElement.textContent = layoutNames[layoutMode];
     };
     
     const updateParticleButtons = () => {
       document.querySelectorAll('.btn-primary').forEach(btn => btn.classList.remove('active'));
-      document.getElementById(particleMode + 'Btn').classList.add('active');
+      const activeBtn = document.getElementById(particleMode + 'Btn');
+      if (activeBtn) activeBtn.classList.add('active');
     };
     
-    // Layout mode handlers
+    // Event listeners
     document.getElementById('shellBtn').addEventListener('click', () => {
       layoutMode = 'shell';
       generateLayout();
       updateLayoutButtons();
-      console.log('Switched to Shell layout');
     });
     
     document.getElementById('forceBtn').addEventListener('click', () => {
       layoutMode = 'force';
       generateLayout();
       updateLayoutButtons();
-      console.log('Switched to Force layout');
     });
     
     document.getElementById('spiralBtn').addEventListener('click', () => {
       layoutMode = 'spiral';
       generateLayout();
       updateLayoutButtons();
-      console.log('Switched to Spiral layout');
     });
     
-    // Particle mode handlers
     document.getElementById('pulseBtn').addEventListener('click', () => {
       particleMode = 'pulse';
       updateParticleButtons();
@@ -823,23 +933,19 @@
     });
     
     // Set timestamp
-    document.getElementById('timestamp').textContent = new Date().toLocaleString();
+    const timestampElement = document.getElementById('timestamp');
+    if (timestampElement) {
+      timestampElement.textContent = hasInjectedData ? 
+        INJECTED_DATA.timestamp : 
+        new Date().toLocaleString();
+    }
     
     // Initialize and start
+    console.log('🚀 Starting cosmic visualization...');
     generateLayout();
     requestAnimationFrame(animate);
     
-    console.log('Cosmic NFT Interactive initialized with', hasInjectedData ? 'real blockchain data' : 'demo data');
+    console.log('✅ Cosmic NFT Interactive initialized with', hasInjectedData ? 'real blockchain data' : 'demo data');
   </script>
 </body>
-</html>
-
-<!-- //to do figure out how to get this to take parameters unique to an address, 
- similar to cosmic graph, upload it, and mint it -->
-
-<!-- 
-  Proper List:
-  -Update metadategeneration to incroporate animation URL and image - check browser histroy for metadata format example
-  - new IPFS upload function
-  - Figure out minting
-  - Figure out html for uniqiue address / parameters
+</html>`;

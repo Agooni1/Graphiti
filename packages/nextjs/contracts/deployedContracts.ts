@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourCollectible: {
-      address: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+      address: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
       abi: [
         {
           inputs: [],
@@ -328,31 +328,6 @@ const deployedContracts = {
           anonymous: false,
           inputs: [
             {
-              indexed: true,
-              internalType: "uint256",
-              name: "tokenId",
-              type: "uint256",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "targetAddress",
-              type: "address",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "requester",
-              type: "address",
-            },
-          ],
-          name: "CosmicGraphRequested",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
               indexed: false,
               internalType: "uint256",
               name: "_tokenId",
@@ -619,6 +594,30 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_targetAddress",
+              type: "address",
+            },
+            {
+              internalType: "string",
+              name: "_ipfsHash",
+              type: "string",
+            },
+          ],
+          name: "masterMint",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
           type: "function",
         },
         {

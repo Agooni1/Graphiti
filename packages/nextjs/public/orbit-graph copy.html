@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cosmic Graph NFT - {{ADDRESS_SHORT}}</title>
+  <title>Cosmic Graph NFT - Interactive</title>
   <style>
     html, body {
       margin: 0;
@@ -128,7 +128,7 @@
   
   <!-- Info Display -->
   <div class="info">
-    🌌 {{ADDRESS_SHORT}} Universe
+    🌌 Cosmic Graph NFT - Interactive
   </div>
   
   <!-- Controls -->
@@ -153,12 +153,9 @@
   
   <!-- NFT Metadata -->
   <div class="nft-metadata">
-    <div><strong>Address:</strong> {{TARGET_ADDRESS_SHORT}}</div>
-    <div><strong>Nodes:</strong> {{NODE_COUNT}}</div>
-    <div><strong>Links:</strong> {{LINK_COUNT}}</div>
-    <div><strong>Balance:</strong> {{TARGET_BALANCE}} ETH</div>
+    <div><strong>Nodes:</strong> 200</div>
     <div><strong>Layout:</strong> <span id="currentLayout">Shell</span></div>
-    <div><strong>Generated:</strong> <span id="timestamp">{{TIMESTAMP}}</span></div>
+    <div><strong>Generated:</strong> <span id="timestamp"></span></div>
   </div>
   
   <!-- Zoom indicator -->
@@ -177,49 +174,6 @@
   </div>
 
   <script>
-    // === SIMPLIFIED DATA INJECTION ===
-    let INJECTED_DATA;
-    
-    try {
-      // Use string checks to avoid syntax errors when placeholders aren't replaced
-      const addressValue = "{{TARGET_ADDRESS}}";
-      const balanceValue = "{{TARGET_BALANCE_RAW}}";
-      const nodeDataValue = "{{NODE_DATA_JSON}}";
-      const linkDataValue = "{{LINK_DATA_JSON}}";
-      const timestampValue = "{{TIMESTAMP}}";
-      
-      INJECTED_DATA = {
-        address: addressValue.includes('{{') ? null : addressValue,
-        balance: balanceValue.includes('{{') ? 0 : parseFloat(balanceValue),
-        nodes: nodeDataValue.includes('{{') ? [] : JSON.parse(nodeDataValue),
-        links: linkDataValue.includes('{{') ? [] : JSON.parse(linkDataValue),
-        timestamp: timestampValue.includes('{{') ? new Date().toISOString() : timestampValue
-      };
-    } catch (error) {
-      console.warn('Error parsing injected data, using defaults:', error);
-      INJECTED_DATA = {
-        address: null,
-        balance: 0,
-        nodes: [],
-        links: [],
-        timestamp: new Date().toISOString()
-      };
-    }
-    
-    // Check if data was actually injected (placeholders were replaced)
-    const hasInjectedData = INJECTED_DATA.address && 
-                           INJECTED_DATA.nodes && 
-                           Array.isArray(INJECTED_DATA.nodes) &&
-                           INJECTED_DATA.nodes.length > 0;
-    
-    console.log('Data injection status:', hasInjectedData ? 'USING REAL DATA' : 'USING DEMO DATA');
-    
-    if (hasInjectedData) {
-      console.log(`Using real data for ${INJECTED_DATA.address}: ${INJECTED_DATA.nodes.length} nodes, ${INJECTED_DATA.links.length} links`);
-    } else {
-      console.log('Falling back to demo data');
-    }
-
     // Initialize canvas and context
     const canvas = document.getElementById('cosmicCanvas');
     const ctx = canvas.getContext('2d');
@@ -249,10 +203,10 @@
     let lastMousePos = { x: 0, y: 0 };
     let dragOffset = { x: 0, y: 0 };
     
-    // Current nodes and links (will be set by generateCosmicData)
+    // Current nodes and links (will be regenerated when layout changes)
     let nodes = [];
     let links = [];
-    let targetNodeId = hasInjectedData ? INJECTED_DATA.address : 'target-0x742d35b8';
+    const targetNodeId = 'target-0x742d35b8';
     
     // Enhanced layout algorithms to match React component exactly
     const getGalaxyLayer = (balance, isContract) => {
@@ -271,188 +225,34 @@
     
     // Generate cosmic graph data that matches your React component's graphLayouts.ts EXACTLY
     const generateCosmicData = () => {
-      if (hasInjectedData) {
-        // Use real injected data
-        console.log('🌌 Using injected real blockchain data');
-        
-        const convertedNodes = INJECTED_DATA.nodes.map(node => ({
-          id: node.id,
-          balance: parseFloat(node.balance) || 0,
-          isContract: node.isContract || false,
-          x: node.x || 0,
-          y: node.y || 0,
-          z: node.z || 0,
-          galaxyLayer: node.galaxyLayer || getGalaxyLayer(parseFloat(node.balance) || 0, node.isContract || false)
-        }));
-        
-        const convertedLinks = INJECTED_DATA.links.map(link => ({
-          source: link.source,
-          target: link.target
-        }));
-        
-        // Apply the selected layout to the real data
-        return applyLayoutToNodes(convertedNodes, convertedLinks);
-        
-      } else {
-        // Use original demo data generation
-        console.log('🎭 Using demo data generation');
-        return generateDemoData();
-      }
-    };
-    
-    // NEW: Apply layout algorithm to existing nodes
-    const applyLayoutToNodes = (nodeData, linkData) => {
-      const targetNode = nodeData.find(n => n.id === targetNodeId) || nodeData[0];
-      
-      if (layoutMode === 'shell') {
-        // Apply shell layout to real nodes
-        const positionedNodes = nodeData.map(node => {
-          if (node.id === targetNodeId) {
-            return { ...node, x: 0, y: 0, z: 0 };
-          }
-          
-          const balance = parseFloat(node.balance);
-          let shellRadius, shellThickness;
-          
-          if (node.isContract || balance > 10) {
-            shellRadius = 40;
-            shellThickness = 20;
-          } else if (balance > 1) {
-            shellRadius = 100;
-            shellThickness = 30;
-          } else if (balance > 0.1) {
-            shellRadius = 180;
-            shellThickness = 40;
-          } else {
-            shellRadius = 280;
-            shellThickness = 60;
-          }
-          
-          // 3D spherical distribution
-          const theta = Math.random() * 2 * Math.PI;
-          const phi = Math.acos(2 * Math.random() - 1);
-          const radiusInShell = shellRadius + (Math.random() - 0.5) * shellThickness;
-          
-          const x = radiusInShell * Math.sin(phi) * Math.cos(theta);
-          const y = radiusInShell * Math.sin(phi) * Math.sin(theta);
-          const z = radiusInShell * Math.cos(phi);
-          
-          return { ...node, x, y, z };
-        });
-        
-        return { nodes: positionedNodes, links: linkData };
-        
-      } else if (layoutMode === 'force') {
-        // Apply force layout to real nodes
-        let workingNodes = nodeData.map(node => {
-          if (node.id === targetNodeId) {
-            return { ...node, x: 0, y: 0, z: 0 };
-          }
-          
-          const balance = parseFloat(node.balance);
-          const shellRadius = getShellRadius(balance, node.isContract);
-          const angle = Math.random() * 2 * Math.PI;
-          const radius = shellRadius * (0.5 + Math.random() * 0.5);
-          
-          return {
-            ...node,
-            x: Math.cos(angle) * radius,
-            y: (Math.random() - 0.5) * radius,
-            z: Math.sin(angle) * radius
-          };
-        });
-        
-        // Apply force simulation (simplified version)
-        const iterations = 50;
-        for (let iter = 0; iter < iterations; iter++) {
-          workingNodes.forEach((node, i) => {
-            if (node.id === targetNodeId) return;
-            
-            let fx = 0, fy = 0, fz = 0;
-            const balance = parseFloat(node.balance);
-            const targetRadius = getShellRadius(balance, node.isContract);
-            
-            // Simple repulsion and attraction forces
-            workingNodes.forEach((other, j) => {
-              if (i !== j) {
-                const dx = node.x - other.x;
-                const dy = node.y - other.y;
-                const dz = node.z - other.z;
-                const distance = Math.sqrt(dx*dx + dy*dy + dz*dz) + 1;
-                const force = 1000 / (distance * distance);
-                
-                fx += (dx / distance) * force;
-                fy += (dy / distance) * force;
-                fz += (dz / distance) * force;
-              }
-            });
-            
-            // Apply forces
-            node.x += fx * 0.01;
-            node.y += fy * 0.01;
-            node.z += fz * 0.01;
-          });
-        }
-        
-        return { nodes: workingNodes, links: linkData };
-        
-      } else { // spiral
-        // Apply spiral layout to real nodes
-        const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-        const sortedNodes = [...nodeData].sort((a, b) => {
-          const balanceA = parseFloat(a.balance);
-          const balanceB = parseFloat(b.balance);
-          const scoreA = a.isContract ? 1000 + balanceA : balanceA;
-          const scoreB = b.isContract ? 1000 + balanceB : balanceB;
-          return scoreB - scoreA;
-        });
-        
-        const positionedNodes = sortedNodes.map((node, index) => {
-          if (node.id === targetNodeId) {
-            return { ...node, x: 0, y: 0, z: 0 };
-          }
-          
-          const balance = parseFloat(node.balance);
-          const baseRadius = getShellRadius(balance, node.isContract);
-          const t = index / sortedNodes.length;
-          const y = (1 - 2 * t) * baseRadius * 0.8;
-          const radiusAtY = Math.sqrt(Math.max(0, baseRadius * baseRadius - y * y));
-          const angle = goldenAngle * index;
-          
-          const x = Math.cos(angle) * radiusAtY;
-          const z = Math.sin(angle) * radiusAtY;
-          
-          return { ...node, x, y, z };
-        });
-        
-        return { nodes: positionedNodes, links: linkData };
-      }
-    };
-    
-    // ORIGINAL: Demo data generation (unchanged)
-    const generateDemoData = () => {
-      // ...your existing generateCosmicData logic for demo data...
       const newNodes = [];
       const newLinks = [];
       
-      // Create base node data for demo
+      // Create base node data for NFT generation
       const baseNodeData = [
+        // Center node
         { id: targetNodeId, balance: 127.45, isContract: false },
+        
+        // Generate other nodes with realistic distribution
         ...Array.from({ length: 199 }, (_, i) => {
-          let balance, isContract;
+          let balance, isContract, layer;
           
-          if (i < 19) {
+          if (i < 19) { // Core layer - 20 nodes total including some contracts
             balance = 10 + Math.random() * 40;
             isContract = Math.random() < 0.5;
-          } else if (i < 69) {
+            layer = 'core';
+          } else if (i < 69) { // Inner layer - 50 nodes
             balance = 1 + Math.random() * 9;
             isContract = Math.random() < 0.2;
-          } else if (i < 149) {
+            layer = 'inner';
+          } else if (i < 149) { // Outer layer - 80 nodes
             balance = 0.1 + Math.random() * 0.9;
             isContract = Math.random() < 0.1;
-          } else {
+            layer = 'outer';
+          } else { // Halo layer - 50 nodes
             balance = Math.random() * 0.1;
             isContract = Math.random() < 0.05;
+            layer = 'halo';
           }
           
           return {
@@ -463,11 +263,211 @@
         })
       ];
       
-      // Apply layout and create links
-      const result = applyLayoutToNodes(baseNodeData, []);
+      // Apply layout algorithm based on mode
+      let positionedNodes;
       
-      // Create hub-and-spoke links for demo
-      result.nodes.forEach(node => {
+      if (layoutMode === 'shell') {
+        // SHELL LAYOUT - matches createShellLayout exactly
+        positionedNodes = baseNodeData.map((node, index) => {
+          // Target node at center - matches graphLayouts exactly
+          if (node.id === targetNodeId) {
+            return {
+              ...node,
+              x: 0, y: 0, z: 0,
+              galaxyLayer: getGalaxyLayer(node.balance, node.isContract)
+            };
+          }
+
+          const balance = parseFloat(node.balance);
+          let galaxyLayer, shellRadius, shellThickness;
+          
+          // Layer assignment - matches graphLayouts exactly
+          if (node.isContract || balance > 10) {
+            galaxyLayer = 'core';
+            shellRadius = 40;
+            shellThickness = 20;
+          } else if (balance > 1) {
+            galaxyLayer = 'inner';
+            shellRadius = 100;
+            shellThickness = 30;
+          } else if (balance > 0.1) {
+            galaxyLayer = 'outer';
+            shellRadius = 180;
+            shellThickness = 40;
+          } else {
+            galaxyLayer = 'halo';
+            shellRadius = 280;
+            shellThickness = 60;
+          }
+
+          // Orbital calculations - matches graphLayouts exactly
+          const numOrbitals = Math.ceil(Math.sqrt(index + 1));
+          const orbitalIndex = index % numOrbitals;
+          
+          const orbitalTilt = (orbitalIndex / numOrbitals) * Math.PI;
+          const orbitalRotation = Math.random() * 2 * Math.PI;
+          
+          // 3D spherical distribution - matches graphLayouts exactly
+          const theta = Math.random() * 2 * Math.PI;
+          const phi = Math.acos(2 * Math.random() - 1);
+          
+          const radiusInShell = shellRadius + (Math.random() - 0.5) * shellThickness;
+          
+          let x = radiusInShell * Math.sin(phi) * Math.cos(theta);
+          let y = radiusInShell * Math.sin(phi) * Math.sin(theta);
+          let z = radiusInShell * Math.cos(phi);
+          
+          // Apply orbital transformations - matches graphLayouts exactly
+          const cosT = Math.cos(orbitalTilt);
+          const sinT = Math.sin(orbitalTilt);
+          const cosR = Math.cos(orbitalRotation);
+          const sinR = Math.sin(orbitalRotation);
+          
+          const y1 = y * cosT - z * sinT;
+          const z1 = y * sinT + z * cosT;
+          
+          const x2 = x * cosR + z1 * sinR;
+          const z2 = -x * sinR + z1 * cosR;
+          
+          return {
+            ...node,
+            x: x2, y: y1, z: z2,
+            galaxyLayer: galaxyLayer
+          };
+        });
+        
+      } else if (layoutMode === 'force') {
+        // FORCE LAYOUT - matches createForceLayout exactly
+        const targetNodeData = baseNodeData.find(node => node.id === targetNodeId) || baseNodeData[0];
+        
+        // Initial random placement - matches graphLayouts exactly
+        let workingNodes = baseNodeData.map((node, index) => {
+          // Target node starts at center - matches graphLayouts exactly
+          if (node.id === targetNodeData.id) {
+            return {
+              ...node,
+              x: 0, y: 0, z: 0,
+              galaxyLayer: getGalaxyLayer(parseFloat(node.balance), node.isContract)
+            };
+          }
+
+          const balance = parseFloat(node.balance);
+          const shellRadius = getShellRadius(balance, node.isContract);
+          
+          // Start with random positions around center - matches graphLayouts exactly
+          const angle = Math.random() * 2 * Math.PI;
+          const radius = shellRadius * (0.5 + Math.random() * 0.5);
+          
+          return {
+            ...node,
+            x: Math.cos(angle) * radius,
+            y: (Math.random() - 0.5) * radius,
+            z: Math.sin(angle) * radius,
+            galaxyLayer: getGalaxyLayer(balance, node.isContract)
+          };
+        });
+
+        // Apply force simulation - matches graphLayouts exactly
+        const iterations = 100; // Exact match
+        const repulsionStrength = 2000; // Exact match
+        const centerAttraction = 0.05; // Exact match
+        
+        for (let iter = 0; iter < iterations; iter++) {
+          workingNodes.forEach((node, i) => {
+            // Keep target node fixed at center - matches graphLayouts exactly
+            if (node.id === targetNodeData.id) {
+              node.x = 0; node.y = 0; node.z = 0;
+              return;
+            }
+
+            let fx = 0, fy = 0, fz = 0;
+            const balance = parseFloat(node.balance);
+            const targetRadius = getShellRadius(balance, node.isContract);
+            
+            // Repulsion from other nodes - matches graphLayouts exactly
+            workingNodes.forEach((other, j) => {
+              if (i !== j) {
+                const dx = node.x - other.x;
+                const dy = node.y - other.y;
+                const dz = node.z - other.z;
+                const distance = Math.sqrt(dx*dx + dy*dy + dz*dz) + 1;
+                const force = repulsionStrength / (distance * distance);
+                
+                fx += (dx / distance) * force;
+                fy += (dy / distance) * force;
+                fz += (dz / distance) * force;
+              }
+            });
+            
+            // Attraction to target shell radius - matches graphLayouts exactly
+            const currentRadius = Math.sqrt(node.x*node.x + node.y*node.y + node.z*node.z);
+            if (currentRadius > 0) {
+              const radiusForce = (targetRadius - currentRadius) * centerAttraction;
+              fx += (node.x / currentRadius) * radiusForce;
+              fy += (node.y / currentRadius) * radiusForce;
+              fz += (node.z / currentRadius) * radiusForce;
+            }
+            
+            // Apply forces with damping - matches graphLayouts exactly
+            const damping = 0.02;
+            node.x += fx * damping;
+            node.y += fy * damping;
+            node.z += fz * damping;
+          });
+        }
+        
+        positionedNodes = workingNodes;
+        
+      } else { // fibonacci/spiral - matches createFibonacciLayout exactly
+        const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // Exact match
+        const targetNodeData = baseNodeData.find(node => node.id === targetNodeId) || baseNodeData[0];
+        
+        // Put target node first, then sort others by importance - matches graphLayouts exactly
+        const otherNodes = baseNodeData.filter(node => node.id !== targetNodeData.id);
+        const sortedOtherNodes = otherNodes.sort((a, b) => {
+          const balanceA = parseFloat(a.balance);
+          const balanceB = parseFloat(b.balance);
+          const scoreA = a.isContract ? 1000 + balanceA : balanceA; // Exact match
+          const scoreB = b.isContract ? 1000 + balanceB : balanceB; // Exact match
+          return scoreB - scoreA;
+        });
+        
+        // Target node at center - matches graphLayouts exactly
+        const targetPositionedNode = {
+          ...targetNodeData,
+          x: 0, y: 0, z: 0,
+          galaxyLayer: getGalaxyLayer(parseFloat(targetNodeData.balance), targetNodeData.isContract)
+        };
+        
+        // Other nodes in spiral around target - matches graphLayouts exactly
+        const otherPositionedNodes = sortedOtherNodes.map((node, index) => {
+          const balance = parseFloat(node.balance);
+          const baseRadius = getShellRadius(balance, node.isContract);
+          
+          // Fibonacci spiral distribution - matches graphLayouts exactly
+          const spiralIndex = index + 1; // Starting from index 1 since target is at 0
+          const t = spiralIndex / baseNodeData.length; // Include target in total count
+          const y = (1 - 2 * t) * baseRadius * 0.8; // Exact formula match
+          const radiusAtY = Math.sqrt(Math.max(0, baseRadius * baseRadius - y * y)); // Exact match
+          const angle = goldenAngle * spiralIndex; // Exact match
+          
+          // Add controlled randomness - matches graphLayouts exactly
+          const randomScale = 1 + (Math.random() - 0.5) * 0.3; // Exact match
+          const x = Math.cos(angle) * radiusAtY * randomScale;
+          const z = Math.sin(angle) * radiusAtY * randomScale;
+          
+          return {
+            ...node,
+            x: x, y: y, z: z,
+            galaxyLayer: getGalaxyLayer(balance, node.isContract)
+          };
+        });
+        
+        positionedNodes = [targetPositionedNode, ...otherPositionedNodes];
+      }
+      
+      // Create links - all pointing to center (hub and spoke)
+      positionedNodes.forEach(node => {
         newNodes.push(node);
         if (node.id !== targetNodeId) {
           newLinks.push({ source: targetNodeId, target: node.id });
@@ -515,11 +515,10 @@
         orbitRotation.y += 0.0025; // Reduced from 0.005 (half speed)
       }
       
-      // FIX: Enhanced cosmic background with proper gradient values
-      const maxDimension = Math.max(window.innerWidth, window.innerHeight);
+      // Clear canvas with enhanced cosmic background
       const bgGradient = ctx.createRadialGradient(
         centerX, centerY, 0, 
-        centerX, centerY, maxDimension / 2
+        centerX, centerY, Math.max(window.innerWidth, window.innerHeight) / 2
       );
       bgGradient.addColorStop(0, '#2a1810');
       bgGradient.addColorStop(0.3, '#1a1a2e');
@@ -662,12 +661,7 @@
           const pulse = Math.sin(rotationPhase) * 0.2 + 1;
 
           // Single glow layer - EXACTLY like React component  
-          const glowSize = Math.max(1, size * 4 * glowIntensity); // Ensure minimum size
-          if (!isFinite(glowSize)) {
-            console.warn('Invalid glowSize:', glowSize, 'for node:', node.id);
-            return; // Skip this node
-          }
-          
+          const glowSize = size * 4 * glowIntensity;
           const glowGradient = ctx.createRadialGradient(
             node.screenX, node.screenY, 0, 
             node.screenX, node.screenY, glowSize
@@ -829,7 +823,7 @@
     generateLayout();
     requestAnimationFrame(animate);
     
-    console.log('Cosmic NFT Interactive initialized with', hasInjectedData ? 'real blockchain data' : 'demo data');
+    console.log('Cosmic NFT Interactive initialized - hub and spoke pattern');
   </script>
 </body>
 </html>
