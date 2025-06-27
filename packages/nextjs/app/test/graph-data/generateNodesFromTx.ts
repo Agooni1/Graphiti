@@ -3,8 +3,7 @@
 // into a format usable by your graph component: an array of GraphNodes and GraphLinks.
 
 import { GraphNode, GraphLink } from "./types";
-import { getETHBalanceCached, isContractCached, asyncPool } from "./utils"; // Import your balance fetcher
-// import { asyncPool } from "./asyncPool"; // Import asyncPool
+import { getETHBalanceCached, isContractCached, asyncPool } from "./utils";
 
 export interface Transfer {
   from: string;
@@ -14,30 +13,50 @@ export interface Transfer {
 }
 
 export async function generateNodesFromTx(
-  transfers: Transfer[]
+  transfers: Transfer[],
+  onProgress?: (loaded: number, total: number) => void
 ): Promise<{ nodes: GraphNode[]; links: GraphLink[] }> {
   const nodesMap = new Map<string, GraphNode>();
   const links: GraphLink[] = [];
   const linkCounts: Record<string, number> = {};
   const linkIndices: Record<string, number> = {};
 
+  // 1. Collect all unique addresses
+  const addresses = Array.from(
+    new Set(transfers.flatMap(tx => [tx.from, tx.to]))
+  );
+  const total = addresses.length;
+  let loaded = 0;
+
+  // 2. Batch fetch balances and contract statuses with limited concurrency
+  const concurrency = 1; // Adjust as needed for your API limits
+
+  const addressData = await asyncPool(
+    concurrency,
+    addresses,
+    async (address) => {
+      const [balance, isContract] = await Promise.all([
+        getETHBalanceCached(address),
+        isContractCached(address),
+      ]);
+      loaded++;
+      if (onProgress) onProgress(loaded, total);
+      return { address, balance, isContract };
+    }
+  );
+
+  // 3. Build nodesMap from fetched data
+  for (const { address, balance, isContract } of addressData) {
+    nodesMap.set(address, {
+      id: address,
+      label: `${address.slice(0, 6)}...${address.slice(-4)}`,
+      balance,
+      isContract,
+    });
+  }
+
+  // 4. Build links as before
   for (const tx of transfers) {
-    if (!nodesMap.has(tx.from)) {
-      nodesMap.set(tx.from, {
-        id: tx.from,
-        label: `${tx.from.slice(0, 6)}...${tx.from.slice(-4)}`,
-        balance: await getETHBalanceCached(tx.from),
-        isContract: await isContractCached(tx.from),
-      });
-    }
-    if (!nodesMap.has(tx.to)) {
-      nodesMap.set(tx.to, {
-        id: tx.to,
-        label: `${tx.to.slice(0, 6)}...${tx.to.slice(-4)}`,
-        balance: await getETHBalanceCached(tx.to),
-        isContract: await isContractCached(tx.to),
-      });
-    }
     const key = `${tx.from}->${tx.to}`;
     const count = (linkCounts[key] = (linkCounts[key] || 0) + 1);
     const index = (linkIndices[key] = count - 1);
@@ -50,20 +69,17 @@ export async function generateNodesFromTx(
     });
   }
 
-  // Instead of Promise.all(nodes.map(...)), use asyncPool:
-  const graphNodes: GraphNode[] = await asyncPool(5, Array.from(nodesMap.keys()), async id => {
-    const balance = await getETHBalanceCached(id);
-    const isCon = await isContractCached(id);
-    return {
-      id,
-      balance,
-      isContract: isCon,
-    };
-  });
-
   const nodes = Array.from(nodesMap.values());
+  console.log("nodedata:", nodes)
   return {
     nodes,
     links,
   };
 }
+
+//To Do:
+// - add loading bar maybe
+// - remove tx num and other stuff on UI - make is more simple
+// - change graph componenets -> shape dropwn, laser toggle, maybe label toggle
+// - reduce/refine cursor press area around nodes (hitting the same node in a crowd)
+// - implement html export (including labels?)

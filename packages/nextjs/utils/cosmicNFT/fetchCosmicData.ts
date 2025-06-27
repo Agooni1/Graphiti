@@ -1,5 +1,4 @@
 import { ethers } from "ethers";
-import { Network } from "alchemy-sdk";
 
 export interface AddressCosmicData {
   address: string;
@@ -33,45 +32,49 @@ export async function fetchCosmicData(address: string): Promise<AddressCosmicDat
     throw new Error("Invalid Ethereum address");
   }
 
-  // You'll need to add your Alchemy/Etherscan API key  
-  const alchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
-
-   if (!alchemyKey) {
-    console.warn("Alchemy API key not found, using mock data");
-    // return getMockCosmicData(address);
-  }
-  const provider = new ethers.JsonRpcProvider(`https://eth-sepolia.g.alchemy.com/v2/${alchemyKey}`);
+  console.log("🔍 Fetching cosmic data for:", address);
 
   try {
-    // Basic address data
-    const balance = await provider.getBalance(address);
-    // const transactionCount = await provider.getTransactionCount(address);
-    const transactionCount = 37; // Mock transaction count for now
+    // Use server-side API route to fetch blockchain data securely
+    const response = await fetch('/api/blockchain/address-data', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ address }),
+    });
 
-    // For now, we'll use mock data for connected addresses
-    // In production, you'd fetch real transaction history
-    const connectedAddresses = await getMockConnectedAddresses(address);
-    const recentTransactions = await getMockTransactions(address);
-    const tokenBalances = await getMockTokenBalances(address);
+    if (!response.ok) {
+      console.warn("Failed to fetch from server, using mock data");
+      return getMockCosmicData(address);
+    }
 
-    return {
-      address,
-      balance,
-      transactionCount,
-      connectedAddresses,
-      recentTransactions,
-      tokenBalances,
-      nftCount: Math.floor(Math.random() * 20), // Mock for now
-    };
+    const data = await response.json();
+    console.log("✅ Cosmic data fetched successfully");
+    return data;
+    
   } catch (error) {
     console.error("Error fetching cosmic data:", error);
-    throw new Error("Failed to fetch address data");
+    console.warn("Falling back to mock data");
+    return getMockCosmicData(address);
   }
 }
 
+// Mock data function for development/fallback
+function getMockCosmicData(address: string): AddressCosmicData {
+  return {
+    address,
+    balance: BigInt(ethers.parseEther((Math.random() * 10).toFixed(4)).toString()),
+    transactionCount: Math.floor(Math.random() * 100) + 10,
+    connectedAddresses: getMockConnectedAddresses(address),
+    recentTransactions: getMockTransactions(address),
+    tokenBalances: getMockTokenBalances(address),
+    nftCount: Math.floor(Math.random() * 20),
+  };
+}
+
 // Mock functions (replace with real API calls later)
-async function getMockConnectedAddresses(address: string): Promise<string[]> {
-  // Generate some mock addresses based on the input address
+function getMockConnectedAddresses(address: string): string[] {
   const addresses = [];
   for (let i = 0; i < 8; i++) {
     const mockAddress = ethers.getAddress(
@@ -82,7 +85,7 @@ async function getMockConnectedAddresses(address: string): Promise<string[]> {
   return addresses;
 }
 
-async function getMockTransactions(address: string): Promise<Transaction[]> {
+function getMockTransactions(address: string): Transaction[] {
   const transactions = [];
   for (let i = 0; i < 5; i++) {
     transactions.push({
@@ -96,7 +99,7 @@ async function getMockTransactions(address: string): Promise<Transaction[]> {
   return transactions;
 }
 
-async function getMockTokenBalances(address: string): Promise<TokenBalance[]> {
+function getMockTokenBalances(address: string): TokenBalance[] {
   return [
     { symbol: "USDC", balance: "1000.50", contractAddress: "0xA0b86a33E6410fCaA2df108ffB1De3b15b4c0c8A" },
     { symbol: "WETH", balance: "5.25", contractAddress: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" },

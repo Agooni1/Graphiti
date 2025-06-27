@@ -27,16 +27,6 @@ export const menuLinks: HeaderMenuLink[] = [
     icon: <BugAntIcon className="h-4 w-4" />,
   },
   {
-    label: "ipfs download",
-    href: "/ipfsDownload",
-    icon: <BugAntIcon className="h-4 w-4" />,
-  },
-  {
-    label: "ipfs upload",
-    href: "/ipfsUpload",
-    icon: <BugAntIcon className="h-4 w-4" />,
-  },
-  {
     label: "mINTER",
     href: "/cosmicMinter",
     icon: <SparklesIcon className="h-4 w-4" />,

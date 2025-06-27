@@ -8,7 +8,24 @@ import { AssetTransfersResult } from "alchemy-sdk";
 import { GraphNode, GraphLink } from "./graph-data/types";
 import { fetchAllTransfers, fetchAllTransfersCached, FilterAndSortTx } from "./graph-data/utils";
 import { generateNodesFromTx } from "./graph-data/generateNodesFromTx";
-import { SparklesIcon, MagnifyingGlassIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from "@heroicons/react/24/outline";
+import { generateGraphHTML, downloadGraphHTML, getGraphHTMLForIPFS } from './graph/htmlGraphGenerator';
+import { 
+  SparklesIcon, 
+  MagnifyingGlassIcon, 
+  ArrowsPointingOutIcon, 
+  ArrowsPointingInIcon,
+  PlayIcon,
+  PauseIcon,
+  BoltIcon,
+  ArrowPathIcon,
+  Squares2X2Icon,
+  AdjustmentsHorizontalIcon,
+  ArrowPathRoundedSquareIcon as SwirlIcon,
+  XMarkIcon, // For the "Off" button
+  DocumentArrowDownIcon,
+  CubeIcon,
+} from "@heroicons/react/24/outline";
+import { MintCosmicNFT } from "./_components/MintCosmicNFT";
 
 const Test: NextPage = () => {
   const { address: connectedAddress, isConnected } = useAccount();
@@ -19,7 +36,7 @@ const Test: NextPage = () => {
   const [loading, setLoading] = useState(false);
   const [allTransfers, setAllTransfers] = useState<AssetTransfersResult[]>([]);
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({ nodes: [], links: [] });
-  const [txDisplayLimit, setTxDisplayLimit] = useState(10);
+  const [txDisplayLimit, setTxDisplayLimit] = useState(200);
   
   // Add state to track if we've already auto-loaded wallet address
   const [hasAutoLoaded, setHasAutoLoaded] = useState(false);
@@ -28,13 +45,30 @@ const Test: NextPage = () => {
   const graphWrapperRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Add progress state
+  const [progress, setProgress] = useState<{ loaded: number; total: number }>({ loaded: 0, total: 0 });
+
+  // Add graph control states - Update particleMode to include 'off'
+  const [layoutMode, setLayoutMode] = useState<'shell' | 'force' | 'fibonacci'>('shell');
+  const [particleMode, setParticleMode] = useState<'pulse' | 'laser' | 'off'>('pulse');
+  const [isAutoOrbiting, setIsAutoOrbiting] = useState(true); //default to true for auto-orbiting
+
+  // Create a ref to store the reset function from the graph component
+  const resetViewRef = useRef<(() => void) | null>(null);
+
+  // Add view state tracking
+  const [currentViewState, setCurrentViewState] = useState<{
+    zoom: number;
+    panOffset: { x: number; y: number };
+    orbitRotation: { x: number; y: number };
+  } | null>(null);
+
   // Auto-load connected wallet address when wallet connects
   useEffect(() => {
     if (isConnected && connectedAddress && !hasAutoLoaded && !address) {
-      // console.log("Wallet connected, auto-loading address:", connectedAddress);
       setAddress(connectedAddress);
-      setInputValue(""); // Clear input since we're setting from wallet
-      setHasAutoLoaded(true); // Prevent auto-loading again
+      setInputValue("");
+      setHasAutoLoaded(true);
       handleParamsChange();
     }
   }, [isConnected, connectedAddress, hasAutoLoaded, address]);
@@ -79,6 +113,7 @@ const Test: NextPage = () => {
       if (!allTransfers.length) {
         setGraphData({ nodes: [], links: [] });
         setLoading(false);
+        setProgress({ loaded: 0, total: 0 });
         return;
       }
 
@@ -88,7 +123,11 @@ const Test: NextPage = () => {
         address: address,
       });
 
-      const graph = await generateNodesFromTx(filtered);
+      setProgress({ loaded: 0, total: filtered.length });
+
+      const graph = await generateNodesFromTx(filtered, (loaded, total) => {
+        setProgress({ loaded, total });
+      });
       setGraphData(graph);
       setLoading(false);
     };
@@ -98,10 +137,9 @@ const Test: NextPage = () => {
 
   // New handler function
   const handleSetTarget = (newAddress: string) => {
-    console.log("Setting new target address:", newAddress);
-    setAddress(newAddress);
-    setInputValue(""); // Clear input
-    handleParamsChange(); // Trigger loading
+    setAddress(newAddress.toLowerCase());
+    setInputValue("");
+    handleParamsChange();
   };
 
   // Fullscreen toggle handler
@@ -120,6 +158,85 @@ const Test: NextPage = () => {
     }
   };
 
+  // Graph control handlers - now actually calls the reset function
+  const handleResetView = () => {
+    console.log('Reset button clicked, calling resetViewRef.current');
+    if (resetViewRef.current) {
+      resetViewRef.current();
+    } else {
+      console.log('resetViewRef.current is null');
+    }
+  };
+
+  // New handler for clearing everything - enhanced version
+  const handleClear = () => {
+    // Clear all state
+    setAddress("");
+    setInputValue("");
+    setGraphData({ nodes: [], links: [] });
+    setAllTransfers([]);
+    setHasAutoLoaded(false);
+    setLoading(false);
+    setProgress({ loaded: 0, total: 0 });
+    
+    // Also reset graph view position
+    if (resetViewRef.current) {
+      resetViewRef.current();
+    }
+    
+    // Force a re-render by updating a key or similar
+    // This ensures any cached rendering state is cleared
+    setTimeout(() => {
+      setGraphData({ nodes: [], links: [] });
+    }, 50);
+  };
+
+  // Add these handler functions after your existing handlers
+  const handleDownloadGraph = () => {
+    if (!address || !graphData.nodes.length) {
+      alert('No graph data to download. Please load a graph first.');
+      return;
+    }
+
+    const config = {
+      graphData,
+      targetNode: address,
+      layoutMode,
+      particleMode,
+      isAutoOrbiting,
+      viewState: currentViewState === null ? undefined : currentViewState // Ensure undefined, not null
+    };
+    
+    console.log('Downloading graph with config (including view state):', config);
+    downloadGraphHTML(config);
+  };
+
+  const handlePreviewHTML = () => {
+    if (!address || !graphData.nodes.length) {
+      alert('No graph data to preview. Please load a graph first.');
+      return;
+    }
+
+    const config = {
+      graphData,
+      targetNode: address,
+      layoutMode,
+      particleMode,
+      isAutoOrbiting,
+      viewState: currentViewState === null ? undefined : currentViewState // Ensure undefined, not null
+    };
+    
+    console.log('Generating HTML preview with config (including view state):', config);
+    const htmlContent = getGraphHTMLForIPFS(config);
+    
+    // Open in new window for preview
+    const newWindow = window.open();
+    if (newWindow) {
+      newWindow.document.write(htmlContent);
+      newWindow.document.close();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
       {/* Animated Stars Background */}
@@ -131,176 +248,197 @@ const Test: NextPage = () => {
       {/* Main Content */}
       <div className="relative z-10 flex flex-col items-center py-6">
         {/* Header Section */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-2">
-            🌌 Explorer
-          </h1>
-          <p className="text-slate-300 text-lg">Navigate the Ethereum Universe</p>
-        </div>
+        {!isFullscreen && (
+          <div className="text-center mb-6">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+              Explorer
+            </h1>
+          </div>
+        )}
 
-        {/* Controls Card */}
-        <div className="w-full max-w-5xl bg-slate-800/40 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-end gap-6">
-            
-            {/* Address Input Section */}
-            <div className="flex-1">
-              <label className="block text-blue-100 mb-2 font-semibold text-sm flex items-center gap-2">
-                <SparklesIcon className="h-4 w-4" />
-                Target Stellar Address
-                {/* Show current address with mini BlockieAvatar */}
-                {address && (
-                  <span className="ml-2 text-xs text-cyan-400 inline-flex items-center gap-1.5 bg-slate-700/50 px-2 py-1 rounded-full">
-                    {address.slice(0, 6)}...{address.slice(-4)}
-                    <BlockieAvatar address={address} size={14} />
-                    {isConnected && connectedAddress && address.toLowerCase() === connectedAddress.toLowerCase() && (
-                      <span className="ml-0.5 opacity-70">(connected)</span>
+        {/* Unified Controls Card */}
+        {!isFullscreen && (
+          <div className="w-full max-w-6xl bg-slate-800/40 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl p-6 mb-6">
+            <div className="flex flex-col xl:flex-row gap-6">
+              {/* Left Section - Address Input */}
+              <div className="flex-1 space-y-4">
+                <div>
+                  <label className="block text-blue-100 mb-2 font-semibold text-sm flex items-center gap-2">
+                    <SparklesIcon className="h-4 w-4" />
+                    Address
+                    {address && (
+                      <span className="ml-2 text-xs text-cyan-400 inline-flex items-center gap-1.5 bg-slate-700/50 px-2 py-1 rounded-full">
+                        {address.slice(0, 6)}...{address.slice(-4)}
+                        <BlockieAvatar address={address} size={14} />
+                        {isConnected && connectedAddress && address.toLowerCase() === connectedAddress.toLowerCase() && (
+                          <span className="ml-0.5 opacity-70">(you)</span>
+                        )}
+                      </span>
                     )}
-                  </span>
-                )}
-              </label>
-              <div className="relative">
-                <AddressInput
-                  value={inputValue}
-                  onChange={value => setInputValue(value)}
-                  name="Target Address"
-                  placeholder={connectedAddress ? `Connected: ${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}` : "Enter cosmic address..."}
-                />
-              </div>
-              <div className="flex gap-3 mt-3">
-                <button
-                  className="btn btn-primary bg-gradient-to-r from-blue-600 to-purple-600 border-none hover:scale-105 transition-transform"
-                  onClick={() => {
-                    if (address.toLowerCase() !== inputValue.toLowerCase()) {
-                      setTxDisplayLimit(10);
-                    }
-                    setAddress(inputValue);
-                    setInputValue("");
-                    handleParamsChange();
-                  }}
-                  disabled={!inputValue || loading}
-                >
-                  <MagnifyingGlassIcon className="h-4 w-4" />
-                  Explore
-                </button>
-                
-                {/* Add button to use connected wallet */}
-                {/* {isConnected && connectedAddress && address.toLowerCase() !== connectedAddress.toLowerCase() && ( */}
-                  <button
-                    className="btn bg-gradient-to-r from-cyan-600 to-blue-600 border-none text-white hover:scale-105 transition-transform"
-                    onClick={() => {
-                      setAddress(connectedAddress? connectedAddress : "");
-                      setInputValue("");
-                      handleParamsChange();
-                    }}
-                    // disabled={loading}
-                  >
-                    Use Wallet
-                  </button>
-
-                  {/* Add reload button */}
-                  {/* <button
-                    className="btn bg-gradient-to-r from-green-600 to-emerald-600 border-none text-white hover:scale-105 transition-transform"
-                    onClick={() => {
-                      if (address) {
-                        handleParamsChange(); // Reload current address
-                      }
-                    }}
-                    // disabled={!address || loading}
-                    title="Reload current address data"
-                  >
-                    🔄 Reload
-                  </button> */}
-                
-                <button
-                  className="btn btn-outline border-slate-600 text-slate-300 hover:border-slate-400"
-                  onClick={() => {
-                    setAddress("");
-                    setInputValue("");
-                    setGraphData({ nodes: [], links: [] });
-                    setHasAutoLoaded(false); // Reset auto-load flag
-                  }}
-                  // disabled={loading}
-                >
-                  Reset
-                </button>
-              </div>
-            </div>
-
-            {/* Control Sliders */}
-            <div className="flex flex-col lg:flex-row gap-6 lg:w-96">
-              <div className="flex-1">
-                <label className="block text-blue-100 mb-2 font-semibold text-sm">
-                  Transaction Streams: <span className="text-cyan-400">{txDisplayLimit}</span>
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="500"
-                  value={txDisplayLimit}
-                  onChange={e => {
-                    setTxDisplayLimit(Number(e.target.value));
-                  }}
-                  className="range range-primary w-full"
-                  disabled={loading}
-                />
-                <div className="flex justify-between text-xs text-slate-400 mt-1">
-                  <span>1</span>
-                  <span>500</span>
+                  </label>
+                  <div className="relative">
+                    <AddressInput
+                      value={inputValue}
+                      onChange={value => setInputValue(value)}
+                      name="Target Address"
+                      placeholder={connectedAddress ? `Connected: ${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}` : "Paste or type address..."}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <button
+                      className="btn btn-primary bg-gradient-to-r from-blue-600 to-purple-600 border-none hover:scale-105 transition-transform"
+                      onClick={() => {
+                        setAddress(inputValue);
+                        setInputValue("");
+                        handleParamsChange();
+                      }}
+                      disabled={!inputValue || loading}
+                    >
+                      <MagnifyingGlassIcon className="h-4 w-4" />
+                      Explore
+                    </button>
+                    <button
+                      className="btn bg-gradient-to-r from-cyan-600 to-blue-600 border-none text-white hover:scale-105 transition-transform"
+                      onClick={() => {
+                        setAddress(connectedAddress ? connectedAddress : "");
+                        setInputValue("");
+                        handleParamsChange();
+                      }}
+                    >
+                      Use Wallet
+                    </button>
+                    
+                    {/* Softer Clear button without trash icon */}
+                    <button
+                      className="btn btn-outline border-slate-500 text-slate-300 hover:border-slate-400 hover:bg-slate-600/20"
+                      onClick={handleClear}
+                      title="Clear all data and start fresh"
+                    >
+                      Clear
+                    </button>
+                  </div>
                 </div>
               </div>
-              
-              <div className="flex-1">
-                <label className="block text-blue-100 mb-2 font-semibold text-sm">
-                  Galaxy Depth: <span className="text-purple-400">{layerNum}</span>
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  value={layerNum}
-                  onChange={e => {
-                    setLayerNum(Number(e.target.value));
-                    handleParamsChange();
-                  }}
-                  className="range range-secondary w-full"
-                  disabled={loading}
-                />
-                <div className="flex justify-between text-xs text-slate-400 mt-1">
-                  <span>1</span>
-                  <span>5</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Direction Controls */}
-            <div className="flex flex-col gap-2">
-              <label className="block text-blue-100 mb-1 font-semibold text-sm">Flow Direction</label>
-              <div className="btn-group">
-                <button
-                  className={`btn btn-sm ${transferDirection === "from" ? "btn-primary bg-gradient-to-r from-red-500 to-red-600" : "btn-outline border-slate-600 text-slate-300"}`}
-                  onClick={() => { setTransferDirection("from"); handleParamsChange(); }}
-                  disabled={loading}
-                >
-                  Sent
-                </button>
-                <button
-                  className={`btn btn-sm ${transferDirection === "to" ? "btn-primary bg-gradient-to-r from-green-500 to-green-600" : "btn-outline border-slate-600 text-slate-300"}`}
-                  onClick={() => { setTransferDirection("to"); handleParamsChange(); }}
-                  disabled={loading}
-                >
-                  Received
-                </button>
-                <button
-                  className={`btn btn-sm ${transferDirection === "both" ? "btn-primary bg-gradient-to-r from-blue-500 to-purple-600" : "btn-outline border-slate-600 text-slate-300"}`}
-                  onClick={() => { setTransferDirection("both"); handleParamsChange(); }}
-                  disabled={loading}
-                >
-                  All
-                </button>
+              {/* Right Section - Graph Controls (now includes Direction) */}
+              <div className="bg-slate-700/30 border border-slate-600/40 rounded-lg p-4 space-y-4">
+                <div className="text-blue-100 font-semibold text-sm flex items-center gap-2">
+                  <AdjustmentsHorizontalIcon className="h-4 w-4" />
+                  Graph Controls
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Direction Controls - moved here */}
+                  <div>
+                    <div className="text-xs text-slate-300 font-medium mb-2">Transactions</div>
+                    <div className="flex flex-col gap-1">
+                      {[
+                        { mode: 'both', label: 'All' },
+                        { mode: 'from', label: 'Sent' },
+                        { mode: 'to', label: 'Received' },
+                      ].map(({ mode, label }) => (
+                        <button
+                          key={mode}
+                          className={`btn btn-xs ${
+                            transferDirection === mode 
+                              ? 'btn-primary bg-gradient-to-r from-blue-600 to-purple-600' 
+                              : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
+                          }`}
+                          onClick={() => { 
+                            setTransferDirection(mode as any); 
+                            handleParamsChange(); 
+                          }}
+                          disabled={loading}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Layout Controls */}
+                  <div>
+                    <div className="text-xs text-slate-300 font-medium mb-2">Layout</div>
+                    <div className="flex gap-1">
+                      {[
+                        { mode: 'shell', icon: Squares2X2Icon, label: 'Shell' },
+                        { mode: 'force', icon: BoltIcon, label: 'Force' },
+                        { mode: 'fibonacci', icon: SwirlIcon, label: 'Spiral' }
+                      ].map(({ mode, icon: Icon, label }) => (
+                        <button
+                          key={mode}
+                          className={`btn btn-xs ${
+                            layoutMode === mode 
+                              ? 'btn-primary bg-gradient-to-r from-blue-600 to-purple-600' 
+                              : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
+                          }`}
+                          onClick={() => setLayoutMode(mode as any)}
+                          title={`${label} Layout`}
+                        >
+                          <Icon className="w-3 h-3" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Particle Controls - with 'off' option */}
+                  <div>
+                    <div className="text-xs text-slate-300 font-medium mb-2">Particles</div>
+                    <div className="flex gap-1">
+                      {[
+                        { mode: 'pulse', icon: PlayIcon, label: 'Pulse' },
+                        { mode: 'laser', icon: BoltIcon, label: 'Laser' },
+                        { mode: 'off', icon: XMarkIcon, label: 'Off' }
+                      ].map(({ mode, icon: Icon, label }) => (
+                        <button
+                          key={mode}
+                          className={`btn btn-xs ${
+                            particleMode === mode 
+                              ? (mode === 'off' 
+                                  ? 'btn-primary bg-gradient-to-r from-gray-600 to-gray-700' 
+                                  : 'btn-primary bg-gradient-to-r from-purple-600 to-pink-600')
+                              : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
+                          }`}
+                          onClick={() => setParticleMode(mode as any)}
+                          title={`${label} Mode`}
+                        >
+                          <Icon className="w-3 h-3" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Actions - Enhanced with HTML generation */}
+                <div className="flex flex-col gap-2 pt-2 border-t border-slate-600/30">
+                  <div className="flex gap-2">
+                    <button
+                      className={`btn btn-xs flex-1 ${
+                        isAutoOrbiting 
+                          ? 'btn-primary bg-gradient-to-r from-cyan-600 to-blue-600' 
+                          : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
+                      }`}
+                      onClick={() => setIsAutoOrbiting(prev => !prev)}
+                      title={isAutoOrbiting ? "Pause Orbit" : "Auto Orbit"}
+                    >
+                      {isAutoOrbiting ? <PauseIcon className="w-3 h-3" /> : <PlayIcon className="w-3 h-3" />}
+                      {isAutoOrbiting ? "Pause" : "Orbit"}
+                    </button>
+                    
+                    <button
+                      onClick={handleResetView}
+                      className="btn btn-xs flex-1 btn-outline border-slate-600 text-slate-300 hover:border-slate-400"
+                      title="Reset View"
+                    >
+                      <ArrowPathIcon className="w-3 h-3" />
+                      Reset
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Galaxy Visualization Area */}
         <div
@@ -311,39 +449,57 @@ const Test: NextPage = () => {
               : "w-full max-w-7xl h-[75vh] rounded-2xl shadow-2xl shadow-blue-500/10"
           }`}
         >
-          {/* Fullscreen Button */}
-          <button
-            onClick={handleFullscreenToggle}
-            className="absolute top-4 right-4 btn btn-sm bg-slate-800/80 backdrop-blur-sm border-slate-600 text-slate-300 hover:bg-slate-700 z-20 transition-all hover:scale-105"
-            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-          >
-            {isFullscreen ? (
-              <ArrowsPointingInIcon className="h-4 w-4" />
-            ) : (
-              <ArrowsPointingOutIcon className="h-4 w-4" />
-            )}
-          </button>
-          
           {/* Loading Spinner */}
           {loading && address && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm z-10 rounded-2xl">
               <div className="flex flex-col items-center gap-4">
-                <div className="relative">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
-                  <div className="animate-ping absolute top-0 left-0 rounded-full h-12 w-12 border border-blue-400/20"></div>
+                <svg width="60" height="60">
+                  <circle
+                    cx="30"
+                    cy="30"
+                    r="26"
+                    stroke="#3b82f6"
+                    strokeWidth="6"
+                    fill="none"
+                    opacity="0.2"
+                  />
+                  <circle
+                    cx="30"
+                    cy="30"
+                    r="26"
+                    stroke="#3b82f6"
+                    strokeWidth="6"
+                    fill="none"
+                    strokeDasharray={2 * Math.PI * 26}
+                    strokeDashoffset={
+                      2 * Math.PI * 26 * (1 - (progress.loaded / (progress.total || 1)))
+                    }
+                    style={{ transition: "stroke-dashoffset 0.2s" }}
+                  />
+                </svg>
+                <div className="text-blue-200 font-medium">
+                  Loading graph...
                 </div>
-                <div className="text-blue-200 font-medium">Mapping the cosmos...</div>
-                <div className="text-slate-400 text-sm">Discovering stellar connections</div>
+                <div className="text-slate-400 text-sm text-center">
+                  Addresses with a lotta nodes may take a while... <br />
+                  Pls be patient I'm too broke for a premium API key
+                </div>
               </div>
             </div>
           )}
           
-          {/* SimpleCosmicGraph - Pass fullscreen state */}
+          {/* SimpleCosmicGraph - Pass resetViewRef */}
           <SimpleCosmicGraph 
             graphData={graphData} 
             onSetTarget={handleSetTarget}
             isFullscreen={isFullscreen}
-            targetNode={address}
+            targetNode={address.toLowerCase()}
+            layoutMode={layoutMode}
+            particleMode={particleMode}
+            isAutoOrbiting={isAutoOrbiting}
+            onFullscreenToggle={handleFullscreenToggle}
+            resetViewRef={resetViewRef}
+            onViewStateChange={setCurrentViewState} // Add this prop
           />
           
           {/* Empty State */}
@@ -366,16 +522,6 @@ const Test: NextPage = () => {
               </div>
             </div>
           )}
-
-          {/* Stats Overlay */}
-          {!loading && graphData.nodes.length > 0 && (
-            <div className="absolute bottom-4 left-4 bg-slate-800/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-600/50">
-              <div className="text-xs text-slate-300">
-                <span className="text-blue-400 font-medium">{graphData.nodes.length}</span> stellar objects • 
-                <span className="text-purple-400 font-medium ml-1">{graphData.links.length}</span> cosmic streams
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Info Cards */}
@@ -384,20 +530,48 @@ const Test: NextPage = () => {
             <div className="bg-slate-800/30 backdrop-blur-sm border border-blue-500/20 rounded-xl p-4 text-center">
               <div className="text-blue-400 text-2xl mb-2">✨</div>
               <div className="text-blue-100 font-medium mb-1">3D Navigation</div>
-              <div className="text-slate-400 text-sm">Pan, zoom, and orbit through space</div>
+              <div className="text-slate-400 text-sm">Pan, zoom, and orbit</div>
             </div>
             <div className="bg-slate-800/30 backdrop-blur-sm border border-purple-500/20 rounded-xl p-4 text-center">
               <div className="text-purple-400 text-2xl mb-2">🌟</div>
               <div className="text-purple-100 font-medium mb-1">Live Particles</div>
-              <div className="text-slate-400 text-sm">Watch transactions flow as cosmic energy</div>
+              <div className="text-slate-400 text-sm">Follow transactions</div>
             </div>
             <div className="bg-slate-800/30 backdrop-blur-sm border border-cyan-500/20 rounded-xl p-4 text-center">
               <div className="text-cyan-400 text-2xl mb-2">🎯</div>
               <div className="text-cyan-100 font-medium mb-1">Interactive Nodes</div>
-              <div className="text-slate-400 text-sm">Click nodes to explore new galaxies</div>
+              <div className="text-slate-400 text-sm">Click nodes to explore</div>
             </div>
           </div>
         )}
+
+        {/* Mint NFT Section - Replace the HTML Generation Buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={handleResetView}
+            className="btn btn-xs flex-1 btn-outline border-slate-600 text-slate-300 hover:border-slate-400"
+            title="Reset View"
+          >
+            <ArrowPathIcon className="w-3 h-3" />
+            Reset
+          </button>
+        </div>
+
+        {/* Add the Mint Component */}
+        <div className="pt-4 border-t border-slate-600/30">
+          <MintCosmicNFT 
+            graphConfig={{
+              graphData,
+              targetNode: address.toLowerCase(),
+              layoutMode,
+              particleMode,
+              isAutoOrbiting,
+              viewState: currentViewState === null ? undefined : currentViewState
+            }}
+            disabled={!address || !graphData.nodes.length}
+            className="w-full"
+          />
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,3 @@
-const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT;
-
 const fetchFromIPFS = async (ipfsHashOrUrl: string) => {
   // Extract hash if it's a full URL, otherwise use as-is
   let hash = ipfsHashOrUrl;
@@ -31,30 +29,28 @@ const fetchFromIPFS = async (ipfsHashOrUrl: string) => {
   throw new Error('Failed to fetch from all IPFS gateways');
 };
 
+// Updated to use server-side API route
 export const addToIPFS = async (yourJSON: object) => {
-  if (!PINATA_JWT) {
-    throw new Error('Pinata JWT not configured');
-  }
-
-  const response = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+  console.log("📤 Adding JSON to IPFS via server...");
+  
+  const response = await fetch('/api/ipfs/upload-metadata', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${PINATA_JWT}`,
     },
-    body: JSON.stringify({
-      pinataContent: yourJSON,
-      pinataMetadata: {
-        name: 'nft-metadata.json'
-      }
-    }),
+    body: JSON.stringify({ metadata: yourJSON }),
   });
 
   if (!response.ok) {
-    throw new Error(`Pinata upload failed: ${response.statusText}`);
+    const error = await response.json();
+    throw new Error(error.error || 'JSON upload failed');
   }
 
-  return await response.json();
+  const result = await response.json();
+  console.log("✅ JSON uploaded to IPFS:", result.hash);
+  
+  // Return in the same format as the original Pinata response
+  return { IpfsHash: result.hash };
 };
 
 export const getMetadataFromIPFS = async (ipfsHash: string) => {

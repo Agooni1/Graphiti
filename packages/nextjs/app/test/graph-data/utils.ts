@@ -166,7 +166,7 @@ export async function fetchAllTransfers(address: string): Promise<AssetTransfers
   const commonParams = {
     fromBlock: "0x0",
     toBlock: "latest",
-    maxCount: 500,
+    maxCount: 200,
     category: [
       AssetTransfersCategory.EXTERNAL,
       AssetTransfersCategory.INTERNAL,
@@ -186,7 +186,7 @@ export async function fetchAllTransfers(address: string): Promise<AssetTransfers
 
     // Combine and deduplicate by tx hash
     const all = [...sent.transfers, ...received.transfers];
-    // console.log("API Fetched transfers:", all);
+    console.log("API Fetched transfers:", all);
     const seen = new Set<string>();
     const deduped = all.filter(tx => {
       if (seen.has(tx.hash)) return false;
@@ -194,7 +194,7 @@ export async function fetchAllTransfers(address: string): Promise<AssetTransfers
       return true;
     });
     
-    // console.log("API Deduplicated transfers:", deduped);
+    console.log("API Deduplicated transfers:", deduped);
 
     return deduped;
     // return [];

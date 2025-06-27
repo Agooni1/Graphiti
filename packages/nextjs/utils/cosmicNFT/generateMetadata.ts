@@ -36,7 +36,7 @@ export function generateMetadata(
       { trait_type: "Target Address", value: data.address },
       { trait_type: "Layout Type", value: layoutMode },
       { trait_type: "Content Type", value: isInteractive ? "Interactive HTML" : "Static GIF" },
-      { trait_type: "Transaction Count", value: data.transactionCount },
+      { trait_type: "Node Count", value: data.connectedAddresses.length },
       { trait_type: "Connected Addresses", value: data.connectedAddresses.length },
       { trait_type: "Balance (ETH)", value: (Number(data.balance) / 1e18).toFixed(4) },
       { trait_type: "Generation Date", value: new Date().toISOString().split('T')[0] },
