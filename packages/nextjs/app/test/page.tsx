@@ -446,7 +446,8 @@ const Test: NextPage = () => {
           className={`relative bg-slate-900/50 backdrop-blur-sm border border-blue-500/30 flex items-center justify-center overflow-hidden transition-all duration-300 ${
             isFullscreen 
               ? "w-screen h-screen fixed top-0 left-0 z-50" 
-              : "w-full max-w-7xl h-[75vh] rounded-2xl shadow-2xl shadow-blue-500/10"
+              // : "w-full max-w-7xl h-[75vh] rounded-2xl shadow-2xl shadow-blue-500/10"
+              : "w-full max-w-[1280px] h-[75vh] max-h-[747.19px] rounded-2xl shadow-2xl shadow-blue-500/10"
           }`}
         >
           {/* Loading Spinner */}
