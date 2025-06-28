@@ -35,8 +35,8 @@ interface MintCosmicNFTProps {
 
 export function MintCosmicNFT({ graphConfig, disabled = false, className = "" }: MintCosmicNFTProps) {
   const { address: connectedAddress } = useAccount();
-  const [mintPrice, setMintPrice] = useState("0.01");
   const [isMinting, setIsMinting] = useState(false);
+  const mintPrice = "0.01";
 
   const { writeContractAsync } = useScaffoldWriteContract("YourCollectible");
   const { data: contractInfo } = useDeployedContractInfo("YourCollectible");
@@ -142,39 +142,20 @@ export function MintCosmicNFT({ graphConfig, disabled = false, className = "" }:
   const isDisabled = disabled || isMinting || !graphConfig.graphData.nodes.length || !connectedAddress;
 
   return (
-    <div className={`flex flex-col items-center gap-4 ${className}`}>
-      {/* Mint Price Input */}
-      <div className="flex items-center gap-2">
-        <label htmlFor="mintPrice" className="text-sm font-medium text-white">
-          Mint Price (ETH):
-        </label>
-        <input
-          id="mintPrice"
-          type="number"
-          step="0.001"
-          min="0"
-          value={mintPrice}
-          onChange={(e) => setMintPrice(e.target.value)}
-          className="input input-bordered w-32 text-center"
-          placeholder="0.01"
-          disabled={isMinting}
-        />
-      </div>
-
-      {/* Mint Button */}
-      <button 
-        onClick={handleMint}
-        disabled={isDisabled}
-        className="btn btn-primary btn-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 border-none"
-        title={isDisabled ? "Load a graph first" : `Mint your cosmic graph as an NFT for ${mintPrice} ETH`}
-      >
-        {isMinting ? "🌌 Minting..." : `🌌 Mint Cosmic NFT for ${mintPrice} ETH`}
-      </button>
-
-      {/* Info Text */}
-      <p className="text-xs text-slate-400 text-center max-w-md">
-        Mint your current graph view with zoom level {graphConfig.viewState?.zoom?.toFixed(2) || "1.00"}x as an interactive NFT
-      </p>
-    </div>
+    <button
+      onClick={handleMint}
+      disabled={isDisabled}
+      className={`btn bg-gradient-to-r from-purple-600 to-blue-600 border-none text-white font-semibold hover:from-purple-700 hover:to-blue-700 transition-all text-sm flex items-center gap-2 ${className}`}
+      title={isDisabled ? "Connect wallet and load a graph first" : `Mint your cosmic graph as an NFT for ${mintPrice} ETH`}
+    >
+      {isMinting ? (
+        <>Minting...</>
+      ) : (
+        <>
+          Mint NFT
+          <span className="text-xs opacity-80">{mintPrice} ETH</span>
+        </>
+      )}
+    </button>
   );
 }

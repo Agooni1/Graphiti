@@ -26,6 +26,8 @@ import {
   CubeIcon,
 } from "@heroicons/react/24/outline";
 import { MintCosmicNFT } from "./_components/MintCosmicNFT";
+import { MintInfoTooltip } from "./_components/MintInfoTooltip";
+import { MenuActions } from "./_components/MenuActions";
 
 const Test: NextPage = () => {
   const { address: connectedAddress, isConnected } = useAccount();
@@ -259,184 +261,28 @@ const Test: NextPage = () => {
         {/* Unified Controls Card */}
         {!isFullscreen && (
           <div className="w-full max-w-6xl bg-slate-800/40 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl p-6 mb-6">
-            <div className="flex flex-col xl:flex-row gap-6">
-              {/* Left Section - Address Input */}
-              <div className="flex-1 space-y-4">
-                <div>
-                  <label className="block text-blue-100 mb-2 font-semibold text-sm flex items-center gap-2">
-                    <SparklesIcon className="h-4 w-4" />
-                    Address
-                    {address && (
-                      <span className="ml-2 text-xs text-cyan-400 inline-flex items-center gap-1.5 bg-slate-700/50 px-2 py-1 rounded-full">
-                        {address.slice(0, 6)}...{address.slice(-4)}
-                        <BlockieAvatar address={address} size={14} />
-                        {isConnected && connectedAddress && address.toLowerCase() === connectedAddress.toLowerCase() && (
-                          <span className="ml-0.5 opacity-70">(you)</span>
-                        )}
-                      </span>
-                    )}
-                  </label>
-                  <div className="relative">
-                    <AddressInput
-                      value={inputValue}
-                      onChange={value => setInputValue(value)}
-                      name="Target Address"
-                      placeholder={connectedAddress ? `Connected: ${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}` : "Paste or type address..."}
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <button
-                      className="btn btn-primary bg-gradient-to-r from-blue-600 to-purple-600 border-none hover:scale-105 transition-transform"
-                      onClick={() => {
-                        setAddress(inputValue);
-                        setInputValue("");
-                        handleParamsChange();
-                      }}
-                      disabled={!inputValue || loading}
-                    >
-                      <MagnifyingGlassIcon className="h-4 w-4" />
-                      Explore
-                    </button>
-                    <button
-                      className="btn bg-gradient-to-r from-cyan-600 to-blue-600 border-none text-white hover:scale-105 transition-transform"
-                      onClick={() => {
-                        setAddress(connectedAddress ? connectedAddress : "");
-                        setInputValue("");
-                        handleParamsChange();
-                      }}
-                    >
-                      Use Wallet
-                    </button>
-                    
-                    {/* Softer Clear button without trash icon */}
-                    <button
-                      className="btn btn-outline border-slate-500 text-slate-300 hover:border-slate-400 hover:bg-slate-600/20"
-                      onClick={handleClear}
-                      title="Clear all data and start fresh"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Section - Graph Controls (now includes Direction) */}
-              <div className="bg-slate-700/30 border border-slate-600/40 rounded-lg p-4 space-y-4">
-                <div className="text-blue-100 font-semibold text-sm flex items-center gap-2">
-                  <AdjustmentsHorizontalIcon className="h-4 w-4" />
-                  Graph Controls
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Direction Controls - moved here */}
-                  <div>
-                    <div className="text-xs text-slate-300 font-medium mb-2">Transactions</div>
-                    <div className="flex flex-col gap-1">
-                      {[
-                        { mode: 'both', label: 'All' },
-                        { mode: 'from', label: 'Sent' },
-                        { mode: 'to', label: 'Received' },
-                      ].map(({ mode, label }) => (
-                        <button
-                          key={mode}
-                          className={`btn btn-xs ${
-                            transferDirection === mode 
-                              ? 'btn-primary bg-gradient-to-r from-blue-600 to-purple-600' 
-                              : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
-                          }`}
-                          onClick={() => { 
-                            setTransferDirection(mode as any); 
-                            handleParamsChange(); 
-                          }}
-                          disabled={loading}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Layout Controls */}
-                  <div>
-                    <div className="text-xs text-slate-300 font-medium mb-2">Layout</div>
-                    <div className="flex gap-1">
-                      {[
-                        { mode: 'shell', icon: Squares2X2Icon, label: 'Shell' },
-                        { mode: 'force', icon: BoltIcon, label: 'Force' },
-                        { mode: 'fibonacci', icon: SwirlIcon, label: 'Spiral' }
-                      ].map(({ mode, icon: Icon, label }) => (
-                        <button
-                          key={mode}
-                          className={`btn btn-xs ${
-                            layoutMode === mode 
-                              ? 'btn-primary bg-gradient-to-r from-blue-600 to-purple-600' 
-                              : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
-                          }`}
-                          onClick={() => setLayoutMode(mode as any)}
-                          title={`${label} Layout`}
-                        >
-                          <Icon className="w-3 h-3" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Particle Controls - with 'off' option */}
-                  <div>
-                    <div className="text-xs text-slate-300 font-medium mb-2">Particles</div>
-                    <div className="flex gap-1">
-                      {[
-                        { mode: 'pulse', icon: PlayIcon, label: 'Pulse' },
-                        { mode: 'laser', icon: BoltIcon, label: 'Laser' },
-                        { mode: 'off', icon: XMarkIcon, label: 'Off' }
-                      ].map(({ mode, icon: Icon, label }) => (
-                        <button
-                          key={mode}
-                          className={`btn btn-xs ${
-                            particleMode === mode 
-                              ? (mode === 'off' 
-                                  ? 'btn-primary bg-gradient-to-r from-gray-600 to-gray-700' 
-                                  : 'btn-primary bg-gradient-to-r from-purple-600 to-pink-600')
-                              : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
-                          }`}
-                          onClick={() => setParticleMode(mode as any)}
-                          title={`${label} Mode`}
-                        >
-                          <Icon className="w-3 h-3" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Actions - Enhanced with HTML generation */}
-                <div className="flex flex-col gap-2 pt-2 border-t border-slate-600/30">
-                  <div className="flex gap-2">
-                    <button
-                      className={`btn btn-xs flex-1 ${
-                        isAutoOrbiting 
-                          ? 'btn-primary bg-gradient-to-r from-cyan-600 to-blue-600' 
-                          : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
-                      }`}
-                      onClick={() => setIsAutoOrbiting(prev => !prev)}
-                      title={isAutoOrbiting ? "Pause Orbit" : "Auto Orbit"}
-                    >
-                      {isAutoOrbiting ? <PauseIcon className="w-3 h-3" /> : <PlayIcon className="w-3 h-3" />}
-                      {isAutoOrbiting ? "Pause" : "Orbit"}
-                    </button>
-                    
-                    <button
-                      onClick={handleResetView}
-                      className="btn btn-xs flex-1 btn-outline border-slate-600 text-slate-300 hover:border-slate-400"
-                      title="Reset View"
-                    >
-                      <ArrowPathIcon className="w-3 h-3" />
-                      Reset
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <MenuActions
+              inputValue={inputValue}
+              setInputValue={setInputValue}
+              address={address}
+              setAddress={setAddress}
+              connectedAddress={connectedAddress ?? ""}
+              isConnected={isConnected}
+              loading={loading}
+              handleParamsChange={handleParamsChange}
+              handleClear={handleClear}
+              graphData={graphData}
+              layoutMode={layoutMode}
+              particleMode={particleMode}
+              isAutoOrbiting={isAutoOrbiting}
+              currentViewState={currentViewState}
+              transferDirection={transferDirection}
+              setTransferDirection={setTransferDirection}
+              setLayoutMode={setLayoutMode}
+              setParticleMode={setParticleMode}
+              setIsAutoOrbiting={setIsAutoOrbiting}
+              handleResetView={handleResetView}
+            />
           </div>
         )}
 
@@ -556,22 +402,6 @@ const Test: NextPage = () => {
             <ArrowPathIcon className="w-3 h-3" />
             Reset
           </button>
-        </div>
-
-        {/* Add the Mint Component */}
-        <div className="pt-4 border-t border-slate-600/30">
-          <MintCosmicNFT 
-            graphConfig={{
-              graphData,
-              targetNode: address.toLowerCase(),
-              layoutMode,
-              particleMode,
-              isAutoOrbiting,
-              viewState: currentViewState === null ? undefined : currentViewState
-            }}
-            disabled={!address || !graphData.nodes.length}
-            className="w-full"
-          />
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 contract YourCollectible is
     ERC721,
@@ -14,7 +15,8 @@ contract YourCollectible is
     ERC721URIStorage,
 	ERC721Burnable,
 	ERC721Royalty,
-    Ownable
+    Ownable,
+	Pausable
 {
     uint256 public tokenIdCounter;
     uint256 public price = 0.01 ether;
@@ -69,6 +71,7 @@ contract YourCollectible is
 	function mintCosmicGraph(address _targetAddress, string memory _ipfsHash) 
 		public 
 		payable 
+		whenNotPaused
 		returns (uint256) 
 	{
 		// require(msg.sender == _targetAddress, "You can only mint for yourself"); //for now, allow anyone to mint for any address
@@ -178,4 +181,12 @@ contract YourCollectible is
 	function updateDefaultRoyalty(address receiver, uint96 fee) external onlyOwner{
     _setDefaultRoyalty(receiver, fee);
 }
+
+	function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
+    }
 }
