@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, RefObject } from "react";
 import { GraphNode, GraphLink } from "../graph-data/types";
 import { generateLayout, shouldRegenerateLayout, LayoutConfig, PositionedNode } from './graphLayouts';
+import { BlockieAvatar } from "~~/components/scaffold-eth";
 import {
   ArrowsPointingOutIcon,
   ArrowsPointingInIcon,
@@ -30,6 +31,7 @@ interface Props {
   onFullscreenToggle: () => void;
   resetViewRef?: React.RefObject<(() => void) | null>;
   onViewStateChange?: (viewState: ViewState) => void;
+  showNodeLabels?: boolean; // Add this prop
 }
 
 export default function SimpleCosmicGraph({ 
@@ -42,7 +44,8 @@ export default function SimpleCosmicGraph({
   isAutoOrbiting,
   onFullscreenToggle,
   resetViewRef,
-  onViewStateChange
+  onViewStateChange,
+  showNodeLabels = true // Add this with default
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
@@ -457,7 +460,8 @@ export default function SimpleCosmicGraph({
             ctx.arc(node.screenX, node.screenY, size, 0, 2 * Math.PI);
             ctx.fill();
 
-            if (zoom > 1.2 && depthOpacity > 0.6) {
+            // In the node rendering section, replace the label drawing condition:
+            if (showNodeLabels && zoom > 1.2 && depthOpacity > 0.6) {
               ctx.font = `${14 / zoom}px Inter, sans-serif`;
               ctx.textAlign = 'center';
               ctx.fillStyle = `${color}${Math.floor(depthOpacity * 200).toString(16).padStart(2, '0')}`;
@@ -478,7 +482,7 @@ export default function SimpleCosmicGraph({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [nodes, graphData.links, graphData.nodes, panOffset, zoom, particleMode, isAutoOrbiting, isDragging, isOrbiting, canvasSize, targetNodeId]);
+  }, [nodes, graphData.links, graphData.nodes, panOffset, zoom, particleMode, isAutoOrbiting, isDragging, isOrbiting, canvasSize, targetNodeId, showNodeLabels]); // Add showNodeLabels to dependencies
 
   // Also clear nodes when graphData changes to empty
   useEffect(() => {
@@ -493,6 +497,11 @@ export default function SimpleCosmicGraph({
   const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
     event.preventDefault();
     setLastMousePos({ x: event.clientX, y: event.clientY });
+
+    // Close popup when starting any interaction (left or right click)
+    if (nodePopup) {
+      setNodePopup(null);
+    }
 
     if (event.button === 2) {
       setIsOrbiting(true);
@@ -537,6 +546,10 @@ export default function SimpleCosmicGraph({
 
   const handleContextMenu = (event: React.MouseEvent<HTMLCanvasElement>) => {
     event.preventDefault();
+    // Close popup on right-click context menu
+    if (nodePopup) {
+      setNodePopup(null);
+    }
   };
 
   // Wheel event for zoom
@@ -547,6 +560,12 @@ export default function SimpleCosmicGraph({
     const handleWheel = (e: WheelEvent) => {
       if (!isHovered) return;
       e.preventDefault();
+      
+      // Close popup when user starts zooming
+      if (nodePopup) {
+        setNodePopup(null);
+      }
+      
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       setZoom(prev => Math.max(0.1, Math.min(5, prev * delta)));
     };
@@ -556,7 +575,7 @@ export default function SimpleCosmicGraph({
     return () => {
       canvas.removeEventListener("wheel", handleWheel);
     };
-  }, [isHovered]);
+  }, [isHovered, nodePopup]);
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (isDragging || isOrbiting) return;
@@ -575,18 +594,50 @@ export default function SimpleCosmicGraph({
 
     const projectedNodes = nodes.map(node => ({
       ...node,
-      ...project3DTo2D(node, orbitRotation.x, orbitRotation.y)
-    }));
-
-    const clickedNode = projectedNodes.find(node => {
-      if (node.depth > -500) {
-        const dx = worldX - node.screenX;
-        const dy = worldY - node.screenY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        return distance < 15;
+      ...project3DTo2D(node, orbitRotationRef.current.x, orbitRotationRef.current.y) // Use ref instead of state
+    }))
+    .map(node => {
+      const dx = worldX - node.screenX;
+      const dy = worldY - node.screenY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Calculate dynamic click radius based on node size and zoom
+      let baseSize;
+      switch (node.galaxyLayer) {
+        case 'core': baseSize = 8; break;
+        case 'inner': baseSize = 6; break;
+        case 'outer': baseSize = 4; break;
+        case 'halo': baseSize = 3; break;
+        default: baseSize = 3; break;
       }
-      return false;
-    });
+      
+      // Calculate node visibility and opacity same as drawing logic
+      const depthOpacity = Math.max(0.2, Math.min(1, (500 + node.depth) / 700));
+      const size = (baseSize * node.perspective) / zoom;
+      
+      // Node is clickable if:
+      // 1. It's visible (depth > -500, same as drawing)
+      // 2. Has reasonable opacity
+      const isVisible = node.depth > -500 && depthOpacity > 0.2;
+      
+      // Click radius - slightly larger than visual node
+      const clickRadius = isVisible ? Math.max(8, size * 1.8) : 0;
+      
+      return {
+        ...node,
+        distance,
+        clickRadius,
+        isVisible,
+        depthOpacity,
+        size,
+        isInClickRange: isVisible && distance < clickRadius
+      };
+    })
+    .filter(node => node.isInClickRange)
+    .sort((a, b) => a.distance - b.distance); // Sort by distance to get closest node
+
+    // Get the closest clickable node
+    const clickedNode = projectedNodes[0];
 
     if (clickedNode) {
       setNodePopup({
@@ -721,9 +772,9 @@ export default function SimpleCosmicGraph({
       
       <div className="absolute bottom-4 left-4 text-white text-xs opacity-50">
         {isHovered ? (
-          "Hover active • Scroll to zoom • Left-drag: pan • Right-drag: orbit"
+          "Hover active • Scroll to zoom • Left-drag: pan • Right-drag: orbit • Click visible nodes for details"
         ) : (
-          "Hover over graph to enable zoom • Left-drag: pan • Right-drag: orbit"
+          "Hover over graph to enable zoom • Left-drag: pan • Right-drag: orbit • Click nodes for details"
         )}
       </div>
 
@@ -787,9 +838,11 @@ export default function SimpleCosmicGraph({
                 );
               })()}
               
+              <BlockieAvatar address={nodePopup.node.id} size={16} />
+              
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-semibold truncate" style={{ color: '#e1e5f2' }}>
-                  {nodePopup.node.isContract ? '📋' : '👤'} {nodePopup.node.id.slice(0, 6)}...{nodePopup.node.id.slice(-4)}
+                  {nodePopup.node.id.slice(0, 6)}...{nodePopup.node.id.slice(-4)}
                 </div>
               </div>
               <button
@@ -870,7 +923,7 @@ export default function SimpleCosmicGraph({
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
-                🔗 Scan
+              Etherscan
               </button>
               
               {onSetTarget && (
@@ -895,7 +948,7 @@ export default function SimpleCosmicGraph({
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  🎯 Target
+                Target
                 </button>
               )}
             </div>

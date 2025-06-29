@@ -27,10 +27,9 @@ export const menuLinks: HeaderMenuLink[] = [
     icon: <BugAntIcon className="h-4 w-4" />,
   },
   {
-    label: "mINTER",
-    href: "/cosmicMinter",
-    icon: <SparklesIcon className="h-4 w-4" />,
-    // icon: <BugAntIcon className="h-4 w-4" />,
+    label: "All NFTs",
+    href: "/allNFTs",
+    icon: <BugAntIcon className="h-4 w-4" />,
   },
   {
     label: "Debug Contracts",

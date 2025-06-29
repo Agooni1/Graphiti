@@ -54,6 +54,7 @@ const Test: NextPage = () => {
   const [layoutMode, setLayoutMode] = useState<'shell' | 'force' | 'fibonacci'>('shell');
   const [particleMode, setParticleMode] = useState<'pulse' | 'laser' | 'off'>('pulse');
   const [isAutoOrbiting, setIsAutoOrbiting] = useState(true); //default to true for auto-orbiting
+  const [showNodeLabels, setShowNodeLabels] = useState(true); // Add this new state
 
   // Create a ref to store the reset function from the graph component
   const resetViewRef = useRef<(() => void) | null>(null);
@@ -260,7 +261,7 @@ const Test: NextPage = () => {
 
         {/* Unified Controls Card */}
         {!isFullscreen && (
-          <div className="w-full max-w-6xl bg-slate-800/40 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl p-6 mb-6">
+          <div className="w-full max-w-6xl bg-slate-800/40 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl p-6 mb-6 relative z-10">
             <MenuActions
               inputValue={inputValue}
               setInputValue={setInputValue}
@@ -282,6 +283,8 @@ const Test: NextPage = () => {
               setParticleMode={setParticleMode}
               setIsAutoOrbiting={setIsAutoOrbiting}
               handleResetView={handleResetView}
+              showNodeLabels={showNodeLabels} // Add this prop
+              setShowNodeLabels={setShowNodeLabels} // Add this prop
             />
           </div>
         )}
@@ -289,11 +292,10 @@ const Test: NextPage = () => {
         {/* Galaxy Visualization Area */}
         <div
           ref={graphWrapperRef}
-          className={`relative bg-slate-900/50 backdrop-blur-sm border border-blue-500/30 flex items-center justify-center overflow-hidden transition-all duration-300 ${
+          className={`relative bg-slate-900/50 backdrop-blur-sm border border-blue-500/30 flex items-center justify-center overflow-hidden transition-all duration-300 z-0 ${
             isFullscreen 
               ? "w-screen h-screen fixed top-0 left-0 z-50" 
-              // : "w-full max-w-7xl h-[75vh] rounded-2xl shadow-2xl shadow-blue-500/10"
-              : "w-full max-w-[1280px] h-[75vh] max-h-[747.19px] rounded-2xl shadow-2xl shadow-blue-500/10"
+              : "w-full max-w-[1280px] h-[75vh] max-h-[750px] rounded-2xl shadow-2xl shadow-blue-500/10"
           }`}
         >
           {/* Loading Spinner */}
@@ -329,7 +331,7 @@ const Test: NextPage = () => {
                 </div>
                 <div className="text-slate-400 text-sm text-center">
                   Addresses with a lotta nodes may take a while... <br />
-                  Pls be patient I'm too broke for a premium API key
+                  I'm too broke for a premium API key
                 </div>
               </div>
             </div>
@@ -346,7 +348,8 @@ const Test: NextPage = () => {
             isAutoOrbiting={isAutoOrbiting}
             onFullscreenToggle={handleFullscreenToggle}
             resetViewRef={resetViewRef}
-            onViewStateChange={setCurrentViewState} // Add this prop
+            onViewStateChange={setCurrentViewState}
+            showNodeLabels={showNodeLabels} // Add this prop
           />
           
           {/* Empty State */}
@@ -356,14 +359,14 @@ const Test: NextPage = () => {
                 <div className="text-6xl mb-4 opacity-50">🌌</div>
                 <div className="text-slate-300 text-xl mb-4 font-medium">
                   {isConnected && connectedAddress ? 
-                    "Ready to explore the cosmos" :
+                    "Ready to explore" :
                     "Connect your wallet to begin"
                   }
                 </div>
                 <div className="text-slate-400">
                   {isConnected && connectedAddress ? 
-                    "Enter an address above to visualize the Ethereum galaxy" :
-                    "Connect your wallet or enter an address to explore the universe"
+                    "Enter an address to begin" :
+                    "Connect your wallet or enter an address to begin"
                   }
                 </div>
               </div>
@@ -391,18 +394,6 @@ const Test: NextPage = () => {
             </div>
           </div>
         )}
-
-        {/* Mint NFT Section - Replace the HTML Generation Buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={handleResetView}
-            className="btn btn-xs flex-1 btn-outline border-slate-600 text-slate-300 hover:border-slate-400"
-            title="Reset View"
-          >
-            <ArrowPathIcon className="w-3 h-3" />
-            Reset
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 import { Alchemy, Network } from "alchemy-sdk";
 
 const config = {
-  apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY, // Replace with your API key
+  apiKey: process.env.ALCHEMY_API_KEY, // Replace with your API key
   network: Network.ETH_SEPOLIA, // Replace with your network
 };
 

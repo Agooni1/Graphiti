@@ -1,31 +1,51 @@
-import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
+"use client";
+
 import { useState } from "react";
+import { InformationCircleIcon } from "@heroicons/react/24/outline";
 
 export function MintInfoTooltip() {
-  const [show, setShow] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
   return (
-    <div className="relative flex items-center">
+    <div className="relative">
       <button
-        className="ml-2 text-blue-300 hover:text-blue-400 focus:outline-none"
-        onMouseEnter={() => setShow(true)}
-        onMouseLeave={() => setShow(false)}
-        onFocus={() => setShow(true)}
-        onBlur={() => setShow(false)}
-        tabIndex={0}
-        aria-label="What does mint do?"
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+        className="p-1 text-slate-400 hover:text-slate-300 transition-colors"
         type="button"
       >
-        <QuestionMarkCircleIcon className="w-5 h-5" />
+        <InformationCircleIcon className="h-6 w-6" />
       </button>
-      {show && (
-        <div className="absolute left-8 top-1 z-50 w-72 bg-slate-800 text-slate-100 text-sm rounded-lg shadow-lg p-4 border border-blue-500/30">
-          <div className="font-semibold mb-1">What does "Mint Cosmic NFT" do?</div>
-          <div>
-            This will mint an NFT of the graph you see below, preserving its exact appearance and layout. 
-            The NFT contains an interactive, on-chain visualization of your Ethereum address and its current connections
-            <br /><br />
-            <span className="text-blue-300">You can view, share, and trade this NFT like any other collectible!</span>
+      
+      {isVisible && (
+        <div className="absolute right-0 top-6 w-80 bg-slate-800 border border-slate-600 rounded-lg p-4 shadow-xl z-[100]">
+          <div className="text-white font-semibold text-sm mb-2">
+            What does "Mint Cosmic NFT" do?
+          </div>
+          <div className="text-slate-300 text-xs leading-relaxed space-y-2">
+            <p>
+              This will mint an NFT of the graph you see below, preserving its exact 
+              state and making it <strong>fully interactive</strong>. The NFT includes:
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-slate-400">
+              <li>Complete 3D visualization with all nodes and connections</li>
+              <li>Current camera position and zoom level</li>
+              <li>Selected layout mode and particle effects</li>
+              <li>Interactive navigation (pan, zoom, orbit)</li>
+            </ul>
+            
+            <p className="text-slate-300 mt-3">
+              Current Price: <span className="text-cyan-400 font-semibold">0.01 ETH</span>
+            </p>
+            
+            <div className="bg-amber-900/30 border border-amber-600/50 rounded px-2 py-0">
+              <p className="text-amber-200 text-xs font-medium italic flex items-center gap-1">
+                <span>Node labels not included in final NFT</span>
+              </p>
+              <p className="text-amber-200 text-xs font-medium italic flex items-center gap-1">
+                <span>You can only mint an address ONCE</span>
+              </p>
+            </div>
           </div>
         </div>
       )}

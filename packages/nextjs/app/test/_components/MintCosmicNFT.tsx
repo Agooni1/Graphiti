@@ -31,9 +31,10 @@ interface MintCosmicNFTProps {
   graphConfig: GraphConfig;
   disabled?: boolean;
   className?: string;
+  title?: string; // <-- add this
 }
 
-export function MintCosmicNFT({ graphConfig, disabled = false, className = "" }: MintCosmicNFTProps) {
+export function MintCosmicNFT({ graphConfig, disabled = false, className = "", title }: MintCosmicNFTProps) {
   const { address: connectedAddress } = useAccount();
   const [isMinting, setIsMinting] = useState(false);
   const mintPrice = "0.01";
@@ -146,7 +147,7 @@ export function MintCosmicNFT({ graphConfig, disabled = false, className = "" }:
       onClick={handleMint}
       disabled={isDisabled}
       className={`btn bg-gradient-to-r from-purple-600 to-blue-600 border-none text-white font-semibold hover:from-purple-700 hover:to-blue-700 transition-all text-sm flex items-center gap-2 ${className}`}
-      title={isDisabled ? "Connect wallet and load a graph first" : `Mint your cosmic graph as an NFT for ${mintPrice} ETH`}
+      title={title} // <-- add this
     >
       {isMinting ? (
         <>Minting...</>

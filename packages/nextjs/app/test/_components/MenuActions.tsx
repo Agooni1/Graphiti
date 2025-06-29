@@ -1,6 +1,6 @@
 import { useAccount } from "wagmi";
 import { AddressInput, BlockieAvatar } from "~~/components/scaffold-eth";
-import { 
+import {
   MagnifyingGlassIcon, 
   SparklesIcon, 
   AdjustmentsHorizontalIcon,
@@ -10,10 +10,21 @@ import {
   PlayIcon,
   PauseIcon,
   ArrowPathIcon,
-  XMarkIcon
+  XMarkIcon,
+  TagIcon,
+  EyeIcon,
+  EyeSlashIcon
 } from "@heroicons/react/24/outline";
 import { MintCosmicNFT } from "./MintCosmicNFT";
 import { MintInfoTooltip } from "./MintInfoTooltip";
+import { useState } from "react"; // Add if not already imported
+
+const CHAIN_OPTIONS = [
+  { value: "ethereum", label: "Ethereum Mainnet" },
+  { value: "sepolia", label: "Ethereum Sepolia" },
+  { value: "arbitrum", label: "Arbitrum One" },
+  { value: "base", label: "Base" },
+];
 
 interface MenuActionsProps {
   inputValue: string;
@@ -37,6 +48,8 @@ interface MenuActionsProps {
   setParticleMode: (v: any) => void;
   setIsAutoOrbiting: (v: boolean) => void;
   handleResetView: () => void;
+  showNodeLabels: boolean; // Add this
+  setShowNodeLabels: (v: boolean) => void; // Add this
 }
 
 export function MenuActions({
@@ -60,7 +73,15 @@ export function MenuActions({
   setParticleMode,
   setIsAutoOrbiting,
   handleResetView,
+  showNodeLabels,
+  setShowNodeLabels,
 }: MenuActionsProps) {
+  // Add chain selection state
+  const [selectedChain, setSelectedChain] = useState<"ethereum" | "sepolia" | "arbitrum" | "base">("sepolia");
+
+  // Only enable minting on sepolia or arbitrum
+  const canMint = selectedChain === "sepolia" || selectedChain === "arbitrum";
+
   return (
     <div className="w-full">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -101,7 +122,7 @@ export function MenuActions({
               disabled={!inputValue || loading}
             >
               <MagnifyingGlassIcon className="h-4 w-4" />
-              <span className="ml-1">Explore</span>
+              <span className="ml-1">Generate</span>
             </button>
 
             <button
@@ -113,7 +134,7 @@ export function MenuActions({
               }}
               disabled={!isConnected}
             >
-              Use Wallet
+              Use Connected Address
             </button>
 
             <button
@@ -124,7 +145,19 @@ export function MenuActions({
               Clear
             </button>
 
-            <div className="col-span-3 flex items-center gap-1">
+            <div className="col-span-3 flex items-center gap-1 relative z-20">
+              {/* Chain selector dropdown */}
+              <select
+                value={selectedChain}
+                onChange={e => setSelectedChain(e.target.value as any)}
+                className="min-w-[120px] min-h-[35px] text-s px-2 py-1 rounded-lg bg-gradient-to-r from-slate-800/90 to-slate-700/90 bg-slate-800 backdrop-blur-sm border border-slate-600/40 text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all duration-200 hover:border-slate-500/60 hover:from-slate-700/90 hover:to-slate-600/90 cursor-pointer shadow-lg"
+                title="Select blockchain network"
+              >
+                {CHAIN_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              {/* Mint button, smaller and disabled if not allowed */}
               <MintCosmicNFT 
                 graphConfig={{
                   graphData,
@@ -134,8 +167,19 @@ export function MenuActions({
                   isAutoOrbiting,
                   viewState: currentViewState === null ? undefined : currentViewState
                 }}
-                disabled={!address || !graphData.nodes.length}
-                className="flex-1"
+                disabled={!address || !graphData.nodes.length || !canMint}
+                className={`flex-1 min-w-[110px] transition-all ${
+                  !address || !graphData.nodes.length || !canMint
+                    ? "opacity-60 grayscale cursor-not-allowed"
+                    : ""
+                }`}
+                title={
+                  !canMint
+                    ? "Minting is only available on Sepolia and Arbitrum networks."
+                    : !address || !graphData.nodes.length
+                      ? "Connect wallet and load a graph first"
+                      : "Mint your cosmic graph as an NFT"
+                }
               />
               <MintInfoTooltip />
             </div>
@@ -143,16 +187,11 @@ export function MenuActions({
         </div>
 
         {/* Right Section - Graph Controls (1/4 width) - COMPACT */}
-        <div className="space-y-2">
-          {/* <div className="text-blue-100 font-semibold text-sm flex items-center gap-2 mb-3">
-            <AdjustmentsHorizontalIcon className="h-4 w-4" />
-            Graph Controls
-          </div> */}
-          
+        <div className="space-y-1.5 flex flex-col justify-start -mt-3.5">
           {/* Transactions - Horizontal */}
           <div>
             <div className="text-xs text-slate-300 font-medium mb-1">Transactions</div>
-            <div className="flex gap-1">
+            <div className="flex gap-0.5">
               {[
                 { mode: 'both', label: 'All' },
                 { mode: 'from', label: 'Sent' },
@@ -180,7 +219,7 @@ export function MenuActions({
           {/* Layout - Horizontal */}
           <div>
             <div className="text-xs text-slate-300 font-medium mb-1">Layout</div>
-            <div className="flex gap-1">
+            <div className="flex gap-0.5">
               {[
                 { mode: 'shell', icon: Squares2X2Icon },
                 { mode: 'force', icon: BoltIcon },
@@ -204,7 +243,7 @@ export function MenuActions({
           {/* Particles - Horizontal */}
           <div>
             <div className="text-xs text-slate-300 font-medium mb-1">Particles</div>
-            <div className="flex gap-1">
+            <div className="flex gap-0.5">
               {[
                 { mode: 'pulse', icon: PlayIcon },
                 { mode: 'laser', icon: BoltIcon },
@@ -227,10 +266,13 @@ export function MenuActions({
             </div>
           </div>
 
-          {/* Animation Controls */}
+          {/* Orbit & Labels - Combined Row with Split Headers */}
           <div>
-            <div className="text-xs text-slate-300 font-medium mb-1">Orbit</div>
-            <div className="flex gap-1">
+            <div className="flex gap-0.5 text-xs text-slate-300 font-medium mb-1">
+              <div className="flex-2">Orbit</div>
+              <div className="flex-1 -mx-1">Labels</div>
+            </div>
+            <div className="flex gap-0.5">
               <button
                 className={`btn btn-xs flex-1 ${
                   isAutoOrbiting 
@@ -249,6 +291,18 @@ export function MenuActions({
                 title="Reset View"
               >
                 <ArrowPathIcon className="w-3 h-3" />
+              </button>
+
+              <button
+                className={`btn btn-xs flex-1 ${
+                  showNodeLabels 
+                    ? 'btn-primary bg-gradient-to-r from-green-600 to-emerald-600' 
+                    : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
+                }`}
+                onClick={() => setShowNodeLabels(!showNodeLabels)}
+                title={showNodeLabels ? "Hide Labels" : "Show Labels"}
+              >
+                {showNodeLabels ? <EyeIcon className="w-3 h-3" /> : <EyeSlashIcon className="w-3 h-3" />}
               </button>
             </div>
           </div>
