@@ -14,6 +14,7 @@ export interface Transfer {
 
 export async function generateNodesFromTx(
   transfers: Transfer[],
+  chain: string,
   onProgress?: (loaded: number, total: number) => void
 ): Promise<{ nodes: GraphNode[]; links: GraphLink[] }> {
   const nodesMap = new Map<string, GraphNode>();

@@ -8,6 +8,13 @@ import {
   ArrowsPointingInIcon,
 } from "@heroicons/react/24/outline";
 
+const EXPLORER_URLS: Record<string, string> = {
+  ethereum: "https://etherscan.io/address/",
+  sepolia: "https://sepolia.etherscan.io/address/",
+  arbitrum: "https://arbiscan.io/address/",
+  base: "https://basescan.org/address/",
+};
+
 interface NodePopupData {
   node: PositionedNode;
   x: number;
@@ -32,6 +39,7 @@ interface Props {
   resetViewRef?: React.RefObject<(() => void) | null>;
   onViewStateChange?: (viewState: ViewState) => void;
   showNodeLabels?: boolean; // Add this prop
+  selectedChain: "ethereum" | "sepolia" | "arbitrum" | "base";
 }
 
 export default function SimpleCosmicGraph({ 
@@ -45,7 +53,8 @@ export default function SimpleCosmicGraph({
   onFullscreenToggle,
   resetViewRef,
   onViewStateChange,
-  showNodeLabels = true // Add this with default
+  showNodeLabels = true,
+  selectedChain,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
@@ -905,7 +914,7 @@ export default function SimpleCosmicGraph({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  window.open(`https://sepolia.etherscan.io/address/${nodePopup.node.id}`, "_blank");
+                  window.open(`${EXPLORER_URLS[selectedChain]}${nodePopup.node.id}`, "_blank");
                 }}
                 className="flex-1 text-[10px] h-6 rounded transition-all duration-200 font-medium cursor-pointer"
                 style={{
@@ -923,7 +932,12 @@ export default function SimpleCosmicGraph({
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
-              Etherscan
+                {{
+                  ethereum: "Etherscan",
+                  sepolia: "Etherscan",
+                  arbitrum: "Arbiscan",
+                  base: "BaseScan"
+                }[selectedChain]}
               </button>
               
               {onSetTarget && (

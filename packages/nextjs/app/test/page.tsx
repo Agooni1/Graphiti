@@ -59,6 +59,8 @@ const Test: NextPage = () => {
   // Create a ref to store the reset function from the graph component
   const resetViewRef = useRef<(() => void) | null>(null);
 
+  const [selectedChain, setSelectedChain] = useState<"ethereum" | "sepolia" | "arbitrum" | "base">("sepolia");
+
   // Add view state tracking
   const [currentViewState, setCurrentViewState] = useState<{
     zoom: number;
@@ -106,10 +108,10 @@ const Test: NextPage = () => {
 
   useEffect(() => {
     if (!address) return;
-    fetchAllTransfersCached(address).then(transfers => {
+    fetchAllTransfersCached(address, selectedChain).then(transfers => {
       setAllTransfers(transfers);
     });
-  }, [address]);
+  }, [address, selectedChain]);
 
   useEffect(() => {
     const fetchGraphData = async () => {
@@ -128,9 +130,13 @@ const Test: NextPage = () => {
 
       setProgress({ loaded: 0, total: filtered.length });
 
-      const graph = await generateNodesFromTx(filtered, (loaded, total) => {
-        setProgress({ loaded, total });
-      });
+      const graph = await generateNodesFromTx(
+        filtered,
+        selectedChain,
+        (loaded: number, total: number) => {
+          setProgress({ loaded, total });
+        }
+      );
       setGraphData(graph);
       setLoading(false);
     };
@@ -285,6 +291,8 @@ const Test: NextPage = () => {
               handleResetView={handleResetView}
               showNodeLabels={showNodeLabels} // Add this prop
               setShowNodeLabels={setShowNodeLabels} // Add this prop
+              selectedChain={selectedChain}
+              setSelectedChain={setSelectedChain}
             />
           </div>
         )}
@@ -350,23 +358,35 @@ const Test: NextPage = () => {
             resetViewRef={resetViewRef}
             onViewStateChange={setCurrentViewState}
             showNodeLabels={showNodeLabels} // Add this prop
+            selectedChain={selectedChain}
           />
           
           {/* Empty State */}
-          {!loading && (!address || graphData.nodes.length === 0) && (
+          {!loading && graphData.nodes.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center text-center">
               <div className="max-w-md">
                 <div className="text-6xl mb-4 opacity-50">🌌</div>
                 <div className="text-slate-300 text-xl mb-4 font-medium">
-                  {isConnected && connectedAddress ? 
-                    "Ready to explore" :
-                    "Connect your wallet to begin"
+                  {!address
+                    ? (isConnected && connectedAddress
+                        ? "Ready to explore"
+                        : "Connect your wallet to begin")
+                    : `No transfers found for this address on ${
+                        {
+                          ethereum: "Ethereum Mainnet",
+                          sepolia: "Sepolia",
+                          arbitrum: "Arbitrum One",
+                          base: "Base",
+                        }[selectedChain]
+                      }`
                   }
                 </div>
                 <div className="text-slate-400">
-                  {isConnected && connectedAddress ? 
-                    "Enter an address to begin" :
-                    "Connect your wallet or enter an address to begin"
+                  {!address
+                    ? (isConnected && connectedAddress
+                        ? "Enter an address to begin"
+                        : "Connect your wallet or enter an address to begin")
+                    : "Try another address or switch networks."
                   }
                 </div>
               </div>

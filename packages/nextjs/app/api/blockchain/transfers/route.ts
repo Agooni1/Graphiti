@@ -1,40 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Alchemy, Network, AssetTransfersCategory, SortingOrder } from "alchemy-sdk";
+import { NETWORK_MAP } from "../utils";
 
-const config = {
-  apiKey: process.env.ALCHEMY_API_KEY,
-  network: Network.ETH_SEPOLIA,
-  // Add these configurations to fix the server-side fetch issues
-  connectionInfoOverrides: {
-    skipFetchSetup: true,
-  },
-};
+// const config = {
+//   apiKey: process.env.ALCHEMY_API_KEY,
+//   network: Network.ETH_SEPOLIA,
+//   connectionInfoOverrides: {
+//     skipFetchSetup: true,
+//   },
+// };
 
-console.log("Server-side Alchemy API Key: ", process.env.ALCHEMY_API_KEY);
+// console.log("Server-side Alchemy API Key: ", process.env.ALCHEMY_API_KEY);
 
-const alchemy = new Alchemy(config);
+// const alchemy = new Alchemy(config);
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const address = searchParams.get('address');
+  const chain = (searchParams.get('chain') as keyof typeof NETWORK_MAP) || "sepolia";
+  const _network = NETWORK_MAP[chain] || NETWORK_MAP.sepolia;
 
   if (!address) {
     return NextResponse.json({ error: "Address parameter required" }, { status: 400 });
   }
 
+   const alchemy = new Alchemy({
+    apiKey: process.env.ALCHEMY_API_KEY,
+    network: _network,
+    connectionInfoOverrides: { skipFetchSetup: true },
+  });
+
   console.log("Fetching transfers for address:", address);
+  console.log("Using network:", _network);
+
+  // Internal transfers are not supported on Arbitrum and Base
+  const supportsInternal = chain !== "arbitrum" && chain !== "base";
+
+  const categories = [
+    AssetTransfersCategory.EXTERNAL,
+    ...(supportsInternal ? [AssetTransfersCategory.INTERNAL] : []),
+    AssetTransfersCategory.ERC20,
+    AssetTransfersCategory.ERC721,
+    AssetTransfersCategory.ERC1155,
+  ];
 
   const commonParams = {
     fromBlock: "0x0",
     toBlock: "latest",
     maxCount: 200,
-    category: [
-      AssetTransfersCategory.EXTERNAL,
-      AssetTransfersCategory.INTERNAL,
-      AssetTransfersCategory.ERC20,
-      AssetTransfersCategory.ERC721,
-      AssetTransfersCategory.ERC1155,
-    ],
+    category: categories,
     order: SortingOrder.DESCENDING,
   };
 

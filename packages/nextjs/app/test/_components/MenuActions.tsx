@@ -50,6 +50,8 @@ interface MenuActionsProps {
   handleResetView: () => void;
   showNodeLabels: boolean; // Add this
   setShowNodeLabels: (v: boolean) => void; // Add this
+  selectedChain: "ethereum" | "sepolia" | "arbitrum" | "base";
+  setSelectedChain: (v: "ethereum" | "sepolia" | "arbitrum" | "base") => void;
 }
 
 export function MenuActions({
@@ -75,10 +77,9 @@ export function MenuActions({
   handleResetView,
   showNodeLabels,
   setShowNodeLabels,
+  selectedChain,
+  setSelectedChain,
 }: MenuActionsProps) {
-  // Add chain selection state
-  const [selectedChain, setSelectedChain] = useState<"ethereum" | "sepolia" | "arbitrum" | "base">("sepolia");
-
   // Only enable minting on sepolia or arbitrum
   const canMint = selectedChain === "sepolia" || selectedChain === "arbitrum";
 
@@ -167,9 +168,19 @@ export function MenuActions({
                   isAutoOrbiting,
                   viewState: currentViewState === null ? undefined : currentViewState
                 }}
-                disabled={!address || !graphData.nodes.length || !canMint}
+                disabled={
+                  !address ||
+                  !graphData.nodes.length ||
+                  !canMint ||
+                  !isConnected ||
+                  address.toLowerCase() !== connectedAddress?.toLowerCase() // <-- new condition
+                }
                 className={`flex-1 min-w-[110px] transition-all ${
-                  !address || !graphData.nodes.length || !canMint
+                  !address ||
+                  !graphData.nodes.length ||
+                  !canMint ||
+                  !isConnected ||
+                  address.toLowerCase() !== connectedAddress?.toLowerCase()
                     ? "opacity-60 grayscale cursor-not-allowed"
                     : ""
                 }`}
@@ -178,7 +189,11 @@ export function MenuActions({
                     ? "Minting is currently only available on Sepolia and Arbitrum networks."
                     : !address || !graphData.nodes.length
                       ? "Connect wallet and load a graph first"
-                      : "Mint your cosmic graph as an NFT"
+                      : !isConnected
+                        ? "Connect your wallet to mint"
+                        : address.toLowerCase() !== connectedAddress?.toLowerCase()
+                          ? "You can only mint for your own address"
+                          : "Mint your cosmic graph as an NFT"
                 }
               />
               <MintInfoTooltip />

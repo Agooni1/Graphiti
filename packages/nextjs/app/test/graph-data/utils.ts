@@ -170,11 +170,12 @@ export const pairData = async ({ pairsFromParent, transfers }: PairDataProps): P
   return graphData;
 };
 
-export async function fetchAllTransfers(address: string): Promise<AssetTransfersResult[]> {
+export async function fetchAllTransfers(address: string, chain: string): Promise<AssetTransfersResult[]> {
   if (!address) return [];
 
   try {
-    const response = await fetch(`/api/blockchain/transfers?address=${encodeURIComponent(address)}`);
+    // Pass the chain param to the API!
+    const response = await fetch(`/api/blockchain/transfers?address=${encodeURIComponent(address)}&chain=${encodeURIComponent(chain)}`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -211,15 +212,20 @@ export async function isContractCached(address: string): Promise<boolean> {
   return result;
 }
 
-const transferCache: Record<string, AssetTransfersResult[]> = {};
+const transferCache: Record<string, Record<string, AssetTransfersResult[]>> = {};
 
-export async function fetchAllTransfersCached(address: string): Promise<AssetTransfersResult[]> {
-  if (transferCache[address] && transferCache[address].length > 0) {
-    return transferCache[address];
+export async function fetchAllTransfersCached(address: string, chain: string): Promise<AssetTransfersResult[]> {
+  if (
+    transferCache[address] &&
+    transferCache[address][chain] &&
+    transferCache[address][chain].length > 0
+  ) {
+    return transferCache[address][chain];
   }
-  const transfers = await fetchAllTransfers(address);
+  const transfers = await fetchAllTransfers(address, chain);
   if (transfers.length > 0) {
-    transferCache[address] = transfers;
+    if (!transferCache[address]) transferCache[address] = {};
+    transferCache[address][chain] = transfers;
   }
   return transfers;
 }

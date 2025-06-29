@@ -39,8 +39,8 @@ export function MintCosmicNFT({ graphConfig, disabled = false, className = "", t
   const [isMinting, setIsMinting] = useState(false);
   const mintPrice = "0.01";
 
-  const { writeContractAsync } = useScaffoldWriteContract("YourCollectible");
-  const { data: contractInfo } = useDeployedContractInfo("YourCollectible");
+  const { writeContractAsync } = useScaffoldWriteContract("CosmicGraph");
+  const { data: contractInfo } = useDeployedContractInfo("CosmicGraph");
 
   const { data: balance } = useWatchBalance({
     address: connectedAddress,

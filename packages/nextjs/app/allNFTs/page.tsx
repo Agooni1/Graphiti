@@ -23,23 +23,23 @@ const AllNFTs: NextPage = () => {
   const [previewSVG, setPreviewSVG] = useState<string>("");
   const [targetAddress, setTargetAddress] = useState("");
 
-  const { writeContractAsync } = useScaffoldWriteContract("YourCollectible");
+  const { writeContractAsync } = useScaffoldWriteContract("CosmicGraph");
 
   const { data: tokenIdCounter } = useScaffoldReadContract({
-    contractName: "YourCollectible",
+    contractName: "CosmicGraph",
     functionName: "tokenIdCounter",
     watch: true,
   });
 
   const { data: tokenURI } = useScaffoldReadContract({
-    contractName: "YourCollectible",
+    contractName: "CosmicGraph",
     functionName: "tokenURI",
     args: [1n],
     // watch: true,
   });
 
   // Get contract address
-  const { data: contractInfo } = useDeployedContractInfo("YourCollectible");
+  const { data: contractInfo } = useDeployedContractInfo("CosmicGraph");
 
 
   

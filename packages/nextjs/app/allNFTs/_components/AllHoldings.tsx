@@ -36,12 +36,12 @@ export const AllHoldings = () => {
   const [allCollectiblesLoading, setAllCollectiblesLoading] = useState(false);
 
   const { data: yourCollectibleContract } = useScaffoldContract({
-    contractName: "YourCollectible",
+    contractName: "CosmicGraph",
   });
 
   // Get total supply instead of balance for a specific address
   const { data: totalSupply } = useScaffoldReadContract({
-    contractName: "YourCollectible",
+    contractName: "CosmicGraph",
     functionName: "totalSupply",
     watch: true,
   });

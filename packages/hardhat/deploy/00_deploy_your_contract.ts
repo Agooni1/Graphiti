@@ -22,9 +22,10 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   const { deployer } = await hre.getNamedAccounts();
   const { deploy } = hre.deployments;
 
-  await deploy("YourCollectible", {
+  await deploy("CosmicGraph", {
     from: deployer,
     // Contract constructor arguments
+    // args: ["0xe8148eFE71B017c250764AC6682389C26e400F4C"],
     args: [],
     log: true,
     // autoMine: can be passed to the deploy function to make the deployment process faster on local networks by
@@ -33,7 +34,7 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   });
 
   // Get the deployed contract to interact with it after deploying.
-  const yourContract = await hre.ethers.getContract<Contract>("YourCollectible", deployer);
+  const yourContract = await hre.ethers.getContract<Contract>("CosmicGraph", deployer);
   // console.log("👋 Initial greeting:", await yourContract.greeting());
 };
 
@@ -41,4 +42,4 @@ export default deployYourContract;
 
 // Tags are useful if you have multiple deploy files and only want to run one of them.
 // e.g. yarn deploy --tags YourContract
-deployYourContract.tags = ["YourContract"];
+deployYourContract.tags = ["CosmicGraph"];

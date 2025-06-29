@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Alchemy, Network } from "alchemy-sdk";
 import { ethers } from 'ethers';
+import { NETWORK_MAP } from "../utils"
 
 export async function POST(request: NextRequest) {
   try {
-    const { address } = await request.json();
+    const { address, chain } = await request.json();
+    type ChainKey = keyof typeof NETWORK_MAP;
+    const network = NETWORK_MAP[(chain as ChainKey)] || Network.ETH_SEPOLIA;
     
     if (!address || !ethers.isAddress(address)) {
       return NextResponse.json({ error: 'Invalid Ethereum address' }, { status: 400 });
@@ -15,7 +18,7 @@ export async function POST(request: NextRequest) {
     // Initialize Alchemy directly inside the API route
     const alchemyConfig = {
       apiKey: process.env.ALCHEMY_API_KEY,
-      network: Network.ETH_SEPOLIA,
+      network: network,
     };
     const alchemy = new Alchemy(alchemyConfig);
 
