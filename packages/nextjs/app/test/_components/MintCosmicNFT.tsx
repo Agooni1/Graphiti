@@ -124,7 +124,7 @@ export function MintCosmicNFT({ graphConfig, disabled = false, className = "", t
       const mintNotificationId = notification.loading("Minting your cosmic NFT...");
       
       await writeContractAsync({
-        functionName: "mintCosmicGraph",
+        functionName: "mintGraph",
         args: [connectedAddress, metadataCid],
         value: parseEther(mintPrice),
       });

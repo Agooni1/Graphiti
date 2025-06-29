@@ -21,7 +21,7 @@ import { useState } from "react"; // Add if not already imported
 
 const CHAIN_OPTIONS = [
   { value: "ethereum", label: "Ethereum Mainnet" },
-  { value: "sepolia", label: "Ethereum Sepolia" },
+  { value: "sepolia", label: "Sepolia" },
   { value: "arbitrum", label: "Arbitrum One" },
   { value: "base", label: "Base" },
 ];
@@ -175,7 +175,7 @@ export function MenuActions({
                 }`}
                 title={
                   !canMint
-                    ? "Minting is only available on Sepolia and Arbitrum networks."
+                    ? "Minting is currently only available on Sepolia and Arbitrum networks."
                     : !address || !graphData.nodes.length
                       ? "Connect wallet and load a graph first"
                       : "Mint your cosmic graph as an NFT"

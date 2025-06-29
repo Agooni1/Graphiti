@@ -55,28 +55,6 @@ const MyNFTs: NextPage = () => {
   const balanceValue = balance?.value ?? 0n;
   const balanceFormatted = balance?.formatted ?? "0";
 
-  const generatePreview = async () => {
-    if (!connectedAddress) return;
-    
-    setIsGenerating(true);
-    try {
-      // Fetch cosmic data for the connected address
-      const cosmicData = await fetchCosmicData(connectedAddress);
-      
-      // Generate visualization
-      const { svg } = generateCosmicSVG(cosmicData);
-      
-      // Show preview
-      setPreviewSVG(svg);
-      
-    } catch (error) {
-      console.error("Error generating preview:", error);
-      notification.error("Failed to generate cosmic preview");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   const handleMintCosmicNFT = async () => {
     if (!connectedAddress || !contractInfo?.address) return;
 
@@ -156,7 +134,7 @@ const MyNFTs: NextPage = () => {
       const mintNotificationId = notification.loading("Minting your cosmic NFT...");
       
       await writeContractAsync({
-        functionName: "mintCosmicGraph",
+        functionName: "mintGraph",
         args: [connectedAddress, metadataCid],
         value: parseEther(mintPrice),
       });
@@ -216,13 +194,6 @@ const MyNFTs: NextPage = () => {
                       <p className="text-slate-400 mb-4">
                         Create a unique cosmic visualization of your Ethereum address showing your transaction history and connections.
                       </p>
-                      <button 
-                        className="btn btn-info" 
-                        onClick={generatePreview}
-                        disabled={isGenerating}
-                      >
-                        {isGenerating ? "Generating..." : "Preview Your Cosmic Graph"}
-                      </button>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center space-y-4">

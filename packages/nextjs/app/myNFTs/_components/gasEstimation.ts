@@ -1,4 +1,3 @@
-import { alchemy } from "~~/app/lib/alchemy";
 
 interface AffordabilityParams {
   userAddress: string;

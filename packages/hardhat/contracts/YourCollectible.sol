@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract YourCollectible is
     ERC721,
@@ -16,13 +17,19 @@ contract YourCollectible is
 	ERC721Burnable,
 	ERC721Royalty,
     Ownable,
-	Pausable
+	Pausable,
+	ReentrancyGuard
 {
     uint256 public tokenIdCounter;
     uint256 public price = 0.001 ether;
 
     // Cosmic graph specific mappings
-    mapping(uint256 => address) public target;
+    struct CosmicGraphData {
+        address targetAddress;
+        bool exists;
+    }
+
+    mapping(uint256 => CosmicGraphData) public cosmicGraphs;
     mapping(address => uint256) public addressToTokenId;
 
     event CosmicGraphMinted(
@@ -31,33 +38,34 @@ contract YourCollectible is
         address indexed minter,
         string ipfsHash
     );
-    event CosmicGraphRequested(
-        uint256 indexed tokenId, 
-        address indexed targetAddress, 
-        address indexed requester
-    );
+	event PriceUpdated(uint256 oldPrice, uint256 newPrice);
+	event RoyaltyUpdated(address indexed receiver, uint96 fee);
+
+	error InsufficientPayment();
+	error InvalidTargetAddress();
+	error EmptyIPFSHash();
+	error NoFundsToWithdraw();
+	error ZeroDeposit();
+    error AlreadyExists();
 
     constructor() ERC721("Cosmic Graph Collection", "CSMC") Ownable(msg.sender) {
 		_setDefaultRoyalty(msg.sender, 500);
 	}
-
-	function deposit() external payable {
-    require(msg.value > 0, "Must send some ETH");
-	}
-
-	
-	
 
     function _baseURI() internal pure override returns (string memory) {
         // return "https://ipfs.io/ipfs/";
 		// return "https://aqua-nearby-barracuda-607.mypinata.cloud/ipfs/";
 		// return "https://gateway.pinata.cloud/ipfs/";
 		return "";
-    }
-	
+    }	
 
-    function setPrice(uint256 _price) public onlyOwner { 
-        price = _price;	
+    function setPrice(uint256 _price) public onlyOwner {
+        
+        uint256 oldPrice = price;
+        if (oldPrice != _price) {  // Only update and emit if actually changing
+            price = _price;
+            emit PriceUpdated(oldPrice, _price);
+        }
     }
 
 	/**
@@ -65,24 +73,22 @@ contract YourCollectible is
 	 * @param _targetAddress The Ethereum address to create the cosmic graph for
 	 * @param _ipfsHash The IPFS hash containing the graph metadata
 	 */
-	function mintCosmicGraph(address _targetAddress, string memory _ipfsHash) 
+	function mintGraph(address _targetAddress, string memory _ipfsHash) 
 		public 
 		payable 
 		whenNotPaused
 		returns (uint256) 
 	{
-		// require(msg.sender == _targetAddress, "You can only mint for yourself"); //for now, allow anyone to mint for any address
-		require(msg.value >= price, "Insufficient payment for minting");
-		require(msg.sender.balance >= price, "Insufficient balance to mint");
-		require(_targetAddress != address(0), "Cannot create graph for zero address");
-		// require(addressToTokenId[_targetAddress] == 0, "Graph already exists for this address");
-		require(bytes(_ipfsHash).length > 0, "IPFS hash cannot be empty");
+		if (msg.sender == _targetAddress) revert InvalidTargetAddress(); // Prevent self-minting
+		if (msg.value < price) revert InsufficientPayment();
+		if (_targetAddress == address(0)) revert InvalidTargetAddress();
+		if (bytes(_ipfsHash).length == 0) revert EmptyIPFSHash();
+		if (cosmicGraphs[addressToTokenId[_targetAddress]].exists) revert AlreadyExists();
 
-		tokenIdCounter++;
-		uint256 _tokenId = tokenIdCounter;
+		uint256 _tokenId = ++tokenIdCounter; // Pre-increment saves gas
 
 		// Store cosmic graph data
-		target[_tokenId] = _targetAddress;
+		cosmicGraphs[_tokenId] = CosmicGraphData(_targetAddress, true);
 		addressToTokenId[_targetAddress] = _tokenId;
 
 		_safeMint(msg.sender, _tokenId);
@@ -90,26 +96,6 @@ contract YourCollectible is
 
 		emit CosmicGraphMinted(_tokenId, _targetAddress, msg.sender, _ipfsHash);
 		return _tokenId;
-	}
-
-	
-	/**
-	 * @dev Get cosmic graph information for a token
-	 */
-	function getCosmicGraphInfo(uint256 _tokenId) 
-		public 
-		view 
-		returns (
-			address _targetAddress,
-			address _owner,
-			string memory _tokenURI
-		) 
-	{
-		require(_ownerOf(_tokenId) != address(0), "Token does not exist");
-		
-		_targetAddress = target[_tokenId];
-		_owner = ownerOf(_tokenId);
-		_tokenURI = tokenURI(_tokenId);
 	}
 
 	/**
@@ -120,15 +106,33 @@ contract YourCollectible is
 		return (_tokenId != 0, _tokenId);
 	}
 
-	// Keep your existing functions
-	function usermint(string memory _uri) public payable returns (uint256) {
-		address _to = msg.sender;
-		require (msg.value >= price, "Minting requires a payment");
-		require(_to != address(0), "Cannot mint to the zero address");
-		tokenIdCounter++;
-		uint256 _tokenId = tokenIdCounter;
-		_safeMint(_to, _tokenId);
-		_setTokenURI(_tokenId, _uri);
+	/**
+	 * @dev Get the cosmic graph token ID for an address
+	 * @dev Returns 0 if no graph exists
+	 */
+	function getCosmicGraphTokenId(address _targetAddress) public view returns (uint256) {
+		return addressToTokenId[_targetAddress];
+	}
+
+	function masterMint(address _targetAddress, string memory _ipfsHash) 
+		external 
+		onlyOwner 
+		whenNotPaused 
+		returns (uint256) 
+	{
+		if (bytes(_ipfsHash).length == 0) revert EmptyIPFSHash();
+		if (cosmicGraphs[addressToTokenId[_targetAddress]].exists) revert AlreadyExists();
+
+		uint256 _tokenId = ++tokenIdCounter; // Pre-increment saves gas
+
+		// Store cosmic graph data
+		cosmicGraphs[_tokenId] = CosmicGraphData(_targetAddress, true);
+		addressToTokenId[_targetAddress] = _tokenId;
+
+		_safeMint(msg.sender, _tokenId);
+		_setTokenURI(_tokenId, _ipfsHash);
+
+		emit CosmicGraphMinted(_tokenId, _targetAddress, msg.sender, _ipfsHash);
 		return _tokenId;
 	}
 
@@ -166,14 +170,21 @@ contract YourCollectible is
 	receive() external payable {}
 
 	// Allow owner to withdraw funds
-	function withdraw() public onlyOwner {
+	function withdraw() public onlyOwner nonReentrant {
 		uint256 _balance = address(this).balance;
-		require(_balance > 0, "No funds to withdraw");
-		payable(owner()).transfer(_balance);
+		if (_balance == 0) revert NoFundsToWithdraw();
+		
+		(bool success, ) = payable(owner()).call{value: _balance}("");
+		require(success, "Transfer failed");
 	}
+
+
 	// Update royalty information
-	function updateDefaultRoyalty(address receiver, uint96 fee) external onlyOwner{
+	function updateDefaultRoyalty(address receiver, uint96 fee) external onlyOwner {
+    require(receiver != address(0), "Invalid receiver");
+    require(fee <= 1000, "Royalty too high"); // 10% max
     _setDefaultRoyalty(receiver, fee);
+    emit RoyaltyUpdated(receiver, fee);
 }
 
 	function pause() public onlyOwner {

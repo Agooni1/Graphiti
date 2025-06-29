@@ -76,10 +76,3 @@ export async function generateNodesFromTx(
     links,
   };
 }
-
-//To Do:
-// - add loading bar maybe
-// - remove tx num and other stuff on UI - make is more simple
-// - change graph componenets -> shape dropwn, laser toggle, maybe label toggle
-// - reduce/refine cursor press area around nodes (hitting the same node in a crowd)
-// - implement html export (including labels?)

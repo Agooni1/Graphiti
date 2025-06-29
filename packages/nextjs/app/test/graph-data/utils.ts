@@ -2,7 +2,6 @@
 //Provides small utility functions to keep your logic clean and reusable
 
 import { GraphNode, FilterOptions, PairDataProps, GraphLink} from "./types";
-import { alchemy } from "~~/app/lib/alchemy";
 import { AssetTransfersCategory, AssetTransfersResult, SortingOrder } from "alchemy-sdk";
 
 export function shortAddress(address: string): string {
@@ -28,9 +27,14 @@ export function dedupeNodes(nodes: GraphNode[]): GraphNode[] {
 
 export const getETHBalance = async (address: string): Promise<string> => {
   try {
-    const rawBalance = await alchemy.core.getBalance(address);
-    const eth = Number(rawBalance) / 1e18;
-    return eth.toFixed(4);
+    const response = await fetch(`/api/blockchain/balance?address=${encodeURIComponent(address)}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.balance || "...";
   } catch (err) {
     // Fail silently, cuz i dont wanna upgrade the API key
     return "...";
@@ -39,8 +43,14 @@ export const getETHBalance = async (address: string): Promise<string> => {
 
 export const isContract = async (address: string): Promise<boolean> => {
   try {
-    const bytecode = await alchemy.core.getCode(address);
-    return bytecode !== "0x";
+    const response = await fetch(`/api/blockchain/contract?address=${encodeURIComponent(address)}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.isContract || false;
   } catch (err) {
     // Fail silently, return false (not a contract)
     return false;
@@ -163,43 +173,24 @@ export const pairData = async ({ pairsFromParent, transfers }: PairDataProps): P
 export async function fetchAllTransfers(address: string): Promise<AssetTransfersResult[]> {
   if (!address) return [];
 
-  const commonParams = {
-    fromBlock: "0x0",
-    toBlock: "latest",
-    maxCount: 200,
-    category: [
-      AssetTransfersCategory.EXTERNAL,
-      AssetTransfersCategory.INTERNAL,
-      AssetTransfersCategory.ERC20,
-      AssetTransfersCategory.ERC721,
-      AssetTransfersCategory.ERC1155,
-    ],
-    order: SortingOrder.DESCENDING,
-  };
-
   try {
-    // Fetch sent and received separately
-    const [sent, received] = await Promise.all([
-      alchemy.core.getAssetTransfers({ ...commonParams, fromAddress: address, toAddress: undefined }),
-      alchemy.core.getAssetTransfers({ ...commonParams, fromAddress: undefined, toAddress: address }),
-    ]);
-
-    // Combine and deduplicate by tx hash
-    const all = [...sent.transfers, ...received.transfers];
-    console.log("API Fetched transfers:", all);
-    const seen = new Set<string>();
-    const deduped = all.filter(tx => {
-      if (seen.has(tx.hash)) return false;
-      seen.add(tx.hash);
-      return true;
-    });
+    const response = await fetch(`/api/blockchain/transfers?address=${encodeURIComponent(address)}`);
     
-    console.log("API Deduplicated transfers:", deduped);
-
-    return deduped;
-    // return [];
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(data.error);
+    }
+    
+    console.log("Client received transfers:", data.transfers?.length || 0, "transfers");
+    
+    return data.transfers || [];
   } catch (err) {
-    // console.error("Failed to fetch transfers:", err);
+    console.error("Failed to fetch transfers:", err);
     return [];
   }
 }

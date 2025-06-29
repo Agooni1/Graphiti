@@ -7,12 +7,17 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourCollectible: {
-      address: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+      address: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
       abi: [
         {
           inputs: [],
           stateMutability: "nonpayable",
           type: "constructor",
+        },
+        {
+          inputs: [],
+          name: "AlreadyExists",
+          type: "error",
         },
         {
           inputs: [
@@ -204,12 +209,32 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "EmptyIPFSHash",
+          type: "error",
+        },
+        {
+          inputs: [],
           name: "EnforcedPause",
           type: "error",
         },
         {
           inputs: [],
           name: "ExpectedPause",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "InsufficientPayment",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "InvalidTargetAddress",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "NoFundsToWithdraw",
           type: "error",
         },
         {
@@ -232,6 +257,16 @@ const deployedContracts = {
             },
           ],
           name: "OwnableUnauthorizedAccount",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ReentrancyGuardReentrantCall",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ZeroDeposit",
           type: "error",
         },
         {
@@ -332,31 +367,6 @@ const deployedContracts = {
             },
           ],
           name: "CosmicGraphMinted",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "uint256",
-              name: "tokenId",
-              type: "uint256",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "targetAddress",
-              type: "address",
-            },
-            {
-              indexed: true,
-              internalType: "address",
-              name: "requester",
-              type: "address",
-            },
-          ],
-          name: "CosmicGraphRequested",
           type: "event",
         },
         {
@@ -512,10 +522,27 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [],
-          name: "deposit",
-          outputs: [],
-          stateMutability: "payable",
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "cosmicGraphs",
+          outputs: [
+            {
+              internalType: "address",
+              name: "targetAddress",
+              type: "address",
+            },
+            {
+              internalType: "bool",
+              name: "exists",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
           type: "function",
         },
         {
@@ -540,27 +567,17 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint256",
-              name: "_tokenId",
-              type: "uint256",
-            },
-          ],
-          name: "getCosmicGraphInfo",
-          outputs: [
-            {
               internalType: "address",
               name: "_targetAddress",
               type: "address",
             },
+          ],
+          name: "getCosmicGraphTokenId",
+          outputs: [
             {
-              internalType: "address",
-              name: "_owner",
-              type: "address",
-            },
-            {
-              internalType: "string",
-              name: "_tokenURI",
-              type: "string",
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -627,7 +644,7 @@ const deployedContracts = {
               type: "string",
             },
           ],
-          name: "mintCosmicGraph",
+          name: "mintGraph",
           outputs: [
             {
               internalType: "uint256",
@@ -870,25 +887,6 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          name: "target",
-          outputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
               name: "index",
               type: "uint256",
             },
@@ -1032,25 +1030,6 @@ const deployedContracts = {
           name: "updateDefaultRoyalty",
           outputs: [],
           stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "string",
-              name: "_uri",
-              type: "string",
-            },
-          ],
-          name: "usermint",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "payable",
           type: "function",
         },
         {
