@@ -2,18 +2,8 @@
 import { useEffect, useRef, useState, RefObject } from "react";
 import { GraphNode, GraphLink } from "../graph-data/types";
 import { generateLayout, shouldRegenerateLayout, LayoutConfig, PositionedNode } from './graphLayouts';
-import { BlockieAvatar } from "~~/components/scaffold-eth";
-import {
-  ArrowsPointingOutIcon,
-  ArrowsPointingInIcon,
-} from "@heroicons/react/24/outline";
-
-const EXPLORER_URLS: Record<string, string> = {
-  ethereum: "https://etherscan.io/address/",
-  sepolia: "https://sepolia.etherscan.io/address/",
-  arbitrum: "https://arbiscan.io/address/",
-  base: "https://basescan.org/address/",
-};
+import NodePopup from './_components/NodePopup';
+import FullscreenButton from './_components/FullscreenButton';
 
 interface NodePopupData {
   node: PositionedNode;
@@ -115,17 +105,31 @@ export default function SimpleCosmicGraph({
         newHeight = rect.height;
       }
       
+      // Add reasonable size constraints
+      const MIN_SIZE = 200; // Minimum usable size
+      const MAX_SIZE = 3840; // 4K width limit for performance
+      
+      newWidth = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newWidth));
+      newHeight = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newHeight));
+      
       if (newWidth !== canvasSize.width || newHeight !== canvasSize.height) {
         setCanvasSize({ width: newWidth, height: newHeight });
         
-        canvas.width = newWidth * window.devicePixelRatio;
-        canvas.height = newHeight * window.devicePixelRatio;
+        // Also clamp the actual canvas buffer size for performance
+        const maxBufferSize = 2560; // Reasonable buffer limit
+        const bufferWidth = Math.min(newWidth * window.devicePixelRatio, maxBufferSize);
+        const bufferHeight = Math.min(newHeight * window.devicePixelRatio, maxBufferSize);
+        
+        canvas.width = bufferWidth;
+        canvas.height = bufferHeight;
         canvas.style.width = newWidth + 'px';
         canvas.style.height = newHeight + 'px';
         
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+          const scaleX = bufferWidth / newWidth;
+          const scaleY = bufferHeight / newHeight;
+          ctx.scale(scaleX, scaleY);
         }
       }
     };
@@ -683,17 +687,6 @@ export default function SimpleCosmicGraph({
     }
   }, [nodePopup]);
 
-  const formatBalance = (balance: string | undefined): string => {
-    if (!balance) return '0';
-    const num = parseFloat(balance);
-    if (num === 0) return '0';
-    if (num < 0.001) return num.toExponential(2);
-    if (num < 1) return num.toFixed(4);
-    if (num < 1000) return num.toFixed(2);
-    if (num < 1000000) return (num / 1000).toFixed(1) + 'K';
-    return (num / 1000000).toFixed(1) + 'M';
-  };
-
   const handleTargetChange = (newTargetId: string, source: string = '') => {
     console.log(`Setting new target from ${source}:`, newTargetId);
     setTargetNodeId(newTargetId);
@@ -760,24 +753,10 @@ export default function SimpleCosmicGraph({
       />
       
       {/* Fullscreen Button */}
-      <div className="absolute top-4 right-4 z-30">
-        <button
-          onClick={onFullscreenToggle}
-          className="bg-slate-900/95 hover:bg-blue-600/90 border border-blue-400/40 rounded-lg px-3 py-2 shadow-xl transition-all hover:scale-105"
-          title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-        >
-          <div className="flex items-center gap-2">
-            {isFullscreen ? (
-              <ArrowsPointingInIcon className="w-4 h-4 text-blue-200" />
-            ) : (
-              <ArrowsPointingOutIcon className="w-4 h-4 text-blue-200" />
-            )}
-            <span className="text-xs text-blue-200 font-medium">
-              {isFullscreen ? "Exit" : "Fullscreen"}
-            </span>
-          </div>
-        </button>
-      </div>
+      <FullscreenButton 
+        isFullscreen={isFullscreen} 
+        onToggle={onFullscreenToggle} 
+      />
       
       <div className="absolute bottom-4 left-4 text-white text-xs opacity-50">
         {isHovered ? (
@@ -787,195 +766,21 @@ export default function SimpleCosmicGraph({
         )}
       </div>
 
-      {/* Node Popup */}
+      {/* Node Popup using the component */}
       {nodePopup && (
-        <div 
-          className="absolute z-50 pointer-events-auto node-popup"
-          style={{ 
-            left: Math.min(nodePopup.x, (isFullscreen ? window.innerWidth : canvasSize.width) - 220),
-            top: Math.max(10, Math.min(nodePopup.y - 80, (isFullscreen ? window.innerHeight : canvasSize.height) - 160))
-          }}
-        >
-          <div 
-            className="relative rounded-lg shadow-2xl p-3 w-[200px] border"
-            style={{
-              background: 'linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 50%, rgba(42, 24, 16, 0.95) 100%)',
-              borderColor: 'rgba(97, 218, 251, 0.3)',
-              backdropFilter: 'blur(10px)',
-              boxShadow: '0 0 30px rgba(97, 218, 251, 0.2), 0 0 60px rgba(97, 218, 251, 0.1)'
-            }}
-          >
-            {/* Header */}
-            <div className="flex items-center gap-2 mb-2 pb-2 border-b" style={{ borderColor: 'rgba(97, 218, 251, 0.2)' }}>
-              {(() => {
-                let indicatorColor;
-                
-                switch (nodePopup.node.galaxyLayer) {
-                  case 'core':
-                    indicatorColor = nodePopup.node.isContract ? '#ff6b6b' : '#ffd93d';
-                    break;
-                  case 'inner':
-                    indicatorColor = '#74b9ff';
-                    break;
-                  case 'outer':
-                    indicatorColor = '#ffffff';
-                    break;
-                  case 'halo':
-                    indicatorColor = '#a0a0a0';
-                    break;
-                  default:
-                    indicatorColor = '#a0a0a0';
-                }
-
-                return (
-                  <div 
-                    className="w-2 h-2 rounded-full relative"
-                    style={{ 
-                      backgroundColor: indicatorColor,
-                      boxShadow: `0 0 8px ${indicatorColor}, 0 0 16px ${indicatorColor}40`
-                    }}
-                  >
-                    <div 
-                      className="absolute inset-0 w-2 h-2 rounded-full animate-pulse"
-                      style={{ 
-                        backgroundColor: indicatorColor,
-                        filter: 'blur(1px)',
-                        opacity: 0.6
-                      }}
-                    />
-                  </div>
-                );
-              })()}
-              
-              <BlockieAvatar address={nodePopup.node.id} size={16} />
-              
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold truncate" style={{ color: '#e1e5f2' }}>
-                  {nodePopup.node.id.slice(0, 6)}...{nodePopup.node.id.slice(-4)}
-                </div>
-              </div>
-              <button
-                onClick={() => setNodePopup(null)}
-                className="btn btn-ghost btn-xs btn-circle p-0 min-h-4 h-4 w-4 hover:bg-white/10"
-                style={{ color: 'rgba(225, 229, 242, 0.5)' }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Balance */}
-            <div className="mb-3">
-              <div className="text-[10px] mb-1" style={{ color: 'rgba(97, 218, 251, 0.7)' }}>
-                Balance
-              </div>
-              <div 
-                className="text-sm font-bold"
-                style={{ 
-                  color: '#e1e5f2',
-                  textShadow: '0 0 10px rgba(97, 218, 251, 0.5)'
-                }}
-              >
-                {formatBalance(nodePopup.node.balance)} ETH
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-1 mb-3 text-[10px]">
-              <div 
-                className="rounded p-1.5 border"
-                style={{
-                  background: 'rgba(97, 218, 251, 0.05)',
-                  borderColor: 'rgba(97, 218, 251, 0.2)'
-                }}
-              >
-                <div style={{ color: 'rgba(97, 218, 251, 0.7)' }}>Type</div>
-                <div className="font-semibold text-xs" style={{ color: '#e1e5f2' }}>
-                  {nodePopup.node.isContract ? 'Contract' : 'Wallet'}
-                </div>
-              </div>
-              <div 
-                className="rounded p-1.5 border"
-                style={{
-                  background: 'rgba(97, 218, 251, 0.05)',
-                  borderColor: 'rgba(97, 218, 251, 0.2)'
-                }}
-              >
-                <div style={{ color: 'rgba(97, 218, 251, 0.7)' }}>Links</div>
-                <div className="font-semibold text-xs" style={{ color: '#e1e5f2' }}>
-                  {graphData.links.filter(link => 
-                    link.source === nodePopup.node.id || link.target === nodePopup.node.id
-                  ).length}
-                </div>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  window.open(`${EXPLORER_URLS[selectedChain]}${nodePopup.node.id}`, "_blank");
-                }}
-                className="flex-1 text-[10px] h-6 rounded transition-all duration-200 font-medium cursor-pointer"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(97, 218, 251, 0.8) 0%, rgba(116, 185, 255, 0.8) 100%)',
-                  color: '#0a0a0a',
-                  border: '1px solid rgba(97, 218, 251, 0.5)',
-                  boxShadow: '0 0 10px rgba(97, 218, 251, 0.3)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 0 15px rgba(97, 218, 251, 0.5)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 0 10px rgba(97, 218, 251, 0.3)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                {{
-                  ethereum: "Etherscan",
-                  sepolia: "Etherscan",
-                  arbitrum: "Arbiscan",
-                  base: "BaseScan"
-                }[selectedChain]}
-              </button>
-              
-              {onSetTarget && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleTargetChange(nodePopup.node.id, 'user-click');
-                  }}
-                  className="flex-1 text-[10px] h-6 rounded transition-all duration-200 font-medium cursor-pointer"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(255, 215, 100, 0.8) 0%, rgba(255, 107, 107, 0.8) 100%)',
-                    color: '#0a0a0a',
-                    border: '1px solid rgba(255, 215, 100, 0.5)',
-                    boxShadow: '0 0 10px rgba(255, 215, 100, 0.3)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 0 15px rgba(255, 215, 100, 0.5)';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = '0 0 10px rgba(255, 215, 100, 0.3)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
-                >
-                Target
-                </button>
-              )}
-            </div>
-
-            <div 
-              className="absolute inset-0 rounded-lg pointer-events-none"
-              style={{
-                background: 'linear-gradient(135deg, transparent 0%, rgba(97, 218, 251, 0.1) 50%, transparent 100%)',
-                zIndex: -1
-              }}
-            />
-          </div>
-        </div>
+        <NodePopup
+          node={nodePopup.node}
+          x={nodePopup.x}
+          y={nodePopup.y}
+          linkCount={graphData.links.filter(link => 
+            link.source === nodePopup.node.id || link.target === nodePopup.node.id
+          ).length}
+          selectedChain={selectedChain}
+          canvasSize={canvasSize}
+          isFullscreen={isFullscreen}
+          onClose={() => setNodePopup(null)}
+          onSetTarget={onSetTarget ? (address: string) => handleTargetChange(address, 'user-click') : undefined}
+        />
       )}
 
       {/* Legend */}
