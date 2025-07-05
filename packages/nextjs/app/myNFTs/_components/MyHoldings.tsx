@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { NFTCard } from "./NFTCard";
 import { useAccount } from "wagmi";
 import { useScaffoldContract, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
+import { NFTCard } from "~~/app/allNFTs/_components/NFTCard";
 
 // Import cosmic NFT functions
 import { getMetadataFromIPFS } from "~~/utils/cosmicNFT/ipfs-fetch";
@@ -15,6 +15,8 @@ export interface NFTMetaData {
   description: string;
   image: string;
   animation_url?: string;
+  external_url?: string;
+  targetAddress?: string; // Add this field from your metadata
   attributes?: Array<{
     trait_type: string;
     value: string | number;
@@ -39,11 +41,11 @@ export const MyHoldings = () => {
   const [allCollectiblesLoading, setAllCollectiblesLoading] = useState(false);
 
   const { data: yourCollectibleContract } = useScaffoldContract({
-    contractName: "YourCollectible",
+    contractName: "CosmicGraph", // Replace with your contract name
   });
 
   const { data: myTotalBalance } = useScaffoldReadContract({
-    contractName: "YourCollectible",
+    contractName: "CosmicGraph",
     functionName: "balanceOf",
     args: [connectedAddress],
     watch: true,
@@ -65,6 +67,8 @@ export const MyHoldings = () => {
             BigInt(tokenIndex),
           ]);
 
+          const tokenIdNumber = parseInt(tokenId.toString());
+
           const tokenURI = await yourCollectibleContract.read.tokenURI([tokenId]);
           console.log("🔍 Token URI:", tokenURI);
           
@@ -79,11 +83,11 @@ export const MyHoldings = () => {
             nftMetadata = await getMetadataFromIPFS(ipfsHash);
             // console.log("✅ Metadata loaded:", nftMetadata);
           } catch (metadataError) {
-            console.error(`❌ Error fetching metadata for token ${tokenId}:`, metadataError);
+            console.error(`❌ Error fetching metadata for token ${tokenIdNumber}:`, metadataError);
 
             // Create fallback metadata
             nftMetadata = {
-              name: `NFT #${tokenId}`,
+              name: `NFT #${tokenIdNumber}`,
               description: "Metadata loading failed",
               image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5GVDwvdGV4dD48L3N2Zz4=",
               attributes: []
@@ -91,7 +95,7 @@ export const MyHoldings = () => {
           }
 
           const collectible: Collectible = {
-            id: parseInt(tokenId.toString()),
+            id: tokenIdNumber,
             uri: tokenURI,
             owner: connectedAddress,
             ...nftMetadata,
@@ -132,34 +136,6 @@ export const MyHoldings = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4">
-      
-      {/* Cosmic NFTs Section */}
-      {/* {cosmicNFTs.length > 0 && (
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold text-center mb-6 text-purple-300">
-            🌌 Your Cosmic Graph NFTs
-          </h2>
-          <div className="flex flex-wrap gap-6 justify-center">
-            {cosmicNFTs.map(item => (
-              <NFTCard nft={item} key={item.id} />
-            ))}
-          </div>
-        </div>
-      )} */}
-
-      {/* Regular NFTs Section */}
-      {/* {regularNFTs.length > 0 && (
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold text-center mb-6">
-            🎨 Your Other NFTs
-          </h2>
-          <div className="flex flex-wrap gap-6 justify-center">
-            {regularNFTs.map(item => (
-              <NFTCard nft={item} key={item.id} />
-            ))}
-          </div>
-        </div>
-      )} */}
 
       {myAllCollectibles.length === 0 ? (
         <div className="flex justify-center items-center mt-10">

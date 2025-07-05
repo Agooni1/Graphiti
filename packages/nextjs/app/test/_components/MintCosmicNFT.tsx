@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { parseEther } from "viem";
-import { useScaffoldWriteContract, useDeployedContractInfo } from "~~/hooks/scaffold-eth";
+import { useScaffoldReadContract, useScaffoldWriteContract, useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 import { useWatchBalance } from "~~/hooks/scaffold-eth/useWatchBalance";
 import { generateGraphHTML } from "../graph/htmlGraphGenerator";
@@ -11,6 +11,7 @@ import { uploadHtmlToIPFS, uploadMetadataToIPFS } from "~~/utils/cosmicNFT/ipfs-
 import { generateMetadata } from "~~/utils/cosmicNFT/generateMetadata";
 import { canAffordMinting } from "~~/app/myNFTs/_components/gasEstimation";
 import { AddressCosmicData } from "~~/utils/cosmicNFT/fetchCosmicData";
+import { getSignature } from "./utils";
 
 interface ViewState {
   zoom: number;
@@ -41,6 +42,13 @@ export function MintCosmicNFT({ graphConfig, disabled = false, className = "", t
 
   const { writeContractAsync } = useScaffoldWriteContract("CosmicGraph");
   const { data: contractInfo } = useDeployedContractInfo("CosmicGraph");
+
+    // Read the current nonce for the connected address
+  const { data: currentNonce } = useScaffoldReadContract({
+    contractName: "CosmicGraph",
+    functionName: "nonces",
+    args: [connectedAddress],
+  });
 
   const { data: balance } = useWatchBalance({
     address: connectedAddress,
@@ -122,10 +130,17 @@ export function MintCosmicNFT({ graphConfig, disabled = false, className = "", t
 
       // Mint the NFT
       const mintNotificationId = notification.loading("Minting your cosmic NFT...");
+
+      // Calculate the next nonce (current + 1)
+      const nextNonce = currentNonce ? Number(currentNonce) + 1 : 1;
+      console.log("Current nonce:", currentNonce, "Next nonce:", nextNonce);
+
+      // Get signature with the NEXT nonce (not current)
+      const sig = await getSignature(metadataCid, connectedAddress, nextNonce);
       
       await writeContractAsync({
         functionName: "mintGraph",
-        args: [connectedAddress, metadataCid],
+        args: [cosmicData.address, metadataCid, sig], // Convert to BigInt
         value: parseEther(mintPrice),
       });
 
@@ -140,7 +155,8 @@ export function MintCosmicNFT({ graphConfig, disabled = false, className = "", t
     }
   };
 
-  const isDisabled = disabled || isMinting || !graphConfig.graphData.nodes.length || !connectedAddress;
+  // const isDisabled = disabled || isMinting || !graphConfig.graphData.nodes.length || !connectedAddress;
+  const isDisabled = false;
 
   return (
     <button

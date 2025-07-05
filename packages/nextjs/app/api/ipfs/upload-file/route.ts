@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    console.log(`📤 Server: Uploading file to IPFS: ${file.name} (${file.size} bytes)`);
+    // console.log(`📤 Server: Uploading file to IPFS: ${file.name} (${file.size} bytes)`);
 
     const uploadFormData = new FormData();
     uploadFormData.append('file', file);
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
     
     const result = await response.json();
-    console.log(`✅ Server: File uploaded to IPFS: ${result.IpfsHash}`);
+    // console.log(`✅ Server: File uploaded to IPFS: ${result.IpfsHash}`);
     
     return NextResponse.json({ hash: result.IpfsHash });
     

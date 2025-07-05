@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
     connectionInfoOverrides: { skipFetchSetup: true },
   });
 
-  console.log("Fetching transfers for address:", address);
-  console.log("Using network:", _network);
+  // console.log("Fetching transfers for address:", address);
+  // console.log("Using network:", _network);
 
   // Internal transfers are not supported on Arbitrum and Base
   const supportsInternal = chain !== "arbitrum" && chain !== "base";
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
   };
 
   try {
-    console.log("Making Alchemy API calls...");
+    // console.log("Making Alchemy API calls...");
     
     // Fetch sent and received separately with error handling
     const [sent, received] = await Promise.all([
@@ -75,12 +75,12 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    console.log("Sent transfers:", sent.transfers.length);
-    console.log("Received transfers:", received.transfers.length);
+    // console.log("Sent transfers:", sent.transfers.length);
+    // console.log("Received transfers:", received.transfers.length);
 
     // Combine and deduplicate by tx hash
     const all = [...sent.transfers, ...received.transfers];
-    console.log("Total transfers before dedup:", all.length);
+    // console.log("Total transfers before dedup:", all.length);
     
     const seen = new Set<string>();
     const deduped = all.filter(tx => {
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       return true;
     });
     
-    console.log("Total transfers after dedup:", deduped.length);
+    // console.log("Total transfers after dedup:", deduped.length);
 
     return NextResponse.json({ transfers: deduped });
   } catch (err) {

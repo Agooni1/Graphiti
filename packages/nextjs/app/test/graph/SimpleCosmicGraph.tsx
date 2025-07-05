@@ -688,7 +688,7 @@ export default function SimpleCosmicGraph({
   }, [nodePopup]);
 
   const handleTargetChange = (newTargetId: string, source: string = '') => {
-    console.log(`Setting new target from ${source}:`, newTargetId);
+    // console.log(`Setting new target from ${source}:`, newTargetId);
     setTargetNodeId(newTargetId);
     
     if (onSetTarget && source !== 'prop') {
@@ -701,7 +701,7 @@ export default function SimpleCosmicGraph({
   // Handle target node changes
   useEffect(() => {
     if (targetNode && targetNode !== targetNodeId) {
-      console.log('External prop setting target node:', targetNode);
+      // console.log('External prop setting target node:', targetNode);
       handleTargetChange(targetNode, 'prop');
     }
   }, [targetNode, targetNodeId]);
@@ -710,7 +710,7 @@ export default function SimpleCosmicGraph({
   useEffect(() => {
     if (graphData.nodes.length > 0 && !targetNodeId && !targetNode) {
       const fallbackNodeId = graphData.nodes[0].id;
-      console.log('Setting fallback target node:', fallbackNodeId);
+      // console.log('Setting fallback target node:', fallbackNodeId);
       handleTargetChange(fallbackNodeId, 'fallback');
     }
   }, [graphData.nodes, targetNodeId, targetNode]);

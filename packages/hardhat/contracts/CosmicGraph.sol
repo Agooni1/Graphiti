@@ -9,6 +9,9 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import "hardhat/console.sol"; // For debugging purposes, can be removed in production
 
 contract CosmicGraph is
     ERC721,
@@ -20,21 +23,33 @@ contract CosmicGraph is
 	Pausable,
 	ReentrancyGuard
 {
+    using MessageHashUtils for bytes32;
+
+
     uint256 public tokenIdCounter;
     uint256 public price = 0.001 ether;
 
     // Cosmic graph specific mappings
     struct CosmicGraphData {
         address targetAddress;
-        bool exists;
     }
 
+    mapping(address => uint256) public nonces;
     mapping(uint256 => CosmicGraphData) public cosmicGraphs;
     mapping(address => uint256) public addressToTokenId;
+    mapping(address => uint256) public lastMintedAt;
+
+    address public authorizedSigner;
+
 
     event CosmicGraphMinted(
         uint256 indexed tokenId, 
-        address indexed targetAddress, 
+        address indexed minter,
+        string ipfsHash
+    );
+    event CosmicGraphMasterMinted(
+        uint256 indexed tokenId, 
+        address indexed targetAddress,
         address indexed minter,
         string ipfsHash
     );
@@ -48,9 +63,13 @@ contract CosmicGraph is
 	error ZeroDeposit();
     error AlreadyExists();
 	error TransferFailed();
+    error NotCiDv0();
+    error CIDTooShort();
+    error BadSignature();
 
-    constructor() ERC721("Cosmic Graph Collection", "CSMC") Ownable(msg.sender) {
+    constructor(address _o, address _auth) ERC721("Cosmic Graph Collection", "CSMC") Ownable(_o) {
 		_setDefaultRoyalty(msg.sender, 500);
+        authorizedSigner = _auth;
 	}
 
     function _baseURI() internal pure override returns (string memory) {
@@ -67,41 +86,51 @@ contract CosmicGraph is
 
     /**
      * @dev Mint a cosmic graph NFT for a specific Ethereum address
-     * @param _targetAddress The Ethereum address to create the cosmic graph for
      * @param _ipfsHash The IPFS hash containing the graph metadata
      */
-    function mintGraph(address _targetAddress, string memory _ipfsHash) 
+    function mintGraph(address _targetAddress, string memory _ipfsHash, bytes memory _signature) 
         external 
         payable 
         whenNotPaused
         nonReentrant
         returns (uint256) 
     {
-        if (msg.sender == _targetAddress) revert InvalidTargetAddress(); // Prevent self-minting
+        // if (msg.sender != _targetAddress) revert InvalidTargetAddress(); 
         if (msg.value < price) revert InsufficientPayment();
-        if (_targetAddress == address(0)) revert InvalidTargetAddress();
+        // if (_targetAddress == address(0)) revert InvalidTargetAddress();
         if (bytes(_ipfsHash).length == 0) revert EmptyIPFSHash();
-        if (cosmicGraphs[addressToTokenId[_targetAddress]].exists) revert AlreadyExists();
 
-        uint256 _tokenId = ++tokenIdCounter; // Pre-increment saves gas
+        //basic IPFS hash validation
+        if (bytes(_ipfsHash).length < 46) revert CIDTooShort();
+        if (bytes(_ipfsHash)[0] != 'Q') revert NotCiDv0();
+        if (bytes(_ipfsHash)[1] != 'm') revert NotCiDv0();
+        
+        uint256 existingTokenId = addressToTokenId[msg.sender];
+        if (existingTokenId != 0) revert AlreadyExists();
+        
+        if (!verifySignature(_ipfsHash, _signature)) revert BadSignature();
 
-        // Store cosmic graph data
-        cosmicGraphs[_tokenId] = CosmicGraphData(_targetAddress, true);
-        addressToTokenId[_targetAddress] = _tokenId;
+        uint256 _tokenId = ++tokenIdCounter; // Pre-increment saves gas   
 
         _safeMint(msg.sender, _tokenId);
-        _setTokenURI(_tokenId, _ipfsHash);
+        _setTokenURI(_tokenId, _ipfsHash);             
 
-        emit CosmicGraphMinted(_tokenId, _targetAddress, msg.sender, _ipfsHash);
+        // Store cosmic graph data
+        cosmicGraphs[_tokenId] = CosmicGraphData(_targetAddress);
+        addressToTokenId[msg.sender] = _tokenId;
+
+        nonces[msg.sender]++;
+
+        emit CosmicGraphMinted(_tokenId, msg.sender, _ipfsHash);
         return _tokenId;
     }
 
     /**
      * @dev Check if a cosmic graph exists for an address
      */
-    function hasCosmicGraph(address _targetAddress) external view returns (bool, uint256) {
-        uint256 _tokenId = addressToTokenId[_targetAddress];
-        return (_tokenId != 0, _tokenId);
+    function hasCosmicGraph(address _address) external view returns (bool) {
+        if (_address == address(0)) return false;
+        return addressToTokenId[_address] != 0;
     }
 
     /**
@@ -121,18 +150,21 @@ contract CosmicGraph is
         returns (uint256) 
     {
         if (bytes(_ipfsHash).length == 0) revert EmptyIPFSHash();
-        if (cosmicGraphs[addressToTokenId[_targetAddress]].exists) revert AlreadyExists();
-
+        // if (cosmicGraphs[addressToTokenId[_targetAddress]].exists) revert AlreadyExists();
+        if (bytes(_ipfsHash).length < 46) revert CIDTooShort();
+        if (bytes(_ipfsHash)[0] != 'Q') revert NotCiDv0();
+        if (bytes(_ipfsHash)[1] != 'm') revert NotCiDv0();
+        
         uint256 _tokenId = ++tokenIdCounter;
-
-        // Store cosmic graph data
-        cosmicGraphs[_tokenId] = CosmicGraphData(_targetAddress, true);
-        addressToTokenId[_targetAddress] = _tokenId;
 
         _safeMint(msg.sender, _tokenId);
         _setTokenURI(_tokenId, _ipfsHash);
 
-        emit CosmicGraphMinted(_tokenId, _targetAddress, msg.sender, _ipfsHash);
+        // Store cosmic graph data
+        cosmicGraphs[_tokenId] = CosmicGraphData(_targetAddress);
+        addressToTokenId[_targetAddress] = _tokenId;
+
+        emit CosmicGraphMasterMinted(_tokenId, _targetAddress, msg.sender, _ipfsHash);
         return _tokenId;
     }
 
@@ -146,7 +178,21 @@ contract CosmicGraph is
 		uint256 _tokenId, 
 		address _auth
 	) internal override(ERC721, ERC721Enumerable) returns (address) {
-		return super._update(_to, _tokenId, _auth);
+		address previousOwner = super._update(_to, _tokenId, _auth);
+
+        if (_to == address(0)) {
+            // Burning: safely clean up mappings
+            address _target = cosmicGraphs[_tokenId].targetAddress;
+
+            // Only delete if the mappings point correctly
+            if (addressToTokenId[_target] == _tokenId) {
+                delete addressToTokenId[_target];
+            }
+
+            delete cosmicGraphs[_tokenId];
+        }
+        
+        return previousOwner;
 	}
 
 	function tokenURI(
@@ -186,18 +232,31 @@ contract CosmicGraph is
     }
 
     // Update royalty information
-    function updateDefaultRoyalty(address receiver, uint96 fee) external onlyOwner {
+    function updateDefaultRoyalty(address receiver, uint96 fee) external onlyOwner nonReentrant{
         require(receiver != address(0), "Invalid receiver");
         require(fee <= 1000, "Royalty too high"); // 10% max
         _setDefaultRoyalty(receiver, fee);
         emit RoyaltyUpdated(receiver, fee);
     }
 
-    function pause() external onlyOwner {
+    function pause() external onlyOwner nonReentrant{
         _pause();
     }
 
-    function unpause() external onlyOwner {
+    function unpause() external onlyOwner nonReentrant {
         _unpause();
+    }
+
+    function setAuthorizedSigner(address _signer) external onlyOwner nonReentrant{
+        authorizedSigner = _signer;
+    }
+
+    
+    function verifySignature(string memory _ipfsHash, bytes memory _signature) internal view returns (bool) {
+        
+        bytes32 messageHash = keccak256(abi.encodePacked(_ipfsHash, msg.sender, nonces[msg.sender]+1));
+        bytes32 ethSignedMessageHash = messageHash.toEthSignedMessageHash();
+    
+        return ECDSA.recover(ethSignedMessageHash, _signature) == authorizedSigner;
     }
 }

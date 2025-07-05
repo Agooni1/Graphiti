@@ -54,15 +54,19 @@ export const AllHoldings = () => {
       const collectibleUpdate: Collectible[] = [];
       const totalTokens = parseInt(totalSupply.toString());
       
-      // Loop through all token IDs from 1 to totalSupply
-      for (let tokenId = 1; tokenId <= totalTokens; tokenId++) {
+      // Loop through all existing tokens using tokenByIndex instead of assuming sequential IDs
+      for (let index = 0; index < totalTokens; index++) {
         try {
+          // Get the actual token ID at this index (handles gaps from burned tokens)
+          const tokenId = await yourCollectibleContract.read.tokenByIndex([BigInt(index)]);
+          const tokenIdNumber = parseInt(tokenId.toString());
+          
           // Get owner of this token
-          const owner = await yourCollectibleContract.read.ownerOf([BigInt(tokenId)]);
+          const owner = await yourCollectibleContract.read.ownerOf([tokenId]);
           
           // Get token URI
-          const tokenURI = await yourCollectibleContract.read.tokenURI([BigInt(tokenId)]);
-          console.log(`🔍 Token ${tokenId} URI:`, tokenURI);
+          const tokenURI = await yourCollectibleContract.read.tokenURI([tokenId]);
+          console.log(`🔍 Token ${tokenIdNumber} URI:`, tokenURI);
           
           const ipfsHash = tokenURI.replace("https://gateway.pinata.cloud/ipfs/", "");
 
@@ -70,21 +74,21 @@ export const AllHoldings = () => {
           let nftMetadata: NFTMetaData;
           try {
             nftMetadata = await getMetadataFromIPFS(ipfsHash);
-            console.log(`✅ Metadata loaded for token ${tokenId}:`, nftMetadata);
+            console.log(`✅ Metadata loaded for token ${tokenIdNumber}:`, nftMetadata);
           } catch (metadataError) {
-            console.error(`❌ Error fetching metadata for token ${tokenId}:`, metadataError);
+            console.error(`❌ Error fetching metadata for token ${tokenIdNumber}:`, metadataError);
 
             // Create fallback metadata
             nftMetadata = {
-              name: `NFT #${tokenId}`,
+              name: `NFT #${tokenIdNumber}`,
               description: "Metadata loading failed",
-              image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5GVDwvdGV4dD48L3N2Zz4=",
+              image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5GVDwvdGV4dD48L3N2Zz4=",
               attributes: []
             };
           }
 
           const collectible: Collectible = {
-            id: tokenId,
+            id: tokenIdNumber,
             uri: tokenURI,
             owner: owner as string,
             ...nftMetadata,
@@ -93,17 +97,8 @@ export const AllHoldings = () => {
           collectibleUpdate.push(collectible);
 
         } catch (e) {
-          console.error(`Error fetching NFT ${tokenId}:`, e);
-          
-          // Add a placeholder so user knows something exists but failed to load
-          collectibleUpdate.push({
-            id: tokenId,
-            uri: "error",
-            owner: "unknown",
-            name: `NFT #${tokenId} (Loading Error)`,
-            description: "There was an error loading this NFT",
-            image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjY2NjIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkVycm9yPC90ZXh0Pjwvc3ZnPg==",
-          });
+          console.error(`Error fetching NFT at index ${index}:`, e);
+          // Skip this token since we can't get its ID
         }
       }
       

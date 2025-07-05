@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No metadata provided' }, { status: 400 });
     }
 
-    console.log(`📤 Server: Uploading metadata to IPFS`);
+    // console.log(`📤 Server: Uploading metadata to IPFS`);
 
     const metadataFormData = new FormData();
     const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json();
-    console.log(`✅ Server: Metadata uploaded to IPFS: ${result.IpfsHash}`);
+    // console.log(`✅ Server: Metadata uploaded to IPFS: ${result.IpfsHash}`);
     
     return NextResponse.json({ hash: result.IpfsHash });
     

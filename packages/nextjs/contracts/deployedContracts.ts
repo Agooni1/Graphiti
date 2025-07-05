@@ -10,13 +10,61 @@ const deployedContracts = {
       address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
       abi: [
         {
-          inputs: [],
+          inputs: [
+            {
+              internalType: "address",
+              name: "_o",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "_auth",
+              type: "address",
+            },
+          ],
           stateMutability: "nonpayable",
           type: "constructor",
         },
         {
           inputs: [],
           name: "AlreadyExists",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "BadSignature",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "CIDTooShort",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ECDSAInvalidSignature",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "length",
+              type: "uint256",
+            },
+          ],
+          name: "ECDSAInvalidSignatureLength",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "s",
+              type: "bytes32",
+            },
+          ],
+          name: "ECDSAInvalidSignatureS",
           type: "error",
         },
         {
@@ -238,6 +286,11 @@ const deployedContracts = {
           type: "error",
         },
         {
+          inputs: [],
+          name: "NotCiDv0",
+          type: "error",
+        },
+        {
           inputs: [
             {
               internalType: "address",
@@ -357,6 +410,31 @@ const deployedContracts = {
               internalType: "address",
               name: "targetAddress",
               type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "minter",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "string",
+              name: "ipfsHash",
+              type: "string",
+            },
+          ],
+          name: "CosmicGraphMasterMinted",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "tokenId",
+              type: "uint256",
             },
             {
               indexed: true,
@@ -533,6 +611,19 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "authorizedSigner",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "address",
@@ -578,11 +669,6 @@ const deployedContracts = {
               internalType: "address",
               name: "targetAddress",
               type: "address",
-            },
-            {
-              internalType: "bool",
-              name: "exists",
-              type: "bool",
             },
           ],
           stateMutability: "view",
@@ -630,7 +716,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "_targetAddress",
+              name: "_address",
               type: "address",
             },
           ],
@@ -640,11 +726,6 @@ const deployedContracts = {
               internalType: "bool",
               name: "",
               type: "bool",
-            },
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -669,6 +750,25 @@ const deployedContracts = {
               internalType: "bool",
               name: "",
               type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          name: "lastMintedAt",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -710,6 +810,11 @@ const deployedContracts = {
               name: "_ipfsHash",
               type: "string",
             },
+            {
+              internalType: "bytes",
+              name: "_signature",
+              type: "bytes",
+            },
           ],
           name: "mintGraph",
           outputs: [
@@ -730,6 +835,25 @@ const deployedContracts = {
               internalType: "string",
               name: "",
               type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          name: "nonces",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -901,6 +1025,19 @@ const deployedContracts = {
             },
           ],
           name: "setApprovalForAll",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_signer",
+              type: "address",
+            },
+          ],
+          name: "setAuthorizedSigner",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",

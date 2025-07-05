@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No HTML content provided' }, { status: 400 });
     }
 
-    console.log(`📤 Server: Uploading HTML to IPFS: ${filename}`);
+    // console.log(`📤 Server: Uploading HTML to IPFS: ${filename}`);
 
     const formData = new FormData();
     
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json();
-    console.log(`✅ Server: HTML uploaded to IPFS: ${result.IpfsHash}`);
+    // console.log(`✅ Server: HTML uploaded to IPFS: ${result.IpfsHash}`);
     
     return NextResponse.json({ hash: result.IpfsHash });
     

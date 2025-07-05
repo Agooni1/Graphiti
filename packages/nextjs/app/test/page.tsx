@@ -169,11 +169,11 @@ const Test: NextPage = () => {
 
   // Graph control handlers - now actually calls the reset function
   const handleResetView = () => {
-    console.log('Reset button clicked, calling resetViewRef.current');
+    // console.log('Reset button clicked, calling resetViewRef.current');
     if (resetViewRef.current) {
       resetViewRef.current();
     } else {
-      console.log('resetViewRef.current is null');
+      // console.log('resetViewRef.current is null');
     }
   };
 
@@ -216,7 +216,7 @@ const Test: NextPage = () => {
       viewState: currentViewState === null ? undefined : currentViewState // Ensure undefined, not null
     };
     
-    console.log('Downloading graph with config (including view state):', config);
+    // console.log('Downloading graph with config (including view state):', config);
     downloadGraphHTML(config);
   };
 
@@ -235,7 +235,7 @@ const Test: NextPage = () => {
       viewState: currentViewState === null ? undefined : currentViewState // Ensure undefined, not null
     };
     
-    console.log('Generating HTML preview with config (including view state):', config);
+    // console.log('Generating HTML preview with config (including view state):', config);
     const htmlContent = getGraphHTMLForIPFS(config);
     
     // Open in new window for preview
