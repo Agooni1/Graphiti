@@ -11,8 +11,12 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import "hardhat/console.sol"; // For debugging purposes, can be removed in production
 
+/**
+ * @title CosmicGraph
+ * @dev NFT contract for minting interactive cosmic graph visualizations
+ * @notice Each address can mint one cosmic graph NFT representing their transaction history
+ */
 contract CosmicGraph is
     ERC721,
     ERC721Enumerable,
@@ -25,104 +29,191 @@ contract CosmicGraph is
 {
     using MessageHashUtils for bytes32;
 
+    // ============ STATE VARIABLES ============
 
-    uint256 public tokenIdCounter;
-    uint256 public price = 0.001 ether;
+    address public authorizedSigner;  // Backend signer for mint authorization
+    uint96 public basePrice;          // Base price for first mint (exponential after)
+    uint256 public tokenIdCounter;    // Counter for token IDs (starts at 0)
 
-    // Cosmic graph specific mappings
+    // ============ STRUCTS ============
+
     struct CosmicGraphData {
-        address targetAddress;
+        address targetAddress;  // Address this cosmic graph represents
+        uint96 mintTimestamp;   // When the NFT was minted
     }
 
-    mapping(address => uint256) public nonces;
-    mapping(uint256 => CosmicGraphData) public cosmicGraphs;
-    mapping(address => uint256) public addressToTokenId;
-    mapping(address => uint256) public lastMintedAt;
+    // ============ MAPPINGS ============
 
-    address public authorizedSigner;
+    mapping(address => uint256) public nonces;              // User nonces for signature verification
+    mapping(uint256 => CosmicGraphData) public cosmicGraphs; // Token ID to cosmic graph data
+    mapping(address => uint256) public addressToTokenId;    // Address to their cosmic graph token ID
 
+    // ============ EVENTS ============
 
     event CosmicGraphMinted(
         uint256 indexed tokenId, 
         address indexed minter,
         string ipfsHash
     );
+
     event CosmicGraphMasterMinted(
         uint256 indexed tokenId, 
         address indexed targetAddress,
         address indexed minter,
         string ipfsHash
     );
-	event PriceUpdated(uint256 oldPrice, uint256 newPrice);
-	event RoyaltyUpdated(address indexed receiver, uint96 fee);
 
-	error InsufficientPayment();
+    event PriceUpdated(uint256 oldPrice, uint256 newPrice);
+    event RoyaltyUpdated(address indexed receiver, uint96 fee);
+
+    // ============ ERRORS ============
+
+	error InsufficientPayment(uint256 sent, uint256 required);
 	error InvalidTargetAddress();
 	error EmptyIPFSHash();
 	error NoFundsToWithdraw();
 	error ZeroDeposit();
-    error AlreadyExists();
+    error AlreadyExists(address user, uint256 existingTokenId);
 	error TransferFailed();
     error NotCiDv0();
     error CIDTooShort();
     error BadSignature();
+    error InvalidIPFSHash();
+    error SignatureVerificationFailed();
+    error ContractPaused();
+    error RoyaltyTooHigh();
+    error InvalidAddress();
 
-    constructor(address _o, address _auth) ERC721("Cosmic Graph Collection", "CSMC") Ownable(_o) {
+    // ============ CONSTRUCTOR ============
+
+    constructor(address _auth, uint96 _basePrice) ERC721("Cosmic Graph Collection", "CSMC") Ownable(msg.sender) {
 		_setDefaultRoyalty(msg.sender, 500);
         authorizedSigner = _auth;
+        basePrice = _basePrice;
 	}
 
-    function _baseURI() internal pure override returns (string memory) {
-		return "";
-    }	
+    // ============ PUBLIC FUNCTIONS ============
 
-    function setPrice(uint256 _price) external onlyOwner nonReentrant{
-        uint256 oldPrice = price;
-        if (oldPrice != _price) {  // Only update and emit if actually changing
-            price = _price;
-            emit PriceUpdated(oldPrice, _price);
+    /**
+     * @dev Mint a cosmic graph NFT for the caller's address
+     * @param _ipfsHash The IPFS hash containing the graph metadata and visualization
+     * @param _signature Backend signature authorizing this mint
+     * @return tokenId The minted token ID
+     */
+    function mintGraph(string memory _ipfsHash, bytes memory _signature) 
+        external 
+        payable 
+        whenNotPaused 
+        nonReentrant 
+        returns (uint256) 
+    {
+        uint256 currentNonce = nonces[msg.sender];
+        uint256 existingTokenId = addressToTokenId[msg.sender];
+        uint256 currentTokenId = tokenIdCounter;
+
+        
+        if (msg.value < userPrice(msg.sender)) {
+            revert InsufficientPayment(msg.value, userPrice(msg.sender));
         }
+        if (existingTokenId != 0) {
+            revert AlreadyExists(msg.sender, existingTokenId);
+        }
+        
+        // Basic IPFS hash validation
+        bytes memory ipfsBytes = bytes(_ipfsHash);
+        uint256 len = ipfsBytes.length;
+        if (len == 0) revert EmptyIPFSHash();
+        if (len < 46 || ipfsBytes[0] != 'Q' || ipfsBytes[1] != 'm') {
+            revert InvalidIPFSHash();
+        }     
+                
+        // Verify backend signature
+        if (!verifySignature(_ipfsHash, _signature, currentNonce)) revert BadSignature();
+
+        // Mint the NFT
+        uint256 tokenId = currentTokenId + 1;
+
+        _safeMint(msg.sender, tokenId);
+        _setTokenURI(tokenId, _ipfsHash);
+
+        tokenIdCounter = tokenId;
+
+        // Store cosmic graph data
+        cosmicGraphs[tokenId] = CosmicGraphData({
+            targetAddress: msg.sender,
+            mintTimestamp: uint96(block.timestamp)
+        });
+
+        addressToTokenId[msg.sender] = tokenId;
+
+        nonces[msg.sender] = currentNonce + 1;
+
+        emit CosmicGraphMinted(tokenId, msg.sender, _ipfsHash);
+        return tokenId;
     }
 
     /**
-     * @dev Mint a cosmic graph NFT for a specific Ethereum address
-     * @param _ipfsHash The IPFS hash containing the graph metadata
+     * @dev Master mint function to create a cosmic graph for another address
+     * @param _targetAddress The address to mint the cosmic graph for
+     * @param _ipfsHash The IPFS hash containing the graph metadata and visualization
+     * @return tokenId The minted token ID
      */
-    function mintGraph(address _targetAddress, string memory _ipfsHash, bytes memory _signature) 
+    function masterMint(address _targetAddress, string memory _ipfsHash) 
         external 
-        payable 
-        whenNotPaused
+        onlyOwner 
+        whenNotPaused 
         nonReentrant
         returns (uint256) 
     {
-        // if (msg.sender != _targetAddress) revert InvalidTargetAddress(); 
-        if (msg.value < price) revert InsufficientPayment();
-        // if (_targetAddress == address(0)) revert InvalidTargetAddress();
-        if (bytes(_ipfsHash).length == 0) revert EmptyIPFSHash();
+        uint256 existingTokenId = addressToTokenId[_targetAddress];
+        uint256 currentTokenId = tokenIdCounter;
+        // Check if target already has a cosmic graph
+        if (existingTokenId != 0) {
+            revert AlreadyExists(_targetAddress, existingTokenId);
+        }
 
-        //basic IPFS hash validation
-        if (bytes(_ipfsHash).length < 46) revert CIDTooShort();
-        if (bytes(_ipfsHash)[0] != 'Q') revert NotCiDv0();
-        if (bytes(_ipfsHash)[1] != 'm') revert NotCiDv0();
+        // Validate IPFS hash
+        bytes memory ipfsBytes = bytes(_ipfsHash);
+        uint256 len = ipfsBytes.length;
+        if (len == 0) revert EmptyIPFSHash();
+        if (len < 46 || ipfsBytes[0] != 'Q' || ipfsBytes[1] != 'm') {
+            revert InvalidIPFSHash();
+        }
         
-        uint256 existingTokenId = addressToTokenId[msg.sender];
-        if (existingTokenId != 0) revert AlreadyExists();
-        
-        if (!verifySignature(_ipfsHash, _signature)) revert BadSignature();
+        // Mint the NFT to owner (who holds it on behalf of target address)
+        uint256 tokenId = currentTokenId + 1;
 
-        uint256 _tokenId = ++tokenIdCounter; // Pre-increment saves gas   
+        _safeMint(msg.sender, tokenId);
+        _setTokenURI(tokenId, _ipfsHash);
 
-        _safeMint(msg.sender, _tokenId);
-        _setTokenURI(_tokenId, _ipfsHash);             
+        tokenIdCounter = tokenId;
 
-        // Store cosmic graph data
-        cosmicGraphs[_tokenId] = CosmicGraphData(_targetAddress);
-        addressToTokenId[msg.sender] = _tokenId;
+        // Store cosmic graph data mapping to target address
+        cosmicGraphs[tokenId] = CosmicGraphData({
+            targetAddress: _targetAddress,
+            mintTimestamp: uint96(block.timestamp)
+        });
 
-        nonces[msg.sender]++;
+        addressToTokenId[_targetAddress] = tokenId;
 
-        emit CosmicGraphMinted(_tokenId, msg.sender, _ipfsHash);
-        return _tokenId;
+        emit CosmicGraphMasterMinted(tokenId, _targetAddress, msg.sender, _ipfsHash);
+        return tokenId;
+    }
+
+    // ============ VIEW FUNCTIONS ============
+
+    /**
+     * @dev Calculate the mint price for a user based on their nonce
+     * @param _user The user address
+     * @return price The mint price in wei (exponential: basePrice * 2^nonce)
+     * @notice Price doubles with each mint to prevent spam
+     */
+    function userPrice(address _user) public view returns (uint256) {
+        uint256 userNonce = nonces[_user];
+        uint256 cachedBasePrice = basePrice;
+        if (userNonce == 0) return cachedBasePrice;
+        if (userNonce >= 10) return cachedBasePrice << 10; // Cap at 1024x
+        return cachedBasePrice << userNonce;
     }
 
     /**
@@ -141,94 +232,19 @@ contract CosmicGraph is
         return addressToTokenId[_targetAddress];
     }
 
-     // Owner unrestricted mint
-    function masterMint(address _targetAddress, string memory _ipfsHash) 
-        external 
-        onlyOwner 
-        whenNotPaused 
-        nonReentrant
-        returns (uint256) 
-    {
-        if (bytes(_ipfsHash).length == 0) revert EmptyIPFSHash();
-        // if (cosmicGraphs[addressToTokenId[_targetAddress]].exists) revert AlreadyExists();
-        if (bytes(_ipfsHash).length < 46) revert CIDTooShort();
-        if (bytes(_ipfsHash)[0] != 'Q') revert NotCiDv0();
-        if (bytes(_ipfsHash)[1] != 'm') revert NotCiDv0();
-        
-        uint256 _tokenId = ++tokenIdCounter;
+    // ============ ADMIN FUNCTIONS ============
 
-        _safeMint(msg.sender, _tokenId);
-        _setTokenURI(_tokenId, _ipfsHash);
-
-        // Store cosmic graph data
-        cosmicGraphs[_tokenId] = CosmicGraphData(_targetAddress);
-        addressToTokenId[_targetAddress] = _tokenId;
-
-        emit CosmicGraphMasterMinted(_tokenId, _targetAddress, msg.sender, _ipfsHash);
-        return _tokenId;
-    }
-
-	// Required overrides...
-	function _increaseBalance(address _account, uint128 _amount) internal override(ERC721, ERC721Enumerable) {
-		super._increaseBalance(_account, _amount);
-	}
-
-	function _update(
-		address _to, 
-		uint256 _tokenId, 
-		address _auth
-	) internal override(ERC721, ERC721Enumerable) returns (address) {
-		address previousOwner = super._update(_to, _tokenId, _auth);
-
-        if (_to == address(0)) {
-            // Burning: safely clean up mappings
-            address _target = cosmicGraphs[_tokenId].targetAddress;
-
-            // Only delete if the mappings point correctly
-            if (addressToTokenId[_target] == _tokenId) {
-                delete addressToTokenId[_target];
-            }
-
-            delete cosmicGraphs[_tokenId];
-        }
-        
-        return previousOwner;
-	}
-
-	function tokenURI(
-		uint256 _tokenId
-	) public view override(ERC721, ERC721URIStorage) returns (string memory) {
-		return super.tokenURI(_tokenId);
-	}
-
-	function supportsInterface(
-		bytes4 _interfaceId
-	)
-		public
-		view
-		override(ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Royalty)
-		returns (bool)
-	{
-		return super.supportsInterface(_interfaceId);
-	}
-
-	// Allow contract to receive ETH
-	receive() external payable {}
-
-	// Allow owner to withdraw funds
-	function withdraw() external onlyOwner nonReentrant {
-        (bool success, ) = payable(owner()).call{value: address(this).balance}("");
-        if (!success) {
-            revert TransferFailed();
+    function setBasePrice(uint96 _price) external onlyOwner nonReentrant{
+        uint96 oldPrice = basePrice;
+        if (oldPrice != _price) {  // Only update and emit if actually changing
+            basePrice = _price;
+            emit PriceUpdated(oldPrice, _price);
         }
     }
 
-	// Withdraw Balance to Address
-	function withdrawTo(address payable _to) public onlyOwner nonReentrant {
-        (bool success, ) = payable(_to).call{value: address(this).balance}("");
-        if (!success) {
-            revert TransferFailed();
-        }
+    function setAuthorizedSigner(address _signer) external onlyOwner nonReentrant {
+        if (_signer == address(0)) revert InvalidAddress();
+        authorizedSigner = _signer;
     }
 
     // Update royalty information
@@ -247,16 +263,84 @@ contract CosmicGraph is
         _unpause();
     }
 
-    function setAuthorizedSigner(address _signer) external onlyOwner nonReentrant{
-        authorizedSigner = _signer;
+    // Allow owner to withdraw funds
+	function withdraw() external onlyOwner nonReentrant {
+        (bool success, ) = payable(owner()).call{value: address(this).balance}("");
+        if (!success) {
+            revert TransferFailed();
+        }
     }
 
-    
-    function verifySignature(string memory _ipfsHash, bytes memory _signature) internal view returns (bool) {
-        
-        bytes32 messageHash = keccak256(abi.encodePacked(_ipfsHash, msg.sender, nonces[msg.sender]+1));
+	// Withdraw Balance to Address
+	function withdrawTo(address payable _to) public onlyOwner nonReentrant {
+        (bool success, ) = payable(_to).call{value: address(this).balance}("");
+        if (!success) {
+            revert TransferFailed();
+        }
+    }
+
+    // ============ INTERNAL FUNCTIONS ============
+
+    function _baseURI() internal pure override returns (string memory) {
+		return "";
+    }	
+
+    function verifySignature(string memory _ipfsHash, bytes memory _signature, uint256 _currentNonce) 
+        internal view returns (bool) 
+    {
+        bytes32 messageHash = keccak256(abi.encodePacked(_ipfsHash, msg.sender, _currentNonce+1));
         bytes32 ethSignedMessageHash = messageHash.toEthSignedMessageHash();
-    
         return ECDSA.recover(ethSignedMessageHash, _signature) == authorizedSigner;
     }
+
+    function _update(
+		address _to, 
+		uint256 _tokenId, 
+		address _auth
+	) internal override(ERC721, ERC721Enumerable) returns (address) {
+		address previousOwner = super._update(_to, _tokenId, _auth);
+
+        // Clean up mappings when burning
+        if (_to == address(0)) {
+            address _target = cosmicGraphs[_tokenId].targetAddress;
+
+            // Only delete if the mappings point correctly
+            if (_target != address(0) && addressToTokenId[_target] == _tokenId) {
+                delete addressToTokenId[_target];
+            }
+
+            delete cosmicGraphs[_tokenId];
+        }
+        
+        return previousOwner;
+	}
+
+    // ============ OVERRIDES ============
+	
+	function _increaseBalance(address _account, uint128 _amount) internal override(ERC721, ERC721Enumerable) {
+		super._increaseBalance(_account, _amount);
+	}
+
+    function tokenURI(uint256 _tokenId) 
+        public 
+        view 
+        override(ERC721, ERC721URIStorage) 
+        returns (string memory) 
+    {
+        return super.tokenURI(_tokenId);
+    }
+
+    function supportsInterface(bytes4 _interfaceId)
+        public
+        view
+        override(ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Royalty)
+        returns (bool)
+    {
+        return super.supportsInterface(_interfaceId);
+    }
+
+    // ============ RECEIVE ============
+
+	receive() external payable {}
+
 }

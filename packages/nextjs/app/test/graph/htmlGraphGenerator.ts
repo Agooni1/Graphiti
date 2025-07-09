@@ -12,13 +12,13 @@ interface GraphConfig {
   targetNode: string;
   layoutMode: 'shell' | 'force' | 'fibonacci';
   particleMode: 'pulse' | 'laser' | 'off';
-  isAutoOrbiting: boolean;
+  isOrbiting: boolean;
   // Add view state
   viewState?: ViewState;
 }
 
 export function generateGraphHTML(config: GraphConfig): string {
-  const { graphData, targetNode, layoutMode, particleMode, isAutoOrbiting, viewState } = config;
+  const { graphData, targetNode, layoutMode, particleMode, isOrbiting, viewState } = config;
   
   // Generate the layout using your existing function
   const layoutConfig: LayoutConfig = {

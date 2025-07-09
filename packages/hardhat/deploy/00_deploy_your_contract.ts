@@ -25,7 +25,7 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   await deploy("CosmicGraph", {
     from: deployer,
     // Contract constructor arguments
-    args: ["0xdFAcd1aBC73C82Fd55edD35B933F7D9cd04E6470", "0x7e971A64f1D8A5318f8C5657aC228021ba51BC0D"],
+    args: ["0x7e971A64f1D8A5318f8C5657aC228021ba51BC0D", "1000000000000000"],
     // args: [],
     log: true,
     // autoMine: can be passed to the deploy function to make the deployment process faster on local networks by

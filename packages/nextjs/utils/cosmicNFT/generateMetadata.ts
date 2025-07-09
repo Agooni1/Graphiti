@@ -12,7 +12,8 @@ export function generateMetadata(
   contentCID: string, 
   layoutMode: 'shell' | 'force' | 'fibonacci' = 'shell',
   contentType: 'gif' | 'html' = 'html',
-  chainId?: number // Add chainId parameter
+  chainId?: number, // Add chainId parameter
+  nodeCount?: number, // 🔧 ADD: Optional node count parameter
 ): CosmicVisualizationData {
   
   // Validate address
@@ -25,7 +26,21 @@ export function generateMetadata(
   const connectionCount = data.connectedAddresses.length;
   const balanceETH = Number(data.balance) / 1e18;
 
-  // Simple rarity tiers
+  // 🔧 UPDATED: Use actual node count if provided, fallback to connected addresses
+  const actualNodeCount = nodeCount;
+
+  // 🔧 ADD: Get network name from chainId
+  const getNetworkName = (chainId?: number) => {
+    switch (chainId) {
+      case 1: return "mainnet";
+      case 11155111: return "sepolia";
+      case 8453: return "base";        // 🔧 CHANGED: Polygon → Base
+      case 42161: return "arbitrum";
+      default: return "ethereum";
+    }
+  };
+
+  // Simple rarity tiers based on actual node count
   const getNodeTier = (nodeCount: number) => {
     if (nodeCount >= 100) return "✦✦✦";  // Ultra rare
     if (nodeCount >= 50) return "✦✦";    // Rare  
@@ -55,7 +70,7 @@ export function generateMetadata(
     
     attributes: [
       {
-        trait_type: "Constellation",
+        trait_type: "Tier",
         value: getNodeTier(data.connectedAddresses.length)
       },
       {
@@ -67,8 +82,14 @@ export function generateMetadata(
         value: layoutMode.charAt(0).toUpperCase() + layoutMode.slice(1)
       },
       {
-        trait_type: "Format",
-        value: isInteractive ? "Interactive" : "Static"
+        trait_type: "Nodes",
+        value: actualNodeCount
+      },
+      
+      // 🔧 ADD: Network attribute
+      {
+        trait_type: "Network",
+        value: getNetworkName(chainId)
       }
     ]
   };

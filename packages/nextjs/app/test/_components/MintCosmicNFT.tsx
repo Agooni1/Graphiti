@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount } from "wagmi";
-import { parseEther } from "viem";
+import { useAccount, useSignMessage } from "wagmi";
+import { parseEther, formatEther } from "viem";
 import { useScaffoldReadContract, useScaffoldWriteContract, useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 import { useWatchBalance } from "~~/hooks/scaffold-eth/useWatchBalance";
@@ -24,29 +24,45 @@ interface GraphConfig {
   targetNode: string;
   layoutMode: 'shell' | 'force' | 'fibonacci';
   particleMode: 'pulse' | 'laser' | 'off';
-  isAutoOrbiting: boolean;
+  isOrbiting: boolean;  // 🔧 Changed from isAutoOrbiting
   viewState?: ViewState;
+  // txDisplayLimit?: number;
+  transferDirection?: 'from' | 'to' | 'both';
 }
 
 interface MintCosmicNFTProps {
   graphConfig: GraphConfig;
+  selectedChain: "ethereum" | "sepolia" | "arbitrum" | "base";  // 🔧 Add this
   disabled?: boolean;
   className?: string;
-  title?: string; // <-- add this
+  title?: string;
 }
 
-export function MintCosmicNFT({ graphConfig, disabled = false, className = "", title }: MintCosmicNFTProps) {
+export function MintCosmicNFT({ 
+  graphConfig, 
+  selectedChain,  // 🔧 Add this parameter
+  disabled = false, 
+  className = "", 
+  title 
+}: MintCosmicNFTProps) {
   const { address: connectedAddress } = useAccount();
   const [isMinting, setIsMinting] = useState(false);
-  const mintPrice = "0.01";
 
+  const { signMessageAsync } = useSignMessage();
   const { writeContractAsync } = useScaffoldWriteContract("CosmicGraph");
   const { data: contractInfo } = useDeployedContractInfo("CosmicGraph");
 
-    // Read the current nonce for the connected address
+  // Read the current nonce for the connected address
   const { data: currentNonce } = useScaffoldReadContract({
     contractName: "CosmicGraph",
     functionName: "nonces",
+    args: [connectedAddress],
+  });
+
+  // 🎯 NEW: Get dynamic mint price from contract
+  const { data: mintPriceWei } = useScaffoldReadContract({
+    contractName: "CosmicGraph",
+    functionName: "userPrice",
     args: [connectedAddress],
   });
 
@@ -56,24 +72,40 @@ export function MintCosmicNFT({ graphConfig, disabled = false, className = "", t
 
   const balanceValue = balance?.value ?? 0n;
 
+  // Convert wei to ETH for display
+  const mintPriceEth = mintPriceWei ? formatEther(mintPriceWei) : "0";
+
+  // 🔧 Create chain mapping function
+  const getChainForAPI = (uiChain: string) => {
+    const chainMapping = {
+      'ethereum': 'eth',
+      'sepolia': 'sepolia', 
+      'arbitrum': 'arbitrum',
+      'base': 'base'
+    };
+    return chainMapping[uiChain as keyof typeof chainMapping] || 'sepolia';
+  };
+
   const handleMint = async () => {
-    if (!connectedAddress || !contractInfo?.address || !graphConfig.graphData.nodes.length) {
+    if (!connectedAddress || !graphConfig.graphData.nodes.length || !contractInfo || !mintPriceWei) {
       notification.error("Missing required data for minting");
       return;
     }
+
+    console.log(`🔍 Debug: selectedChain = ${selectedChain}`);
+    console.log(`🔍 Debug: getChainForAPI result = ${getChainForAPI(selectedChain)}`);
+    console.log(`🔍 Debug: connectedAddress = ${connectedAddress}`);
 
     const notificationId = notification.loading("Checking affordability...");
     setIsMinting(true);
 
     try {
-      // Check if user can afford minting
-      const mintPriceWei = parseEther(mintPrice).toString();
-      
+      // Use actual mint price from contract
       const canAfford = await canAffordMinting({
         userAddress: connectedAddress,
         balance: balanceValue,
         contractAddress: contractInfo.address,
-        mintPrice: mintPriceWei
+        mintPrice: mintPriceWei.toString() // Use wei value directly
       });
 
       notification.remove(notificationId);
@@ -84,93 +116,86 @@ export function MintCosmicNFT({ graphConfig, disabled = false, className = "", t
         return;
       }
 
-      // Generate the custom HTML with current graph state
-      const generatingNotificationId = notification.loading("Generating your cosmic graph...");
+      // Step 1: Create proof of address ownership
+      const authNotificationId = notification.loading("Signing authentication message...");
+      const timestamp = Date.now();
+      const authMessage = `Mint cosmic graph for ${connectedAddress} at ${timestamp}`;
       
-      const htmlContent = generateGraphHTML(graphConfig);
-      console.log("Generated HTML length:", htmlContent.length);
+      const authSignature = await signMessageAsync({ message: authMessage });
+      notification.remove(authNotificationId);
 
-      if (htmlContent.length === 0) {
-        throw new Error("Generated HTML is empty");
+      // Step 2: Request mint preparation from backend
+      const mintNotificationId = notification.loading("Generating cosmic visualization...");
+      
+      const requestBody = {
+        userAddress: connectedAddress,
+        signature: authSignature,
+        message: authMessage,
+        timestamp,
+        layoutMode: graphConfig.layoutMode,
+        particleMode: graphConfig.particleMode,
+        chain: getChainForAPI(selectedChain),
+        // 🔧 ADD: Current UI settings
+        // txDisplayLimit: graphConfig.txDisplayLimit || 200,
+        transferDirection: graphConfig.transferDirection || "both",
+        isOrbiting: graphConfig.isOrbiting,  // 🔧 ADD: Pass the actual orbiting state
+        targetNode: graphConfig.targetNode,  // 🔧 ADD: Pass the target node
+        viewState: graphConfig.viewState     // 🔧 ADD: Pass the view state
+      };
+
+      console.log(`🔍 Debug: Request body =`, requestBody);
+
+      const mintResponse = await fetch('/api/mint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!mintResponse.ok) {
+        const error = await mintResponse.json();
+        throw new Error(error.error || "Failed to prepare mint");
       }
 
-      notification.remove(generatingNotificationId);
-      const uploadNotificationId = notification.loading("Uploading interactive graph to IPFS...");
+      const { metadataCid, signature: mintingSignature } = await mintResponse.json();
+      notification.remove(mintNotificationId);
 
-      // Upload HTML to IPFS
-      const htmlCid = await uploadHtmlToIPFS(htmlContent, `cosmic-graph-${graphConfig.targetNode.slice(0, 6)}.html`);
-      console.log("HTML uploaded to IPFS:", htmlCid);
-
-      // Create proper AddressCosmicData object for your existing generateMetadata function
-      const cosmicData: AddressCosmicData = {
-        address: graphConfig.targetNode,
-        balance: BigInt(0),
-        transactionCount: graphConfig.graphData.links.length, // Keep as link count for "connections"
-        connectedAddresses: graphConfig.graphData.nodes.map(node => node.id), // This gives us node count
-        recentTransactions: [],
-        tokenBalances: [],
-        nftCount: 0,
-    };
-
-      const { metadata } = generateMetadata(
-        cosmicData, // Pass the whole object, not just the address
-        htmlCid,
-        graphConfig.layoutMode,
-        'html' // Using HTML content type
-      );
-
-      console.log("Generated metadata:", metadata);
-
-      // Upload metadata to IPFS
-      const metadataCid = await uploadMetadataToIPFS(metadata);
-      console.log("Metadata uploaded to IPFS:", metadataCid);
-
-      notification.remove(uploadNotificationId);
-      notification.success("Interactive cosmic graph uploaded to IPFS!");
-
-      // Mint the NFT
-      const mintNotificationId = notification.loading("Minting your cosmic NFT...");
-
-      // Calculate the next nonce (current + 1)
-      const nextNonce = currentNonce ? Number(currentNonce) + 1 : 1;
-      console.log("Current nonce:", currentNonce, "Next nonce:", nextNonce);
-
-      // Get signature with the NEXT nonce (not current)
-      const sig = await getSignature(metadataCid, connectedAddress, nextNonce);
+      // Step 3: Execute the mint transaction with correct price
+      const txNotificationId = notification.loading("Minting NFT on blockchain...");
       
       await writeContractAsync({
         functionName: "mintGraph",
-        args: [cosmicData.address, metadataCid, sig], // Convert to BigInt
-        value: parseEther(mintPrice),
+        args: [metadataCid, mintingSignature],
+        value: mintPriceWei, // Use wei value directly
       });
 
-      notification.remove(mintNotificationId);
+      notification.remove(txNotificationId);
       notification.success("🌌 Interactive Cosmic NFT minted successfully!");
 
     } catch (error) {
-      notification.error("Failed to mint cosmic NFT");
+      notification.error(`Failed to mint cosmic NFT: ${error instanceof Error ? error.message : 'Unknown error'}`);
       console.error("Error minting cosmic NFT:", error);
     } finally {
       setIsMinting(false);
     }
   };
 
-  // const isDisabled = disabled || isMinting || !graphConfig.graphData.nodes.length || !connectedAddress;
-  const isDisabled = false;
+  const isDisabled = disabled || isMinting || !graphConfig.graphData.nodes.length || !connectedAddress || !mintPriceWei;
 
   return (
     <button
       onClick={handleMint}
       disabled={isDisabled}
       className={`btn bg-gradient-to-r from-purple-600 to-blue-600 border-none text-white font-semibold hover:from-purple-700 hover:to-blue-700 transition-all text-sm flex items-center gap-2 ${className}`}
-      title={title} // <-- add this
+      title={title}
     >
       {isMinting ? (
         <>Minting...</>
       ) : (
         <>
           Mint NFT
-          <span className="text-xs opacity-80">{mintPrice} ETH</span>
+          <span className="text-xs opacity-80">
+            {mintPriceWei ? `${parseFloat(mintPriceEth).toFixed(4)} ETH` : "Loading..."}
+          </span>
         </>
       )}
     </button>

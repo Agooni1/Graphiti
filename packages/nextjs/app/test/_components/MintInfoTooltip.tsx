@@ -43,7 +43,7 @@ export function MintInfoTooltip() {
                 <span>Node labels not included in final NFT</span>
               </p>
               <p className="text-amber-200 text-xs font-medium italic flex items-center gap-1">
-                <span>You can only mint an address ONCE</span>
+                <span>Minting to the same address again will burn its previous NFT</span>
               </p>
             </div>
           </div>

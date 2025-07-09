@@ -53,7 +53,10 @@ export async function POST(request: NextRequest) {
     const result = await response.json();
     // console.log(`✅ Server: HTML uploaded to IPFS: ${result.IpfsHash}`);
     
-    return NextResponse.json({ hash: result.IpfsHash });
+    return NextResponse.json({ 
+      cid: result.IpfsHash,     // ← Changed from "hash" to "cid"
+      success: true 
+    });
     
   } catch (error) {
     console.error('HTML upload error:', error);

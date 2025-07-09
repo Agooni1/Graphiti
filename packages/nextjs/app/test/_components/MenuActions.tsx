@@ -39,14 +39,14 @@ interface MenuActionsProps {
   graphData: any;
   layoutMode: any;
   particleMode: any;
-  isAutoOrbiting: boolean;
+  isOrbiting: boolean;  // 🔧 Changed from isAutoOrbiting
   currentViewState: any;
   // Add new props for graph controls
   transferDirection: 'from' | 'to' | 'both';
   setTransferDirection: (v: 'from' | 'to' | 'both') => void;
   setLayoutMode: (v: any) => void;
   setParticleMode: (v: any) => void;
-  setIsAutoOrbiting: (v: boolean) => void;
+  setIsOrbiting: (v: boolean) => void;  // 🔧 Changed from setIsAutoOrbiting
   handleResetView: () => void;
   showNodeLabels: boolean; // Add this
   setShowNodeLabels: (v: boolean) => void; // Add this
@@ -67,13 +67,13 @@ export function MenuActions({
   graphData,
   layoutMode,
   particleMode,
-  isAutoOrbiting,
+  isOrbiting,  // 🔧 Changed from isAutoOrbiting
   currentViewState,
   transferDirection,
   setTransferDirection,
   setLayoutMode,
   setParticleMode,
-  setIsAutoOrbiting,
+  setIsOrbiting,  // 🔧 Changed from setIsAutoOrbiting
   handleResetView,
   showNodeLabels,
   setShowNodeLabels,
@@ -165,16 +165,20 @@ export function MenuActions({
                   targetNode: address.toLowerCase(),
                   layoutMode,
                   particleMode,
-                  isAutoOrbiting,
-                  viewState: currentViewState === null ? undefined : currentViewState
+                  isOrbiting,  // 🔧 Changed from isAutoOrbiting
+                  viewState: currentViewState === null ? undefined : currentViewState,
+                  // 🔧 ADD: Pass current filtering settings
+                  // txDisplayLimit: 200,  // You'll need to get this from page.tsx state
+                  transferDirection    // Pass the current transferDirection
                 }}
-                disabled={
-                  !address ||
-                  !graphData.nodes.length ||
-                  !canMint ||
-                  !isConnected ||
-                  address.toLowerCase() !== connectedAddress?.toLowerCase() // <-- new condition
-                }
+                selectedChain={selectedChain}  // 🔧 Add this prop
+                // disabled={
+                //   !address ||
+                //   !graphData.nodes.length ||
+                //   !canMint ||
+                //   !isConnected ||
+                //   address.toLowerCase() !== connectedAddress?.toLowerCase()
+                // }
                 className={`flex-1 min-w-[110px] transition-all ${
                   !address ||
                   !graphData.nodes.length ||
@@ -290,14 +294,14 @@ export function MenuActions({
             <div className="flex gap-0.5">
               <button
                 className={`btn btn-xs flex-1 ${
-                  isAutoOrbiting 
+                  isOrbiting  // 🔧 Changed from isAutoOrbiting
                     ? 'btn-primary bg-gradient-to-r from-cyan-600 to-blue-600' 
                     : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
                 }`}
-                onClick={() => setIsAutoOrbiting(!isAutoOrbiting)}
-                title={isAutoOrbiting ? "Pause Orbit" : "Auto Orbit"}
+                onClick={() => setIsOrbiting(!isOrbiting)}  // 🔧 Changed from setIsAutoOrbiting
+                title={isOrbiting ? "Pause Orbit" : "Auto Orbit"}  // 🔧 Changed from isAutoOrbiting
               >
-                {isAutoOrbiting ? <PauseIcon className="w-3 h-3" /> : <PlayIcon className="w-3 h-3" />}
+                {isOrbiting ? <PauseIcon className="w-3 h-3" /> : <PlayIcon className="w-3 h-3" />}
               </button>
               
               <button

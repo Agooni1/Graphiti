@@ -53,7 +53,7 @@ const Test: NextPage = () => {
   // Add graph control states - Update particleMode to include 'off'
   const [layoutMode, setLayoutMode] = useState<'shell' | 'force' | 'fibonacci'>('shell');
   const [particleMode, setParticleMode] = useState<'pulse' | 'laser' | 'off'>('pulse');
-  const [isAutoOrbiting, setIsAutoOrbiting] = useState(true); //default to true for auto-orbiting
+  const [isOrbiting, setIsOrbiting] = useState(true); //default to true for auto-orbiting
   const [showNodeLabels, setShowNodeLabels] = useState(true); // Add this new state
 
   // Create a ref to store the reset function from the graph component
@@ -200,51 +200,6 @@ const Test: NextPage = () => {
     }, 50);
   };
 
-  // Add these handler functions after your existing handlers
-  const handleDownloadGraph = () => {
-    if (!address || !graphData.nodes.length) {
-      alert('No graph data to download. Please load a graph first.');
-      return;
-    }
-
-    const config = {
-      graphData,
-      targetNode: address,
-      layoutMode,
-      particleMode,
-      isAutoOrbiting,
-      viewState: currentViewState === null ? undefined : currentViewState // Ensure undefined, not null
-    };
-    
-    // console.log('Downloading graph with config (including view state):', config);
-    downloadGraphHTML(config);
-  };
-
-  const handlePreviewHTML = () => {
-    if (!address || !graphData.nodes.length) {
-      alert('No graph data to preview. Please load a graph first.');
-      return;
-    }
-
-    const config = {
-      graphData,
-      targetNode: address,
-      layoutMode,
-      particleMode,
-      isAutoOrbiting,
-      viewState: currentViewState === null ? undefined : currentViewState // Ensure undefined, not null
-    };
-    
-    // console.log('Generating HTML preview with config (including view state):', config);
-    const htmlContent = getGraphHTMLForIPFS(config);
-    
-    // Open in new window for preview
-    const newWindow = window.open();
-    if (newWindow) {
-      newWindow.document.write(htmlContent);
-      newWindow.document.close();
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
@@ -281,13 +236,13 @@ const Test: NextPage = () => {
               graphData={graphData}
               layoutMode={layoutMode}
               particleMode={particleMode}
-              isAutoOrbiting={isAutoOrbiting}
+              isOrbiting={isOrbiting} // 🔧 Changed from isAutoOrbiting
               currentViewState={currentViewState}
               transferDirection={transferDirection}
               setTransferDirection={setTransferDirection}
               setLayoutMode={setLayoutMode}
               setParticleMode={setParticleMode}
-              setIsAutoOrbiting={setIsAutoOrbiting}
+              setIsOrbiting={setIsOrbiting} // 🔧 Changed from setIsAutoOrbiting
               handleResetView={handleResetView}
               showNodeLabels={showNodeLabels} // Add this prop
               setShowNodeLabels={setShowNodeLabels} // Add this prop
@@ -353,7 +308,7 @@ const Test: NextPage = () => {
             targetNode={address.toLowerCase()}
             layoutMode={layoutMode}
             particleMode={particleMode}
-            isAutoOrbiting={isAutoOrbiting}
+            isAutoOrbiting={isOrbiting}
             onFullscreenToggle={handleFullscreenToggle}
             resetViewRef={resetViewRef}
             onViewStateChange={setCurrentViewState}

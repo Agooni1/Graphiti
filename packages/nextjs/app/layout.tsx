@@ -13,7 +13,12 @@ const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
     <html suppressHydrationWarning>
       <body className="bg-slate-900">
-        <ThemeProvider enableSystem>
+        <ThemeProvider
+          defaultTheme="dark"
+          forcedTheme="dark"
+          enableSystem={false}
+          attribute="data-theme"
+        >
           <ScaffoldEthAppWithProviders>
             <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
               {children}

@@ -48,7 +48,10 @@ export async function POST(request: NextRequest) {
     const result = await response.json();
     // console.log(`✅ Server: Metadata uploaded to IPFS: ${result.IpfsHash}`);
     
-    return NextResponse.json({ hash: result.IpfsHash });
+    return NextResponse.json({ 
+      cid: result.IpfsHash,     // ← Make sure it returns "cid"
+      success: true 
+    });
     
   } catch (error) {
     console.error('Metadata upload error:', error);

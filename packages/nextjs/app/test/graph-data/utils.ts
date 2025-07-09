@@ -27,7 +27,14 @@ export function dedupeNodes(nodes: GraphNode[]): GraphNode[] {
 
 export const getETHBalance = async (address: string): Promise<string> => {
   try {
-    const response = await fetch(`/api/blockchain/balance?address=${encodeURIComponent(address)}`);
+    // 🔧 Add server-side URL handling but keep the same endpoint
+    const baseUrl = typeof window === 'undefined' 
+      ? (process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : 'http://localhost:3000')
+      : '';
+
+    const response = await fetch(`${baseUrl}/api/blockchain/balance?address=${encodeURIComponent(address)}`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -36,14 +43,21 @@ export const getETHBalance = async (address: string): Promise<string> => {
     const data = await response.json();
     return data.balance || "...";
   } catch (err) {
-    // Fail silently, cuz i dont wanna upgrade the API key
+    console.log(`❌ Balance error for ${address}:`, err);
     return "...";
   }
 };
 
 export const isContract = async (address: string): Promise<boolean> => {
   try {
-    const response = await fetch(`/api/blockchain/contract?address=${encodeURIComponent(address)}`);
+    // 🔧 Add server-side URL handling but keep the same endpoint
+    const baseUrl = typeof window === 'undefined' 
+      ? (process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : 'http://localhost:3000')
+      : '';
+
+    const response = await fetch(`${baseUrl}/api/blockchain/contract?address=${encodeURIComponent(address)}`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -52,7 +66,7 @@ export const isContract = async (address: string): Promise<boolean> => {
     const data = await response.json();
     return data.isContract || false;
   } catch (err) {
-    // Fail silently, return false (not a contract)
+    console.log(`❌ Contract error for ${address}:`, err);
     return false;
   }
 };
@@ -96,8 +110,8 @@ export const FilterAndSortTx = (
 export const FilterPair = (
   transfers: AssetTransfersResult[],
   parentAddress: string
-): { from: string; to: string; direction: "inbound" | "outbound" }[] => {
-  const pairs = new Map<string, "inbound" | "outbound">();
+): { from: string; to: string; direction: "to" | "from" }[] => {
+  const pairs = new Map<string, "to" | "from">();
   const parent = parentAddress.toLowerCase();
 
   transfers.forEach(tx => {
@@ -105,9 +119,9 @@ export const FilterPair = (
     const to = tx.to?.toLowerCase();
 
     if (from === parent && to) {
-      pairs.set(`${from}->${to}`, "outbound");
+      pairs.set(`${from}->${to}`, "from");
     } else if (to === parent && from) {
-      pairs.set(`${from}->${to}`, "inbound");
+      pairs.set(`${from}->${to}`, "to");
     }
   });
 
@@ -170,12 +184,21 @@ export const pairData = async ({ pairsFromParent, transfers }: PairDataProps): P
   return graphData;
 };
 
-export async function fetchAllTransfers(address: string, chain: string): Promise<AssetTransfersResult[]> {
+export async function fetchAllTransfers(address: string, chain: string = 'eth'): Promise<AssetTransfersResult[]> {
   if (!address) return [];
 
   try {
-    // Pass the chain param to the API!
-    const response = await fetch(`/api/blockchain/transfers?address=${encodeURIComponent(address)}&chain=${encodeURIComponent(chain)}`);
+    // 🔧 FIX: Handle both client-side and server-side calls
+    const baseUrl = typeof window === 'undefined' 
+      ? (process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : 'http://localhost:3000')  // Server-side: need full URL
+      : '';  // Client-side: relative URL works
+
+    const url = `${baseUrl}/api/blockchain/transfers?address=${encodeURIComponent(address)}&chain=${encodeURIComponent(chain)}`;
+    
+    console.log(`🔗 Fetching transfers from: ${url}`);
+    const response = await fetch(url);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -187,11 +210,11 @@ export async function fetchAllTransfers(address: string, chain: string): Promise
       throw new Error(data.error);
     }
     
-    console.log("Client received transfers:", data.transfers?.length || 0, "transfers");
+    console.log("✅ Fetched transfers:", data.transfers?.length || 0, "transfers");
     
     return data.transfers || [];
   } catch (err) {
-    console.error("Failed to fetch transfers:", err);
+    console.error("❌ Failed to fetch transfers:", err);
     return [];
   }
 }

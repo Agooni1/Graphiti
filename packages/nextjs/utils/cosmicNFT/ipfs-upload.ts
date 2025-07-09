@@ -24,44 +24,54 @@ export async function uploadFileToIPFS(file: File): Promise<string> {
 export async function uploadMetadataToIPFS(metadata: any): Promise<string> {
   console.log("📤 Uploading metadata to IPFS...");
   
-  const response = await fetch('/api/ipfs/upload-metadata', {
+  const response = await fetch(getApiUrl('/api/ipfs/upload-metadata'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ metadata }),
+    body: JSON.stringify({ metadata })
   });
-  
+
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Metadata upload failed');
+    throw new Error(`Failed to upload metadata: ${response.status}`);
   }
-  
+
   const result = await response.json();
-  console.log("✅ Metadata uploaded to IPFS:", result.hash);
-  return result.hash;
+  return result.cid;
 }
 
 // Client-side function for HTML upload
-export async function uploadHtmlToIPFS(htmlContent: string, filename: string = "cosmic-graph-interactive.html"): Promise<string> {
+export async function uploadHtmlToIPFS(htmlContent: string, filename: string): Promise<string> {
   console.log("📤 Uploading HTML to IPFS...", filename);
   
-  const response = await fetch('/api/ipfs/upload-html', {
+  const response = await fetch(getApiUrl('/api/ipfs/upload-html'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ htmlContent, filename }),
+    body: JSON.stringify({
+      htmlContent,
+      filename
+    })
   });
-  
+
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'HTML upload failed');
+    throw new Error(`Failed to upload HTML: ${response.status}`);
   }
-  
+
   const result = await response.json();
-  console.log("✅ HTML uploaded to IPFS:", result.hash);
-  return result.hash;
+  return result.cid;
+}
+
+// Helper function to construct API URL
+function getApiUrl(endpoint: string): string {
+  const baseUrl = typeof window === 'undefined' 
+    ? (process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : 'http://localhost:3000')
+    : '';
+  
+  return `${baseUrl}${endpoint}`;
 }
 
 // Legacy functions - keep for backwards compatibility but mark as deprecated

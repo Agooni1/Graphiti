@@ -5,7 +5,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { hardhat } from "viem/chains";
-import { Bars3Icon, BugAntIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { 
+  Bars3Icon, 
+  BugAntIcon, 
+  MagnifyingGlassIcon,    // 🔧 For Explorer
+  UserIcon,               // 🔧 For My NFTs  
+  PhotoIcon,              // 🔧 For All NFTs
+  WrenchScrewdriverIcon   // 🔧 For Debug Contracts
+} from "@heroicons/react/24/outline";
 import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { useOutsideClick, useTargetNetwork } from "~~/hooks/scaffold-eth";
 
@@ -19,22 +26,22 @@ export const menuLinks: HeaderMenuLink[] = [
   {
     label: "Explorer",
     href: "/test",
-    icon: <SparklesIcon className="h-4 w-4" />,
+    icon: <MagnifyingGlassIcon className="h-4 w-4" />, // 🔧 Search/explore icon
   },
   {
     label: "My NFTs",
-    href: "/myNFTs",
-    icon: <BugAntIcon className="h-4 w-4" />,
+    href: "/myNFTs", 
+    icon: <UserIcon className="h-4 w-4" />, // 🔧 Personal/user icon
   },
   {
     label: "All NFTs",
     href: "/allNFTs",
-    icon: <BugAntIcon className="h-4 w-4" />,
+    icon: <PhotoIcon className="h-4 w-4" />, // 🔧 Gallery/collection icon
   },
   {
-    label: "Debug Contracts",
+    label: "Explore the Contract",
     href: "/debug",
-    icon: <BugAntIcon className="h-4 w-4" />,
+    icon: <WrenchScrewdriverIcon className="h-4 w-4" />, // 🔧 Tools/debug icon
   },
 ];
 
@@ -104,9 +111,9 @@ export const Header = () => {
           </div>
           <div className="flex flex-col">
             <span className="font-bold leading-tight bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              EtherVerse
+              Graphiti
             </span>
-            <span className="text-xs text-slate-400">Ethereum Universe</span>
+            <span className="text-xs text-slate-400">Mint a unique NFT of your address</span>
           </div>
         </Link>
         
