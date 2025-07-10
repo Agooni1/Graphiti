@@ -2,34 +2,9 @@
 
 import { AllHoldings } from "./_components";
 import type { NextPage } from "next";
-import { useState } from "react";
-import { useAccount } from "wagmi";
-import { parseEther } from "viem";
-import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
-import { useScaffoldReadContract, useScaffoldWriteContract, useDeployedContractInfo } from "~~/hooks/scaffold-eth";
-import { notification } from "~~/utils/scaffold-eth";
 
 
 const AllNFTs: NextPage = () => {
-  const { address: connectedAddress, isConnected, isConnecting } = useAccount();
-
-  const { data: tokenIdCounter } = useScaffoldReadContract({
-    contractName: "CosmicGraph",
-    functionName: "tokenIdCounter",
-    watch: true,
-  });
-
-  const { data: tokenURI } = useScaffoldReadContract({
-    contractName: "CosmicGraph",
-    functionName: "tokenURI",
-    args: [1n],
-    // watch: true,
-  });
-
-  // Get contract address
-  const { data: contractInfo } = useDeployedContractInfo("CosmicGraph");
-
-
   
   return (
     <>

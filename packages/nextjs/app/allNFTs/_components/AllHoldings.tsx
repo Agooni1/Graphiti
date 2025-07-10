@@ -48,13 +48,6 @@ export const AllHoldings = () => {
     watch: true,
   });
 
-  // const { data: cosmicGraphData } = useScaffoldReadContract({
-  //   contractName: "CosmicGraph", 
-  //   functionName: "cosmicGraphs",  // ✅ This is the correct mapping name
-  //   args: [BigInt(tokenId)],
-  //   watch: true,
-  // });
-
   useEffect(() => {
     const updateAllCollectibles = async (): Promise<void> => {
       if (totalSupply === undefined || yourCollectibleContract === undefined) return;
@@ -65,7 +58,6 @@ export const AllHoldings = () => {
       
       // 🔧 FIX: Check if there are any tokens before looping
       if (totalTokens === 0) {
-        console.log("📝 No tokens exist - total supply is 0");
         setAllCollectibles([]);
         setAllCollectiblesLoading(false);
         return;
@@ -88,37 +80,22 @@ export const AllHoldings = () => {
           
           // Get token URI (which is just the IPFS hash)
           const tokenURI = await yourCollectibleContract.read.tokenURI([tokenId]);
-          console.log(`🔍 Token ${tokenIdNumber} raw tokenURI (should be IPFS hash):`, tokenURI);
 
           // Contract returns just the hash, so use it directly
           const ipfsHash = tokenURI;
-          console.log(`📝 Using IPFS hash:`, ipfsHash);
 
           // Get metadata with error handling
           let nftMetadata: NFTMetaData;
           try {
             nftMetadata = await getMetadataFromIPFS(ipfsHash);
-            console.log(`✅ Metadata loaded for token ${tokenIdNumber}:`, nftMetadata);
-            
-            // Debug and process animation_url
-            console.log(`🎬 Raw animation_url:`, nftMetadata.animation_url);
             
             // Process IPFS URLs for image and animation_url
             if (nftMetadata.image && nftMetadata.image.startsWith("ipfs://")) {
               nftMetadata.image = nftMetadata.image.replace("ipfs://", "https://ipfs.io/ipfs/");
-              console.log(`🖼️ Processed image URL:`, nftMetadata.image);
             }
 
             if (nftMetadata.animation_url && nftMetadata.animation_url.startsWith("ipfs://")) {
               nftMetadata.animation_url = nftMetadata.animation_url.replace("ipfs://", "https://ipfs.io/ipfs/");
-              console.log(`🎬 Processed animation_url:`, nftMetadata.animation_url);
-            }
-            
-            // Final check
-            if (nftMetadata.animation_url) {
-              console.log(`✅ Final animation URL:`, nftMetadata.animation_url);
-            } else {
-              console.log(`❌ No animation_url found in metadata for token ${tokenIdNumber}`);
             }
 
           } catch (metadataError) {
@@ -141,15 +118,6 @@ export const AllHoldings = () => {
             mintTimestamp,
             ...nftMetadata, // This should include the processed animation_url
           };
-
-          // 🔧 ADD: Debug the final collectible object
-          console.log(`🔍 Final collectible for token ${tokenIdNumber}:`, {
-            id: collectible.id,
-            name: collectible.name,
-            image: collectible.image,
-            animation_url: collectible.animation_url,
-            targetAddress: collectible.targetAddress
-          });
 
           collectibleUpdate.push(collectible);
 

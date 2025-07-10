@@ -25,7 +25,7 @@ type HeaderMenuLink = {
 export const menuLinks: HeaderMenuLink[] = [
   {
     label: "Explorer",
-    href: "/test",
+    href: "/explorer",
     icon: <MagnifyingGlassIcon className="h-4 w-4" />, // 🔧 Search/explore icon
   },
   {

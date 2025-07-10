@@ -2,21 +2,18 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { Wallet, solidityPackedKeccak256, getBytes, verifyMessage } from "ethers";
-import { getGraphHTMLForIPFS } from "~~/app/test/graph/htmlGraphGenerator";
+import { getGraphHTMLForIPFS } from "~~/app/explorer/graph/htmlGraphGenerator";
 import { uploadHtmlToIPFS, uploadMetadataToIPFS } from "~~/utils/cosmicNFT/ipfs-upload";
 import { generateMetadata } from "~~/utils/cosmicNFT/generateMetadata";
-import { generateNodesFromTx } from "~~/app/test/graph-data/generateNodesFromTx";
+import { generateNodesFromTx } from "~~/app/explorer/graph-data/generateNodesFromTx";
 
 // Import the cached functions from your utils
 import { 
   getETHBalanceCached, 
-  isContractCached, 
   FilterAndSortTx, 
   FilterPair, 
-  pairData,
-  asyncPool
-} from "~~/app/test/graph-data/utils";
-import { fetchAllTransfersCached } from "~~/app/test/graph-data/utils";
+} from "~~/app/explorer/graph-data/utils";
+import { fetchAllTransfersCached } from "~~/app/explorer/graph-data/utils";
 
 // Adjust path as needed
 
@@ -48,8 +45,6 @@ export async function POST(req: NextRequest) {
   // 🔧 LOCALHOST OVERRIDE: Use test address for development
   const userAddress = IS_LOCALHOST ? TEST_ADDRESS : originalUserAddress;
 
-  console.log(`🔍 ${IS_LOCALHOST ? '[LOCALHOST MODE]' : '[PRODUCTION MODE]'} Processing mint for: ${userAddress}`);
-
   // Input validation - relaxed for localhost
   if (!IS_LOCALHOST && (!userAddress || !signature || !message || !timestamp)) {
     return NextResponse.json({ error: "Missing required authentication fields" }, { status: 400 });
@@ -74,8 +69,6 @@ export async function POST(req: NextRequest) {
       if (recoveredAddress.toLowerCase() !== userAddress.toLowerCase()) {
         return NextResponse.json({ error: "Signature verification failed" }, { status: 403 });
       }
-    } else {
-      console.log(`🔧 LOCALHOST: Skipping signature verification for ${userAddress}`);
     }
 
     // 🔧 SKIP RATE LIMITING FOR LOCALHOST
@@ -93,15 +86,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Fetch transfers using CACHED function (likely already cached!)
-    console.log(`🔍 Fetching transfers for: ${userAddress} on chain: ${chain}`);
-    console.log(`🔍 Chain parameter received: ${chain}`);
     const allTransfers = await fetchAllTransfersCached(userAddress, chain);
 
-    console.log(`📊 Found ${allTransfers.length} transfers for ${userAddress} on ${chain}`);
-
     if (allTransfers.length === 0) {
-      console.log(`❌ No transfers found for ${userAddress} on ${chain}`);
-      
       // Add more detailed error information
       return NextResponse.json({ 
         error: `No transaction history found for address ${userAddress} on ${chain} network`,
@@ -115,7 +102,6 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Process transfers to get pairs
-    console.log(`📊 Processing ${allTransfers.length} transfers...`);
     const filteredTransfers: any[] = FilterAndSortTx(allTransfers, {
     //   maxCount: txDisplayLimit,           // 🔧 Changed from 1000 to txDisplayLimit
       direction: transferDirection,       // 🔧 Changed from "both" to transferDirection
@@ -124,26 +110,15 @@ export async function POST(req: NextRequest) {
     });
 
     const pairsFromParent = FilterPair(filteredTransfers, userAddress);
-    console.log(`🔗 Found ${pairsFromParent.length} unique pairs`);
 
     // 7. Generate graph data using the SAME function as the graph UI
-    console.log(`🎨 Generating graph data...`);
     const generatedgraphData = await generateNodesFromTx(
       filteredTransfers, 
       chain,
       (loaded, total) => console.log(`📊 Processing nodes: ${loaded}/${total}`)
     );
 
-    // 8. Create the SAME structure as page.tsx
-    // const graphData = {
-    //   nodes: generatedGraph.nodes || [],
-    //   links: generatedGraph.links || []
-    // };
-
-    console.log(`📊 Generated ${generatedgraphData.nodes.length} nodes and ${generatedgraphData.links.length} links`);
-
     // 9. Generate HTML visualization (use ACTUAL UI state)
-    console.log(`🖼️ Generating HTML visualization...`);
     const graphConfig = {
       graphData: generatedgraphData,
       targetNode: targetNode || userAddress,  // 🔧 Use passed targetNode
@@ -159,31 +134,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 10. Upload HTML to IPFS
-    console.log(`📤 Uploading HTML to IPFS...`);
     const htmlCid = await uploadHtmlToIPFS(
       htmlContent, 
       `cosmic-graph-${userAddress.slice(0, 6)}.html`
     );
 
     // 11. Create simple metadata (not using generateMetadata with cosmic data)
-    console.log(`📋 Creating NFT metadata...`);
-    // console.log ("generatedgraphData", generatedgraphData);
-    // const metadata = {
-    //   name: `Cosmic Graph - ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`,
-    //   description: `Interactive 3D transaction graph for ${userAddress} on ${chain}`,
-    //   image: `ipfs://${htmlCid}`,
-    //   animation_url: `ipfs://${htmlCid}`,
-    //   attributes: [
-    //     { trait_type: "Address", value: userAddress },
-    //     { trait_type: "Nodes", value: generatedgraphData.nodes.length },
-    //     { trait_type: "Links", value: generatedgraphData.links.length },
-    //     { trait_type: "Layout", value: layoutMode },
-    //     { trait_type: "Particles", value: particleMode },
-    //     { trait_type: "Network", value: chain },
-    //     { trait_type: "Transfers", value: allTransfers.length }
-    //   ]
-    // };
-
     const addressCosmicData = {
       address: userAddress,
       balance: await getETHBalanceAsBigInt(userAddress), 
@@ -227,23 +183,9 @@ export async function POST(req: NextRequest) {
       generatedgraphData.nodes.length,
     );
 
-
-        
-    // const AddressCosmicData {
-    //   address: generatedgraphData.address,;
-    //   balance: bigint;
-    //   transactionCount: number;
-    //   connectedAddresses: string[];
-    //   recentTransactions: Transaction[];
-    //   tokenBalances: TokenBalance[];
-    //   nftCount: number;
-    // }
-
-    console.log(`📤 Uploading metadata to IPFS...`);
     const metadataCid = await uploadMetadataToIPFS(metadata);
 
     // 12. Create signature for minting (assuming nonce is 0 for now)
-    console.log(`✍️ Creating minting signature...`);
     const currentNonce = 0; // You might want to fetch this from your contract
     const messageHash = solidityPackedKeccak256(
       ["string", "address", "uint256"],
@@ -252,15 +194,6 @@ export async function POST(req: NextRequest) {
 
     const messageHashBytes = getBytes(messageHash);
     const mintingSignature = await signer.signMessage(messageHashBytes);
-
-    console.log(`✅ Successfully prepared mint for: ${userAddress}`);
-    console.log(`📊 Stats: ${generatedgraphData.nodes.length} nodes, ${generatedgraphData.links.length} links`);
-
-    // Debugging output
-    console.log(`🔍 DEBUG VALUES:`);
-    console.log(`- metadataCid: ${metadataCid} (type: ${typeof metadataCid})`);
-    console.log(`- userAddress: ${userAddress} (type: ${typeof userAddress})`);
-    console.log(`- currentNonce: ${currentNonce} (type: ${typeof currentNonce})`);
 
     if (!metadataCid || metadataCid === 'undefined' || metadataCid === 'null') {
       throw new Error(`Invalid metadataCid: ${metadataCid}`);

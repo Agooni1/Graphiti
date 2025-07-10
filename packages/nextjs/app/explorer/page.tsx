@@ -2,43 +2,23 @@
 import type { NextPage } from "next";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
-import { AddressInput, BlockieAvatar } from "~~/components/scaffold-eth";
 import SimpleCosmicGraph from "./graph/SimpleCosmicGraph";
 import { AssetTransfersResult } from "alchemy-sdk";
 import { GraphNode, GraphLink } from "./graph-data/types";
-import { fetchAllTransfers, fetchAllTransfersCached, FilterAndSortTx } from "./graph-data/utils";
+import { fetchAllTransfersCached, FilterAndSortTx } from "./graph-data/utils";
 import { generateNodesFromTx } from "./graph-data/generateNodesFromTx";
-import { generateGraphHTML, downloadGraphHTML, getGraphHTMLForIPFS } from './graph/htmlGraphGenerator';
-import { 
-  SparklesIcon, 
-  MagnifyingGlassIcon, 
-  ArrowsPointingOutIcon, 
-  ArrowsPointingInIcon,
-  PlayIcon,
-  PauseIcon,
-  BoltIcon,
-  ArrowPathIcon,
-  Squares2X2Icon,
-  AdjustmentsHorizontalIcon,
-  ArrowPathRoundedSquareIcon as SwirlIcon,
-  XMarkIcon, // For the "Off" button
-  DocumentArrowDownIcon,
-  CubeIcon,
-} from "@heroicons/react/24/outline";
-import { MintCosmicNFT } from "./_components/MintCosmicNFT";
-import { MintInfoTooltip } from "./_components/MintInfoTooltip";
 import { MenuActions } from "./_components/MenuActions";
 
 const Test: NextPage = () => {
   const { address: connectedAddress, isConnected } = useAccount();
   const [inputValue, setInputValue] = useState("");
   const [address, setAddress] = useState("");
-  const [layerNum, setLayerNum] = useState(1);
   const [transferDirection, setTransferDirection] = useState<"from" | "to" | "both">("both");
   const [loading, setLoading] = useState(false);
   const [allTransfers, setAllTransfers] = useState<AssetTransfersResult[]>([]);
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({ nodes: [], links: [] });
-  const [txDisplayLimit, setTxDisplayLimit] = useState(200);
+
+  const txDisplayLimit = 200; // Limit for transactions to display
   
   // Add state to track if we've already auto-loaded wallet address
   const [hasAutoLoaded, setHasAutoLoaded] = useState(false);
@@ -95,12 +75,6 @@ const Test: NextPage = () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Stable callback for graph data
-  const handleGraphDataReady = useCallback((data: any) => {
-    setGraphData(data);
-    setLoading(false);
-  }, []);
-
   // When address/params change, show loading spinner
   const handleParamsChange = () => {
     setLoading(true);
@@ -142,7 +116,7 @@ const Test: NextPage = () => {
     };
 
     fetchGraphData();
-  }, [allTransfers, txDisplayLimit, transferDirection, layerNum]);
+  }, [allTransfers, txDisplayLimit, transferDirection]);
 
   // New handler function
   const handleSetTarget = (newAddress: string) => {

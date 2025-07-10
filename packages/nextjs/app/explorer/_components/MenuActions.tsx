@@ -1,9 +1,7 @@
-import { useAccount } from "wagmi";
 import { AddressInput, BlockieAvatar } from "~~/components/scaffold-eth";
 import {
   MagnifyingGlassIcon, 
   SparklesIcon, 
-  AdjustmentsHorizontalIcon,
   Squares2X2Icon,
   BoltIcon,
   ArrowPathRoundedSquareIcon as SwirlIcon,
@@ -11,13 +9,11 @@ import {
   PauseIcon,
   ArrowPathIcon,
   XMarkIcon,
-  TagIcon,
   EyeIcon,
   EyeSlashIcon
 } from "@heroicons/react/24/outline";
 import { MintCosmicNFT } from "./MintCosmicNFT";
 import { MintInfoTooltip } from "./MintInfoTooltip";
-import { useState } from "react"; // Add if not already imported
 
 const CHAIN_OPTIONS = [
   { value: "ethereum", label: "Ethereum Mainnet" },

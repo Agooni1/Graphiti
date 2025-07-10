@@ -2,16 +2,11 @@
 
 import { useState } from "react";
 import { useAccount, useSignMessage } from "wagmi";
-import { parseEther, formatEther } from "viem";
+import { formatEther } from "viem";
 import { useScaffoldReadContract, useScaffoldWriteContract, useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 import { useWatchBalance } from "~~/hooks/scaffold-eth/useWatchBalance";
-import { generateGraphHTML } from "../graph/htmlGraphGenerator";
-import { uploadHtmlToIPFS, uploadMetadataToIPFS } from "~~/utils/cosmicNFT/ipfs-upload";
-import { generateMetadata } from "~~/utils/cosmicNFT/generateMetadata";
 import { canAffordMinting } from "~~/app/myNFTs/_components/gasEstimation";
-import { AddressCosmicData } from "~~/utils/cosmicNFT/fetchCosmicData";
-import { getSignature } from "./utils";
 
 interface ViewState {
   zoom: number;

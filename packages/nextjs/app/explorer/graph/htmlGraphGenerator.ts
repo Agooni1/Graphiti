@@ -1,5 +1,5 @@
 import { GraphNode, GraphLink } from "../graph-data/types";
-import { generateLayout, LayoutConfig, PositionedNode } from './graphLayouts';
+import { generateLayout, LayoutConfig } from './graphLayouts';
 
 interface ViewState {
   zoom: number;

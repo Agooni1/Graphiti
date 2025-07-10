@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { useScaffoldContract, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
-import { notification } from "~~/utils/scaffold-eth";
 import { NFTCard } from "~~/app/allNFTs/_components/NFTCard";
 
 // Import cosmic NFT functions
@@ -63,8 +62,6 @@ export const MyHoldings = () => {
       const collectibleUpdate: Collectible[] = [];
       const totalBalance = parseInt(myTotalBalance.toString());
       
-      console.log(`🔍 Fetching ${totalBalance} NFTs for ${connectedAddress}...`);
-      
       for (let tokenIndex = 0; tokenIndex < totalBalance; tokenIndex++) {
         try {
           // Get the actual token ID at this index for the connected user
@@ -74,19 +71,13 @@ export const MyHoldings = () => {
           ]);
           const tokenIdNumber = parseInt(tokenId.toString());
 
-          console.log(`🔍 Processing token ${tokenIdNumber} (index ${tokenIndex})`);
-
           // 🔧 NEW: Get cosmic graph data from contract
           const cosmicGraphData = await yourCollectibleContract.read.cosmicGraphs([tokenId]);
           const targetAddress = cosmicGraphData[0] as string;
           const mintTimestamp = cosmicGraphData[1] as bigint;
 
-          console.log(`🎯 Token ${tokenIdNumber} Target:`, targetAddress);
-          console.log(`⏰ Token ${tokenIdNumber} Minted:`, new Date(Number(mintTimestamp) * 1000));
-
           // Get token URI
           const tokenURI = await yourCollectibleContract.read.tokenURI([tokenId]);
-          console.log(`🔍 Token ${tokenIdNumber} URI:`, tokenURI);
           
           // Parse IPFS hash
           const ipfsHash = tokenURI.replace("https://gateway.pinata.cloud/ipfs/", "");
@@ -95,7 +86,6 @@ export const MyHoldings = () => {
           let nftMetadata: NFTMetaData;
           try {
             nftMetadata = await getMetadataFromIPFS(ipfsHash);
-            console.log(`✅ Metadata loaded for token ${tokenIdNumber}:`, nftMetadata.name);
           } catch (metadataError) {
             console.error(`❌ Error fetching metadata for token ${tokenIdNumber}:`, metadataError);
 
@@ -141,8 +131,6 @@ export const MyHoldings = () => {
       collectibleUpdate.sort((a, b) => a.id - b.id);
       setMyAllCollectibles(collectibleUpdate);
       setAllCollectiblesLoading(false);
-
-      console.log(`✅ Loaded ${collectibleUpdate.length} NFTs for ${connectedAddress}`);
     };
 
     updateMyCollectibles();

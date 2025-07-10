@@ -2,7 +2,7 @@
 //Provides small utility functions to keep your logic clean and reusable
 
 import { GraphNode, FilterOptions, PairDataProps, GraphLink} from "./types";
-import { AssetTransfersCategory, AssetTransfersResult, SortingOrder } from "alchemy-sdk";
+import { AssetTransfersResult } from "alchemy-sdk";
 
 export function shortAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;

@@ -1,6 +1,6 @@
 import { AddressCosmicData } from "./fetchCosmicData";
-import { generateLayout, LayoutConfig } from "../../app/test/graph/graphLayouts";
-import { GraphNode } from "../../app/test/graph-data/types";
+import { generateLayout, LayoutConfig } from "../../app/explorer/graph/graphLayouts";
+import { GraphNode } from "../../app/explorer/graph-data/types";
 
 export interface CosmicVisualizationData {
   svg: string;

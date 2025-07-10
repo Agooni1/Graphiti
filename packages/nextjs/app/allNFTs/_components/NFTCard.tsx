@@ -48,17 +48,6 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
   const isInteractive = nft.animation_url && nft.animation_url.length > 0;
   const hasAnimationUrl = nft.animation_url && nft.animation_url.length > 0;
 
-  // Convert bigint to readable date
-  const formatMintDate = (timestamp: bigint): string => {
-    try {
-      // Convert bigint to number (timestamp is usually in seconds)
-      const date = new Date(Number(timestamp) * 1000);
-      return date.toLocaleDateString();
-    } catch (error) {
-      return "Unknown";
-    }
-  };
-
   // 🔧 ADD BACK: Handle burn function
   const handleBurn = async () => {
     try {

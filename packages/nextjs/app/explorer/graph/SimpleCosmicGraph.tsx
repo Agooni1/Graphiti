@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GraphNode, GraphLink } from "../graph-data/types";
 import { generateLayout, shouldRegenerateLayout, LayoutConfig, PositionedNode } from './graphLayouts';
 import NodePopup from './_components/NodePopup';
