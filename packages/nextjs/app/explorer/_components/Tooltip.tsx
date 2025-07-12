@@ -2,7 +2,7 @@
 import { ReactNode, useState, useRef, useEffect } from "react";
 
 interface TooltipProps {
-  content: string;
+  content: string | ReactNode; // Accept string or JSX
   children: ReactNode;
   disabled?: boolean;
 }

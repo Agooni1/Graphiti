@@ -54,7 +54,6 @@ export const ContractInput = ({ setForm, form, stateObjectKey, paramType }: Cont
           />
         );
       default:
-        // Handling 'int' types and 'tuple[]' types
         if (paramType.type.includes("int") && !paramType.type.includes("[")) {
           return <IntegerInput {...inputProps} variant={paramType.type as IntegerVariant} />;
         } else if (paramType.type.startsWith("tuple[")) {
@@ -73,12 +72,18 @@ export const ContractInput = ({ setForm, form, stateObjectKey, paramType }: Cont
   };
 
   return (
-    <div className="flex flex-col gap-1.5 w-full">
-      <div className="flex items-center ml-2">
-        {paramType.name && <span className="text-xs font-medium mr-2 leading-none">{paramType.name}</span>}
-        <span className="block text-xs font-extralight leading-none">{paramType.type}</span>
+    <div className="space-y-2">
+      <div className="flex items-center space-x-2">
+        {paramType.name && (
+          <span className="text-slate-300 text-sm font-medium">{paramType.name}</span>
+        )}
+        <span className="text-slate-500 text-xs bg-slate-800/40 px-2 py-1 rounded border border-white/10">
+          {paramType.type}
+        </span>
       </div>
-      {renderInput()}
+      <div className="bg-slate-900/40 rounded-lg border border-white/10">
+        {renderInput()}
+      </div>
     </div>
   );
 };

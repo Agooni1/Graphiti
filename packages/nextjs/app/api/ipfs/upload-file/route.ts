@@ -2,6 +2,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
+  const secret = request.headers.get('x-internal-secret');
+  if (secret !== process.env.INTERNAL_API_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   const PINATA_JWT = process.env.PINATA_JWT;
   
   if (!PINATA_JWT) {

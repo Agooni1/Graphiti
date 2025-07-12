@@ -32,7 +32,7 @@ export async function fetchCosmicData(address: string): Promise<AddressCosmicDat
     throw new Error("Invalid Ethereum address");
   }
 
-  console.log("🔍 Fetching cosmic data for:", address);
+  // console.log("🔍 Fetching cosmic data for:", address);
 
   try {
     // Use server-side API route to fetch blockchain data securely
@@ -45,17 +45,17 @@ export async function fetchCosmicData(address: string): Promise<AddressCosmicDat
     });
 
     if (!response.ok) {
-      console.warn("Failed to fetch from server, using mock data");
+      // console.warn("Failed to fetch from server, using mock data");
       return getMockCosmicData(address);
     }
 
     const data = await response.json();
-    console.log("✅ Cosmic data fetched successfully");
+    // console.log("✅ Cosmic data fetched successfully");
     return data;
     
   } catch (error) {
     console.error("Error fetching cosmic data:", error);
-    console.warn("Falling back to mock data");
+    // console.warn("Falling back to mock data");
     return getMockCosmicData(address);
   }
 }

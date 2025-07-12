@@ -1,6 +1,6 @@
 // Client-side function for file upload
 export async function uploadFileToIPFS(file: File): Promise<string> {
-  console.log("📤 Uploading file to IPFS...", file.name);
+  // console.log("📤 Uploading file to IPFS...", file.name);
   
   const formData = new FormData();
   formData.append('file', file);
@@ -16,13 +16,13 @@ export async function uploadFileToIPFS(file: File): Promise<string> {
   }
   
   const result = await response.json();
-  console.log("✅ File uploaded to IPFS:", result.hash);
+  // console.log("✅ File uploaded to IPFS:", result.hash);
   return result.hash;
 }
 
 // Client-side function for metadata upload
 export async function uploadMetadataToIPFS(metadata: any): Promise<string> {
-  console.log("📤 Uploading metadata to IPFS...");
+  // console.log("📤 Uploading metadata to IPFS...");
   
   const response = await fetch(getApiUrl('/api/ipfs/upload-metadata'), {
     method: 'POST',
@@ -42,7 +42,7 @@ export async function uploadMetadataToIPFS(metadata: any): Promise<string> {
 
 // Client-side function for HTML upload
 export async function uploadHtmlToIPFS(htmlContent: string, filename: string): Promise<string> {
-  console.log("📤 Uploading HTML to IPFS...", filename);
+  // console.log("📤 Uploading HTML to IPFS...", filename);
   
   const response = await fetch(getApiUrl('/api/ipfs/upload-html'), {
     method: 'POST',

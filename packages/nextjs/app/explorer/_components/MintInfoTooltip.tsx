@@ -34,10 +34,6 @@ export function MintInfoTooltip() {
               <li>Interactive navigation (pan, zoom, orbit)</li>
             </ul>
             
-            <p className="text-slate-300 mt-3">
-              Current Price: <span className="text-cyan-400 font-semibold">0.01 ETH</span>
-            </p>
-            
             <div className="bg-amber-900/30 border border-amber-600/50 rounded px-2 py-0">
               <p className="text-amber-200 text-xs font-medium italic flex items-center gap-1">
                 <span>Node labels not included in final NFT</span>

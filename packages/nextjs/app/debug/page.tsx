@@ -9,19 +9,31 @@ export const metadata = getMetadata({
 
 const Debug: NextPage = () => {
   return (
-    <>
-      <DebugContracts />
-      <div className="text-center mt-8 bg-secondary p-10">
-        <h1 className="text-4xl my-0">Debug Contracts</h1>
-        <p className="text-neutral">
-          You can debug & interact with your deployed contracts here.
-          <br /> Check{" "}
-          <code className="italic bg-base-300 text-base font-bold [word-spacing:-0.5rem] px-1">
-            packages / nextjs / app / debug / page.tsx
-          </code>{" "}
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+      {/* Animated Stars Background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="stars"></div>
+        <div className="twinkling"></div>
       </div>
-    </>
+
+      {/* Main Content */}
+      <div className="relative z-10 flex flex-col items-center py-6">
+        {/* Header Section */}
+        <div className="text-center mb-6">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+            Debug Contracts
+          </h1>
+          <span className="block text-lg text-slate-400">
+            Debug & interact with your deployed contracts
+          </span>
+        </div>
+
+        {/* Content Area */}
+        <div className="w-full max-w-7xl">
+          <DebugContracts />
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -13,11 +13,11 @@ const fetchFromIPFS = async (ipfsHashOrUrl: string) => {
 
   for (const gateway of gateways) {
     try {
-      console.log(`🔍 Trying gateway: ${gateway}`);
+      // console.log(`🔍 Trying gateway: ${gateway}`);
       const response = await fetch(gateway);
       if (response.ok) {
         const data = await response.json();
-        console.log(`✅ Success from ${gateway}`);
+        // console.log(`✅ Success from ${gateway}`);
         return data;
       }
     } catch (error) {
@@ -31,7 +31,7 @@ const fetchFromIPFS = async (ipfsHashOrUrl: string) => {
 
 // Updated to use server-side API route
 export const addToIPFS = async (yourJSON: object) => {
-  console.log("📤 Adding JSON to IPFS via server...");
+  // console.log("📤 Adding JSON to IPFS via server...");
   
   const response = await fetch('/api/ipfs/upload-metadata', {
     method: 'POST',
@@ -47,7 +47,7 @@ export const addToIPFS = async (yourJSON: object) => {
   }
 
   const result = await response.json();
-  console.log("✅ JSON uploaded to IPFS:", result.hash);
+  // console.log("✅ JSON uploaded to IPFS:", result.hash);
   
   // Return in the same format as the original Pinata response
   return { IpfsHash: result.hash };

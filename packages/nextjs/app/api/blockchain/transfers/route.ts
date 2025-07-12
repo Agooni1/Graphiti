@@ -2,17 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { Alchemy, Network, AssetTransfersCategory, SortingOrder } from "alchemy-sdk";
 import { NETWORK_MAP } from "../utils";
 
-// const config = {
-//   apiKey: process.env.ALCHEMY_API_KEY,
-//   network: Network.ETH_SEPOLIA,
-//   connectionInfoOverrides: {
-//     skipFetchSetup: true,
-//   },
-// };
-
-// console.log("Server-side Alchemy API Key: ", process.env.ALCHEMY_API_KEY);
-
-// const alchemy = new Alchemy(config);
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

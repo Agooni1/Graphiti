@@ -148,10 +148,6 @@ export const AllHoldings = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4">
-      <h2 className="text-3xl font-bold text-center mb-8 text-purple-300">
-        🌌 All Graph NFTs ({allCollectibles.length})
-      </h2>
-      
       {allCollectibles.length === 0 ? (
         <div className="flex justify-center items-center mt-10">
           <div className="text-center">

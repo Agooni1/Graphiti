@@ -168,13 +168,13 @@ export function MenuActions({
                   transferDirection    // Pass the current transferDirection
                 }}
                 selectedChain={selectedChain}  // 🔧 Add this prop
-                // disabled={
-                //   !address ||
-                //   !graphData.nodes.length ||
-                //   !canMint ||
-                //   !isConnected ||
-                //   address.toLowerCase() !== connectedAddress?.toLowerCase()
-                // }
+                disabled={
+                  !address ||
+                  !graphData.nodes.length ||
+                  !canMint ||
+                  !isConnected ||
+                  address.toLowerCase() !== connectedAddress?.toLowerCase()
+                }
                 className={`flex-1 min-w-[110px] transition-all ${
                   !address ||
                   !graphData.nodes.length ||

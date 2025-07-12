@@ -3,7 +3,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Wallet, solidityPackedKeccak256, getBytes, verifyMessage } from "ethers";
 import { getGraphHTMLForIPFS } from "~~/app/explorer/graph/htmlGraphGenerator";
-import { uploadHtmlToIPFS, uploadMetadataToIPFS } from "~~/utils/cosmicNFT/ipfs-upload";
 import { generateMetadata } from "~~/utils/cosmicNFT/generateMetadata";
 import { generateNodesFromTx } from "~~/app/explorer/graph-data/generateNodesFromTx";
 
@@ -14,6 +13,7 @@ import {
   FilterPair, 
 } from "~~/app/explorer/graph-data/utils";
 import { fetchAllTransfersCached } from "~~/app/explorer/graph-data/utils";
+// import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
 // Adjust path as needed
 
@@ -32,14 +32,15 @@ export async function POST(req: NextRequest) {
     signature, 
     message, 
     timestamp,
-    layoutMode = 'shell',
-    particleMode = 'pulse',
-    chain = 'sepolia',
-    // txDisplayLimit = 200,
-    transferDirection = 'both',
-    isOrbiting = true,
+    layoutMode,
+    particleMode,
+    chain,
+    transferDirection,
+    isOrbiting,
     targetNode,
-    viewState
+    viewState,
+    graphData: clientGraphData,
+    nonce // <-- include nonce here!
   } = await req.json();
 
   // 🔧 LOCALHOST OVERRIDE: Use test address for development
@@ -112,11 +113,16 @@ export async function POST(req: NextRequest) {
     const pairsFromParent = FilterPair(filteredTransfers, userAddress);
 
     // 7. Generate graph data using the SAME function as the graph UI
-    const generatedgraphData = await generateNodesFromTx(
-      filteredTransfers, 
-      chain,
-      (loaded, total) => console.log(`📊 Processing nodes: ${loaded}/${total}`)
-    );
+    let generatedgraphData;
+    if (clientGraphData && clientGraphData.nodes && clientGraphData.links) {
+      generatedgraphData = clientGraphData; // <-- USE CLIENT DATA IF PROVIDED
+    } else {
+      generatedgraphData = await generateNodesFromTx(
+        filteredTransfers, 
+        chain,
+        (loaded, total) => console.log(`📊 Processing nodes: ${loaded}/${total}`)
+      );
+    }
 
     // 9. Generate HTML visualization (use ACTUAL UI state)
     const graphConfig = {
@@ -134,10 +140,14 @@ export async function POST(req: NextRequest) {
     }
 
     // 10. Upload HTML to IPFS
-    const htmlCid = await uploadHtmlToIPFS(
-      htmlContent, 
-      `cosmic-graph-${userAddress.slice(0, 6)}.html`
+    const htmlUploadRes = await internalApiPost(
+      '/api/ipfs/upload-html',
+      {
+        htmlContent,
+        filename: `cosmic-graph-${userAddress.slice(0, 6)}.html`
+      }
     );
+    const htmlCid = htmlUploadRes.cid;
 
     // 11. Create simple metadata (not using generateMetadata with cosmic data)
     const addressCosmicData = {
@@ -179,17 +189,23 @@ export async function POST(req: NextRequest) {
       htmlCid,
       layoutMode as 'shell' | 'force' | 'fibonacci',
       'html',
-      getChainId(chain), // 🔧 FIXED: Use dynamic chain mapping
+      getChainId(chain),
       generatedgraphData.nodes.length,
     );
 
-    const metadataCid = await uploadMetadataToIPFS(metadata);
+    // 11. Upload metadata to IPFS
+    const metadataUploadRes = await internalApiPost(
+      '/api/ipfs/upload-metadata',
+      { metadata }
+    );
+    const metadataCid = metadataUploadRes.cid;
 
     // 12. Create signature for minting (assuming nonce is 0 for now)
-    const currentNonce = 0; // You might want to fetch this from your contract
+    const nonceBigInt = BigInt(nonce);
+    const nonceNumber = Number(nonce);
     const messageHash = solidityPackedKeccak256(
       ["string", "address", "uint256"],
-      [metadataCid, userAddress, currentNonce]
+      [metadataCid, userAddress, nonce]
     );
 
     const messageHashBytes = getBytes(messageHash);
@@ -202,7 +218,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       metadataCid,
       signature: mintingSignature,
-      nonce: currentNonce,
       metadata: metadata,
       htmlCid,
       stats: {
@@ -260,4 +275,28 @@ function getChainId(chain: string): number {
     default:
       throw new Error(`Unsupported chain: ${chain}`);
   }
+}
+
+// Add this helper function in your /api/mint/route.ts file
+
+async function internalApiPost(path: string, body: any) {
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'http://localhost:3000';
+
+  const res = await fetch(`${baseUrl}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-internal-secret': process.env.INTERNAL_API_SECRET!,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || `Failed to upload to ${path}`);
+  }
+
+  return res.json();
 }

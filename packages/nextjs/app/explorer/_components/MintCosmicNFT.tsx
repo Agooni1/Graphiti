@@ -126,16 +126,16 @@ export function MintCosmicNFT({
         userAddress: connectedAddress,
         signature: authSignature,
         message: authMessage,
+        nonce: currentNonce?.toString(),
         timestamp,
         layoutMode: graphConfig.layoutMode,
         particleMode: graphConfig.particleMode,
         chain: getChainForAPI(selectedChain),
-        // 🔧 ADD: Current UI settings
-        // txDisplayLimit: graphConfig.txDisplayLimit || 200,
         transferDirection: graphConfig.transferDirection || "both",
-        isOrbiting: graphConfig.isOrbiting,  // 🔧 ADD: Pass the actual orbiting state
-        targetNode: graphConfig.targetNode,  // 🔧 ADD: Pass the target node
-        viewState: graphConfig.viewState     // 🔧 ADD: Pass the view state
+        isOrbiting: graphConfig.isOrbiting,
+        targetNode: graphConfig.targetNode,
+        viewState: graphConfig.viewState,
+        graphData: graphConfig.graphData, // <-- ADD THIS LINE
       };
 
       console.log(`🔍 Debug: Request body =`, requestBody);
@@ -167,6 +167,9 @@ export function MintCosmicNFT({
       notification.success("🌌 Interactive Cosmic NFT minted successfully!");
 
     } catch (error) {
+      // Remove all possible loading notifications
+      notification.remove(notificationId);
+
       notification.error(`Failed to mint cosmic NFT: ${error instanceof Error ? error.message : 'Unknown error'}`);
       console.error("Error minting cosmic NFT:", error);
     } finally {
