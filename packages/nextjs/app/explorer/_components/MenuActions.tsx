@@ -14,13 +14,17 @@ import {
 } from "@heroicons/react/24/outline";
 import { MintCosmicNFT } from "./MintCosmicNFT";
 import { MintInfoTooltip } from "./MintInfoTooltip";
+import { CHAIN_CONFIGS, isContractDeployedOnChain, type SupportedChain, getChainFromId, getChainId } from "~~/utils/cosmicNFT/chainHelpers";
+import { useNetworkSwitch } from "~~/hooks/cosmicNFT/useNetworkSwitch";
+import { useAccount } from "wagmi";
+import { useState, useEffect } from "react";
 
-const CHAIN_OPTIONS = [
-  { value: "ethereum", label: "Ethereum Mainnet" },
-  { value: "sepolia", label: "Sepolia" },
-  { value: "arbitrum", label: "Arbitrum One" },
-  { value: "base", label: "Base" },
-];
+// 🔧 UPDATE: Show all chains, not just deployed ones
+const CHAIN_OPTIONS = Object.entries(CHAIN_CONFIGS).map(([value, config]) => ({
+  value: value as SupportedChain,
+  label: config.name,
+  contractDeployed: config.contractDeployed, // Track contract status
+}));
 
 interface MenuActionsProps {
   inputValue: string;
@@ -35,19 +39,18 @@ interface MenuActionsProps {
   graphData: any;
   layoutMode: any;
   particleMode: any;
-  isOrbiting: boolean;  // 🔧 Changed from isAutoOrbiting
+  isOrbiting: boolean;
   currentViewState: any;
-  // Add new props for graph controls
   transferDirection: 'from' | 'to' | 'both';
   setTransferDirection: (v: 'from' | 'to' | 'both') => void;
   setLayoutMode: (v: any) => void;
   setParticleMode: (v: any) => void;
-  setIsOrbiting: (v: boolean) => void;  // 🔧 Changed from setIsAutoOrbiting
+  setIsOrbiting: (v: boolean) => void;
   handleResetView: () => void;
-  showNodeLabels: boolean; // Add this
-  setShowNodeLabels: (v: boolean) => void; // Add this
-  selectedChain: "ethereum" | "sepolia" | "arbitrum" | "base";
-  setSelectedChain: (v: "ethereum" | "sepolia" | "arbitrum" | "base") => void;
+  showNodeLabels: boolean;
+  setShowNodeLabels: (v: boolean) => void;
+  selectedChain: SupportedChain;
+  setSelectedChain: (v: SupportedChain) => void;
 }
 
 export function MenuActions({
@@ -63,21 +66,91 @@ export function MenuActions({
   graphData,
   layoutMode,
   particleMode,
-  isOrbiting,  // 🔧 Changed from isAutoOrbiting
+  isOrbiting,
   currentViewState,
   transferDirection,
   setTransferDirection,
   setLayoutMode,
   setParticleMode,
-  setIsOrbiting,  // 🔧 Changed from setIsAutoOrbiting
+  setIsOrbiting,
   handleResetView,
   showNodeLabels,
   setShowNodeLabels,
   selectedChain,
   setSelectedChain,
 }: MenuActionsProps) {
-  // Only enable minting on sepolia or arbitrum
-  const canMint = selectedChain === "sepolia" || selectedChain === "arbitrum";
+  const { switchToChain, currentChainId } = useNetworkSwitch();
+  const { chain } = useAccount();
+  
+  // 🔧 NEW: Add network switching state
+  const [isSwitchingNetwork, setIsSwitchingNetwork] = useState(false);
+  
+  // 🔧 NEW: Add debounced wrong network state
+  const [showWrongNetworkWarning, setShowWrongNetworkWarning] = useState(false);
+  
+  // 🔧 UPDATE: Use helper function and sync with wallet
+  const canMint = isContractDeployedOnChain(selectedChain);
+  
+  // 🔧 UPDATE: Handle network change with loading state
+  const handleNetworkChange = async (newChain: SupportedChain) => {
+    // Update local state immediately for UI responsiveness
+    setSelectedChain(newChain);
+    
+    // Hide warning immediately when switching
+    setShowWrongNetworkWarning(false);
+    
+    // Switch wallet network if connected
+    if (isConnected) {
+      setIsSwitchingNetwork(true);
+      try {
+        await switchToChain(newChain);
+      } catch (error) {
+        console.error("Network switch failed:", error);
+      } finally {
+        // Add a small delay to ensure wallet state is updated
+        setTimeout(() => {
+          setIsSwitchingNetwork(false);
+        }, 500);
+      }
+    }
+    
+    // Refresh data for new chain
+    handleParamsChange();
+  };
+
+  // 🔧 NEW: Debounced wrong network detection
+  const isWrongNetwork = chain?.id && chain.id !== getChainId(selectedChain);
+  
+  useEffect(() => {
+    if (isSwitchingNetwork) {
+      // Hide warning during switch
+      setShowWrongNetworkWarning(false);
+      return;
+    }
+
+    if (isWrongNetwork && isConnected) {
+      // Wait 2 seconds before showing warning
+      const timer = setTimeout(() => {
+        setShowWrongNetworkWarning(true);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    } else {
+      // Hide warning immediately if networks match
+      setShowWrongNetworkWarning(false);
+    }
+  }, [isWrongNetwork, isConnected, isSwitchingNetwork]);
+
+  // 🔧 NEW: Get current chain display name
+  const getCurrentChainName = () => {
+    if (chain?.id) {
+      const currentChain = getChainFromId(chain.id);
+      if (currentChain) {
+        return CHAIN_CONFIGS[currentChain].name;
+      }
+    }
+    return "Unknown Network";
+  };
 
   return (
     <div className="w-full">
@@ -142,61 +215,87 @@ export function MenuActions({
               Clear
             </button>
 
-            <div className="col-span-3 flex items-center gap-1 relative z-20">
-              {/* Chain selector dropdown */}
-              <select
-                value={selectedChain}
-                onChange={e => setSelectedChain(e.target.value as any)}
-                className="min-w-[120px] min-h-[35px] text-s px-2 py-1 rounded-lg bg-gradient-to-r from-slate-800/90 to-slate-700/90 bg-slate-800 backdrop-blur-sm border border-slate-600/40 text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all duration-200 hover:border-slate-500/60 hover:from-slate-700/90 hover:to-slate-600/90 cursor-pointer shadow-lg"
-                title="Select blockchain network"
-              >
-                {CHAIN_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-              {/* Mint button, smaller and disabled if not allowed */}
-              <MintCosmicNFT 
-                graphConfig={{
-                  graphData,
-                  targetNode: address.toLowerCase(),
-                  layoutMode,
-                  particleMode,
-                  isOrbiting,  // 🔧 Changed from isAutoOrbiting
-                  viewState: currentViewState === null ? undefined : currentViewState,
-                  // 🔧 ADD: Pass current filtering settings
-                  // txDisplayLimit: 200,  // You'll need to get this from page.tsx state
-                  transferDirection    // Pass the current transferDirection
-                }}
-                selectedChain={selectedChain}  // 🔧 Add this prop
-                disabled={
-                  !address ||
-                  !graphData.nodes.length ||
-                  !canMint ||
-                  !isConnected ||
-                  address.toLowerCase() !== connectedAddress?.toLowerCase()
-                }
-                className={`flex-1 min-w-[110px] transition-all ${
-                  !address ||
-                  !graphData.nodes.length ||
-                  !canMint ||
-                  !isConnected ||
-                  address.toLowerCase() !== connectedAddress?.toLowerCase()
-                    ? "opacity-60 grayscale cursor-not-allowed"
-                    : ""
-                }`}
-                title={
-                  !canMint
-                    ? "Minting is currently only available on Sepolia and Arbitrum networks."
-                    : !address || !graphData.nodes.length
-                      ? "Connect wallet and load a graph first"
-                      : !isConnected
-                        ? "Connect your wallet to mint"
-                        : address.toLowerCase() !== connectedAddress?.toLowerCase()
-                          ? "You can only mint for your own address"
-                          : "Mint your cosmic graph as an NFT"
-                }
-              />
-              <MintInfoTooltip />
+            <div className="col-span-3 space-y-2">
+              {/* 🔧 UPDATE: Only show wrong network warning after delay */}
+              {showWrongNetworkWarning && (
+                <div className="flex items-center gap-2 text-xs bg-orange-900/30 border border-orange-500/40 rounded-lg px-3 py-2">
+                  <span className="text-orange-400">⚠️ Wrong Network:</span>
+                  <span className="text-orange-300">{getCurrentChainName()}</span>
+                  <span className="text-slate-400">→</span>
+                  <span className="text-green-400">{CHAIN_CONFIGS[selectedChain].name}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-1 relative z-20">
+                {/* Chain selector and mint button */}
+                <select
+                  value={selectedChain}
+                  onChange={e => handleNetworkChange(e.target.value as SupportedChain)}
+                  disabled={isSwitchingNetwork}
+                  className={`min-w-[120px] min-h-[35px] text-s px-2 py-1 rounded-lg bg-gradient-to-r from-slate-800/90 to-slate-700/90 backdrop-blur-sm border text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all duration-200 hover:border-slate-500/60 hover:from-slate-700/90 hover:to-slate-600/90 cursor-pointer shadow-lg ${
+                    isSwitchingNetwork
+                      ? 'opacity-60 cursor-not-allowed'
+                      : showWrongNetworkWarning 
+                        ? 'border-orange-500/60 ring-1 ring-orange-500/20' 
+                        : 'border-slate-600/40'
+                  }`}
+                  title={isSwitchingNetwork ? "Switching network..." : "Select blockchain network - this will switch your wallet too"}
+                >
+                  {CHAIN_OPTIONS.map(opt => (
+                    <option 
+                      key={opt.value} 
+                      value={opt.value}
+                    >
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                
+                <MintCosmicNFT 
+                  graphConfig={{
+                    graphData,
+                    targetNode: address.toLowerCase(),
+                    layoutMode,
+                    particleMode,
+                    isOrbiting,
+                    viewState: currentViewState === null ? undefined : currentViewState,
+                    transferDirection
+                  }}
+                  selectedChain={selectedChain}
+                  disabled={
+                    !address ||
+                    !graphData.nodes.length ||
+                    !canMint ||
+                    !isConnected ||
+                    address.toLowerCase() !== connectedAddress?.toLowerCase() ||
+                    showWrongNetworkWarning
+                  }
+                  className={`flex-1 min-w-[110px] transition-all ${
+                    !address ||
+                    !graphData.nodes.length ||
+                    !canMint ||
+                    !isConnected ||
+                    address.toLowerCase() !== connectedAddress?.toLowerCase() ||
+                    showWrongNetworkWarning
+                      ? "opacity-60 grayscale cursor-not-allowed"
+                      : ""
+                  }`}
+                  title={
+                    showWrongNetworkWarning
+                      ? "Please switch to the correct network first"
+                      : !canMint
+                        ? `Graph viewing available on ${CHAIN_CONFIGS[selectedChain].name}. Minting only available on Sepolia and Arbitrum.`
+                        : !address || !graphData.nodes.length
+                          ? "Connect wallet and load a graph first"
+                          : !isConnected
+                            ? "Connect your wallet to mint"
+                            : address.toLowerCase() !== connectedAddress?.toLowerCase()
+                              ? "You can only mint for your own address"
+                              : "Mint your cosmic graph as an NFT"
+                  }
+                />
+                <MintInfoTooltip />
+              </div>
             </div>
           </div>
         </div>

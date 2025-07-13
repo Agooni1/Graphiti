@@ -1,80 +1,53 @@
-# 🏗 Scaffold-ETH 2
+# Graphiti - Transaction Visualizer & NFT minting
 
-<h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Documentation</a> |
-  <a href="https://scaffoldeth.io">Website</a>
-</h4>
+Turn any Ethereum address into a 3D visualization of its transaction history, then mint it as an NFT. (Crappy gif below)
 
-🧪 An open-source, up-to-date toolkit for building decentralized applications (dapps) on the Ethereum blockchain. It's designed to make it easier for developers to create and deploy smart contracts and build user interfaces that interact with those contracts.
+![Graphiti demo](./packages/nextjs/public//graph-orbit.gif)
 
-⚙️ Built using NextJS, RainbowKit, Hardhat, Wagmi, Viem, and Typescript.
+## What it does
 
-- ✅ **Contract Hot Reload**: Your frontend auto-adapts to your smart contract as you edit it.
-- 🪝 **[Custom hooks](https://docs.scaffoldeth.io/hooks/)**: Collection of React hooks wrapper around [wagmi](https://wagmi.sh/) to simplify interactions with smart contracts with typescript autocompletion.
-- 🧱 [**Components**](https://docs.scaffoldeth.io/components/): Collection of common web3 components to quickly build your frontend.
-- 🔥 **Burner Wallet & Local Faucet**: Quickly test your application with a burner wallet and local faucet.
-- 🔐 **Integration with Wallet Providers**: Connect to different wallet providers and interact with the Ethereum network.
+Paste in any Ethereum address and watch its transaction history form a network of nodes and links in 3D space. Switch between layouts (shell, force-directed, fibonacci), tweak particle effects, and explore with full camera control.
 
-![Debug Contracts tab](https://github.com/scaffold-eth/scaffold-eth-2/assets/55535804/b237af0c-5027-4849-a5c1-2e31495cccb1)
+Click on the nodes and explore those addresses.
 
-## Requirements
+If it’s your address, mint the entire graph as an NFT—preserving layout, effects, and camera view on-chain.
 
-Before you begin, you need to install the following tools:
+## The build process
 
-- [Node (>= v20.18.3)](https://nodejs.org/en/download/)
-- Yarn ([v1](https://classic.yarnpkg.com/en/docs/install/) or [v2+](https://yarnpkg.com/getting-started/install))
-- [Git](https://git-scm.com/downloads)
+Started with Scaffold-ETH 2 after completing SRE/buidlguild batch. Used Challenge-0 as a template for the minting contract/ ipfs upload logic. What started as a Solidity project quickly turned into a React/Three.js challenge - learning scene graphs, materials, and why nodes kept floating in random places.
 
-## Quickstart
+Transaction data comes from Alchemy's API. Had to figure out efficient batching since some wallets have thousands of transactions. The graph algorithms took forever - shell layout uses concentric circles based on volume, force-directed uses physics simulation.
 
-To get started with Scaffold-ETH 2, follow the steps below:
+Multi-chain support came later. Started with just localhost (obviously), added Sepolia for testing, then Arbitrum because L2s are cheaper. Base and Mainnet might be added if this gets more than 1 user.
 
-1. Install dependencies if it was skipped in CLI:
+## What I learned (the hard stuff)
 
-```
-cd my-dapp-example
-yarn install
-```
+**ECDSA signatures** – Built a two-step verification system with message signing, backend validation, and signature-based minting. Learned the inner workings of public key recovery and signature security.
 
-2. Run a local network in the first terminal:
+**Chain switching** - Users would select a network but their wallet would be elsewhere. Built syncing with wagmi's `useSwitchChain`, added debounced warnings so it doesn't flash annoyingly during switches.
 
-```
-yarn chain
-```
+**3D performance** - WebGL optimization, efficient re-renders, lazy loading components. Learning that React state management gets messy fast when you have real-time 3D, blockchain data, and UI controls all updating together.
 
-This command starts a local Ethereum network using Hardhat. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/hardhat/hardhat.config.ts`.
+**Smart contract design** - Dynamic pricing based on user activity, IPFS metadata storage, nonce-based replay protection. Gas optimization for deployment.
 
-3. On a second terminal, deploy the test contract:
+*[Photo suggestion: Minting interface showing wallet signature prompt]*
 
-```
-yarn deploy
-```
+## Tech stack
 
-This command deploys a test smart contract to the local network. The contract is located in `packages/hardhat/contracts` and can be modified to suit your needs. The `yarn deploy` command uses the deploy script located in `packages/hardhat/deploy` to deploy the contract to the network. You can also customize the deploy script.
+- **Frontend**: Next.js, TypeScript, Three.js, React Three Fiber
+- **Blockchain**: Scaffold-ETH 2, Wagmi, RainbowKit
+- **Data**: Alchemy API, IPFS for metadata
+- **Deploy**: Vercel frontend, contracts on Sepolia & Arbitrum
 
-4. On a third terminal, start your NextJS app:
+## Networks supported
 
-```
-yarn start
-```
+| Network | Minting | Graph |
+|---------|---------|---------------|
+| Sepolia | ✅ | ✅ |
+| Arbitrum | ✅ | ✅ |
+| Ethereum | ❌ | ✅ |
+| Base | ❌ | ✅ |
 
-Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
+---
+Built by me trying to learn. Feedback, issues, and especially contract vulnerabilites welcome
 
-Run smart contract test with `yarn hardhat:test`
-
-- Edit your smart contracts in `packages/hardhat/contracts`
-- Edit your frontend homepage at `packages/nextjs/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.
-- Edit your deployment scripts in `packages/hardhat/deploy`
-
-
-## Documentation
-
-Visit our [docs](https://docs.scaffoldeth.io) to learn how to start building with Scaffold-ETH 2.
-
-To know more about its features, check out our [website](https://scaffoldeth.io).
-
-## Contributing to Scaffold-ETH 2
-
-We welcome contributions to Scaffold-ETH 2!
-
-Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.

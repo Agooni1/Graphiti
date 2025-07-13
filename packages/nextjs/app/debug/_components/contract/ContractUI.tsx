@@ -89,7 +89,6 @@ export const ContractUI = ({ contractName, className = "" }: ContractUIProps) =>
           {/* Contract Variables */}
           <div className="bg-slate-800/40 backdrop-blur-sm border border-purple-500/20 rounded-2xl shadow-2xl p-6">
             <h4 className="text-lg font-semibold text-purple-300 mb-4 flex items-center">
-              <span className="mr-2">📊</span>
               Variables
             </h4>
             <ContractVariables

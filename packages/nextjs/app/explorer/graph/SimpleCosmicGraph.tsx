@@ -735,9 +735,7 @@ export default function SimpleCosmicGraph({
     <div className="w-full h-full relative">
       <canvas
         ref={canvasRef}
-        className={`w-full h-full cursor-grab active:cursor-grabbing ${
-          isHovered ? 'ring-2 ring-blue-400 ring-opacity-30' : ''
-        }`}
+        className={`w-full h-full cursor-grab active:cursor-grabbing`}
         style={{ 
           borderRadius: isFullscreen ? "0px" : "12px",
           width: isFullscreen ? '100vw' : '100%',

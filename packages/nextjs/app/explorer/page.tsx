@@ -8,9 +8,10 @@ import { GraphNode, GraphLink } from "./graph-data/types";
 import { fetchAllTransfersCached, FilterAndSortTx } from "./graph-data/utils";
 import { generateNodesFromTx } from "./graph-data/generateNodesFromTx";
 import { MenuActions } from "./_components/MenuActions";
+import { getChainFromId, type SupportedChain } from "~~/utils/cosmicNFT/chainHelpers";
 
 const Test: NextPage = () => {
-  const { address: connectedAddress, isConnected } = useAccount();
+  const { address: connectedAddress, isConnected, chain } = useAccount();
   const [inputValue, setInputValue] = useState("");
   const [address, setAddress] = useState("");
   const [transferDirection, setTransferDirection] = useState<"from" | "to" | "both">("both");
@@ -39,7 +40,8 @@ const Test: NextPage = () => {
   // Create a ref to store the reset function from the graph component
   const resetViewRef = useRef<(() => void) | null>(null);
 
-  const [selectedChain, setSelectedChain] = useState<"ethereum" | "sepolia" | "arbitrum" | "base">("sepolia");
+  // 🔧 UPDATE: Default to sepolia (has contract deployed)
+  const [selectedChain, setSelectedChain] = useState<SupportedChain>("sepolia");
 
   // Add view state tracking
   const [currentViewState, setCurrentViewState] = useState<{
