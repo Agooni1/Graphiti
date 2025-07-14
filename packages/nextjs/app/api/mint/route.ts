@@ -1,21 +1,12 @@
 // /app/api/mint-request/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
-import { Wallet, solidityPackedKeccak256, getBytes, verifyMessage } from "ethers";
+import { Wallet, getBytes, solidityPackedKeccak256, verifyMessage } from "ethers";
+import { generateNodesFromTx } from "~~/app/explorer/graph-data/generateNodesFromTx";
+// Import the cached functions from your utils
+import { FilterAndSortTx, FilterPair, getETHBalanceCached } from "~~/app/explorer/graph-data/utils";
+import { fetchAllTransfersCached } from "~~/app/explorer/graph-data/utils";
 import { getGraphHTMLForIPFS } from "~~/app/explorer/graph/htmlGraphGenerator";
 import { generateMetadata } from "~~/utils/cosmicNFT/generateMetadata";
-import { generateNodesFromTx } from "~~/app/explorer/graph-data/generateNodesFromTx";
-
-// Import the cached functions from your utils
-import { 
-  getETHBalanceCached, 
-  FilterAndSortTx, 
-  FilterPair, 
-} from "~~/app/explorer/graph-data/utils";
-import { fetchAllTransfersCached } from "~~/app/explorer/graph-data/utils";
-// import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
-
-// Adjust path as needed
 
 const signer = new Wallet(process.env.SIGNING_PRIVATE_KEY!);
 
@@ -23,14 +14,14 @@ const signer = new Wallet(process.env.SIGNING_PRIVATE_KEY!);
 const addressRequestTracker = new Map<string, number>();
 const pendingRequests = new Set<string>();
 
-const IS_LOCALHOST = process.env.NODE_ENV === 'development';
+const IS_LOCALHOST = process.env.NODE_ENV === "development";
 const TEST_ADDRESS = "0xcC6eDeB501BbD8AD9E028BDe937B63Cdd64A1D91";
 
 export async function POST(req: NextRequest) {
-  const { 
-    userAddress: originalUserAddress, 
-    signature, 
-    message, 
+  const {
+    userAddress: originalUserAddress,
+    signature,
+    message,
     timestamp,
     layoutMode,
     particleMode,
@@ -40,7 +31,7 @@ export async function POST(req: NextRequest) {
     targetNode,
     viewState,
     graphData: clientGraphData,
-    nonce // <-- include nonce here!
+    nonce, // <-- include nonce here!
   } = await req.json();
 
   // 🔧 LOCALHOST OVERRIDE: Use test address for development
@@ -76,9 +67,12 @@ export async function POST(req: NextRequest) {
     if (!IS_LOCALHOST) {
       // 4. Prevent concurrent requests for same address
       if (pendingRequests.has(userAddress.toLowerCase())) {
-        return NextResponse.json({ 
-          error: "Request already in progress for this address" 
-        }, { status: 409 });
+        return NextResponse.json(
+          {
+            error: "Request already in progress for this address",
+          },
+          { status: 409 },
+        );
       }
 
       // Mark request as pending
@@ -91,22 +85,25 @@ export async function POST(req: NextRequest) {
 
     if (allTransfers.length === 0) {
       // Add more detailed error information
-      return NextResponse.json({ 
-        error: `No transaction history found for address ${userAddress} on ${chain} network`,
-        debug: {
-          userAddress,
-          chain,
-          transferCount: allTransfers.length,
-          suggestion: "Ensure this address has made transactions on the selected network"
-        }
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: `No transaction history found for address ${userAddress} on ${chain} network`,
+          debug: {
+            userAddress,
+            chain,
+            transferCount: allTransfers.length,
+            suggestion: "Ensure this address has made transactions on the selected network",
+          },
+        },
+        { status: 400 },
+      );
     }
 
     // 6. Process transfers to get pairs
     const filteredTransfers: any[] = FilterAndSortTx(allTransfers, {
-    //   maxCount: txDisplayLimit,           // 🔧 Changed from 1000 to txDisplayLimit
-      direction: transferDirection,       // 🔧 Changed from "both" to transferDirection
-      address: userAddress,               // 🔧 Keep the same (userAddress = address)
+      //   maxCount: txDisplayLimit,           // 🔧 Changed from 1000 to txDisplayLimit
+      direction: transferDirection, // 🔧 Changed from "both" to transferDirection
+      address: userAddress, // 🔧 Keep the same (userAddress = address)
       // 🔧 Remove "order: newest" - page.tsx doesn't use it
     });
 
@@ -117,21 +114,19 @@ export async function POST(req: NextRequest) {
     if (clientGraphData && clientGraphData.nodes && clientGraphData.links) {
       generatedgraphData = clientGraphData; // <-- USE CLIENT DATA IF PROVIDED
     } else {
-      generatedgraphData = await generateNodesFromTx(
-        filteredTransfers, 
-        chain,
-        (loaded, total) => console.log(`📊 Processing nodes: ${loaded}/${total}`)
+      generatedgraphData = await generateNodesFromTx(filteredTransfers, chain, (loaded, total) =>
+        console.log(`📊 Processing nodes: ${loaded}/${total}`),
       );
     }
 
     // 9. Generate HTML visualization (use ACTUAL UI state)
     const graphConfig = {
       graphData: generatedgraphData,
-      targetNode: targetNode || userAddress,  // 🔧 Use passed targetNode
-      layoutMode: layoutMode as 'shell' | 'force' | 'fibonacci',
-      particleMode: particleMode as 'pulse' | 'laser' | 'off',
-      isOrbiting: isOrbiting,  // 🔧 Use passed isOrbiting value
-      viewState: viewState || undefined  // 🔧 Use passed viewState
+      targetNode: targetNode || userAddress, // 🔧 Use passed targetNode
+      layoutMode: layoutMode as "shell" | "force" | "fibonacci",
+      particleMode: particleMode as "pulse" | "laser" | "off",
+      isOrbiting: isOrbiting, // 🔧 Use passed isOrbiting value
+      viewState: viewState || undefined, // 🔧 Use passed viewState
     };
 
     const htmlContent = getGraphHTMLForIPFS(graphConfig);
@@ -140,78 +135,59 @@ export async function POST(req: NextRequest) {
     }
 
     // 10. Upload HTML to IPFS
-    const htmlUploadRes = await internalApiPost(
-      '/api/ipfs/upload-html',
-      {
-        htmlContent,
-        filename: `cosmic-graph-${userAddress.slice(0, 6)}.html`
-      }
-    );
+    const htmlUploadRes = await internalApiPost("/api/ipfs/upload-html", {
+      htmlContent,
+      filename: `cosmic-graph-${userAddress.slice(0, 6)}.html`,
+    });
     const htmlCid = htmlUploadRes.cid;
 
     // 11. Create simple metadata (not using generateMetadata with cosmic data)
     const addressCosmicData = {
       address: userAddress,
-      balance: await getETHBalanceAsBigInt(userAddress), 
+      balance: await getETHBalanceAsBigInt(userAddress),
       transactionCount: allTransfers.length,
-      connectedAddresses: Array.from(new Set(
-        allTransfers
-          .flatMap(tx => [tx.from, tx.to])
-          .filter((addr): addr is string => typeof addr === 'string' && addr !== null && addr.toLowerCase() !== userAddress.toLowerCase())
-      )),
+      connectedAddresses: Array.from(
+        new Set(
+          allTransfers
+            .flatMap(tx => [tx.from, tx.to])
+            .filter(
+              (addr): addr is string =>
+                typeof addr === "string" && addr !== null && addr.toLowerCase() !== userAddress.toLowerCase(),
+            ),
+        ),
+      ),
       // Transform AssetTransfersResult[] to Transaction[]
       recentTransactions: allTransfers.slice(0, 10).map(transfer => ({
         hash: transfer.hash || transfer.uniqueId || `${transfer.blockNum}-${transfer.from}-${transfer.to}`,
-        from: transfer.from || '',
-        to: transfer.to || '',
-        value: transfer.value?.toString() || '0',
-        timestamp: transfer.blockNum
-          ? Number(transfer.blockNum)
-          : Math.floor(Date.now() / 1000) // fallback to current time
+        from: transfer.from || "",
+        to: transfer.to || "",
+        value: transfer.value?.toString() || "0",
+        timestamp: transfer.blockNum ? Number(transfer.blockNum) : Math.floor(Date.now() / 1000), // fallback to current time
       })),
-      tokenBalances: [], 
-      nftCount: 0 
-    };
-
-    // 🔧 ADD: Chain ID mapping function (add this before generateMetadata call)
-    const getChainId = (chain: string) => {
-      switch (chain) {
-        case 'sepolia': return 11155111;
-        case 'mainnet': return 1;
-        case 'base': return 8453;
-        case 'arbitrum': return 42161;
-        default: return 11155111; // fallback to sepolia
-      }
+      tokenBalances: [],
+      nftCount: 0,
     };
 
     const { metadata } = generateMetadata(
       addressCosmicData,
       htmlCid,
-      layoutMode as 'shell' | 'force' | 'fibonacci',
-      'html',
+      layoutMode as "shell" | "force" | "fibonacci",
+      "html",
       getChainId(chain),
       generatedgraphData.nodes.length,
     );
 
     // 11. Upload metadata to IPFS
-    const metadataUploadRes = await internalApiPost(
-      '/api/ipfs/upload-metadata',
-      { metadata }
-    );
+    const metadataUploadRes = await internalApiPost("/api/ipfs/upload-metadata", { metadata });
     const metadataCid = metadataUploadRes.cid;
 
     // 12. Create signature for minting (assuming nonce is 0 for now)
-    const nonceBigInt = BigInt(nonce);
-    const nonceNumber = Number(nonce);
-    const messageHash = solidityPackedKeccak256(
-      ["string", "address", "uint256"],
-      [metadataCid, userAddress, nonce]
-    );
+    const messageHash = solidityPackedKeccak256(["string", "address", "uint256"], [metadataCid, userAddress, nonce]);
 
     const messageHashBytes = getBytes(messageHash);
     const mintingSignature = await signer.signMessage(messageHashBytes);
 
-    if (!metadataCid || metadataCid === 'undefined' || metadataCid === 'null') {
+    if (!metadataCid || metadataCid === "undefined" || metadataCid === "null") {
       throw new Error(`Invalid metadataCid: ${metadataCid}`);
     }
 
@@ -224,17 +200,18 @@ export async function POST(req: NextRequest) {
         transferCount: allTransfers.length,
         nodeCount: generatedgraphData.nodes.length,
         linkCount: generatedgraphData.links.length,
-        pairCount: pairsFromParent.length
-      }
+        pairCount: pairsFromParent.length,
+      },
     });
-
-  } catch (error) {
-    console.error(`❌ Error processing mint request for ${userAddress}:`, error);
-    return NextResponse.json({ 
-      error: "Failed to process mint request",
-      details: error instanceof Error ? error.message : "Unknown error"
-    }, { status: 500 });
-
+  } catch (_error) {
+    console.error(`❌ Error processing mint request for ${userAddress}:`, _error);
+    return NextResponse.json(
+      {
+        error: "Failed to process mint request",
+        details: _error instanceof Error ? _error.message : "Unknown error",
+      },
+      { status: 500 },
+    );
   } finally {
     // Always remove from pending requests (only if not localhost)
     if (!IS_LOCALHOST) {
@@ -251,44 +228,45 @@ async function getETHBalanceAsBigInt(address: string): Promise<bigint> {
       return BigInt(0);
     }
     // Remove any non-numeric characters except decimal points
-    const cleanBalance = balanceStr.replace(/[^0-9.]/g, '');
-    if (!cleanBalance || cleanBalance === '.') {
+    const cleanBalance = balanceStr.replace(/[^0-9.]/g, "");
+    if (!cleanBalance || cleanBalance === ".") {
       return BigInt(0);
     }
     // Convert to wei (multiply by 10^18 if it's in ETH)
     const balanceNum = parseFloat(cleanBalance);
     return BigInt(Math.floor(balanceNum * 1e18));
-  } catch (error) {
+  } catch {
     console.log(`⚠️ Failed to convert balance for ${address}, using 0`);
     return BigInt(0);
   }
 }
 
 // Helper function to get Chain ID
-function getChainId(chain: string): number {
+const getChainId = (chain: string) => {
   switch (chain) {
-    case 'sepolia':
+    case "sepolia":
       return 11155111;
-    case 'mainnet':
+    case "mainnet":
       return 1;
-    // Add more cases as needed
+    case "base":
+      return 8453;
+    case "arbitrum":
+      return 42161;
     default:
-      throw new Error(`Unsupported chain: ${chain}`);
+      return 11155111; // fallback to sepolia
   }
-}
+};
 
 // Add this helper function in your /api/mint/route.ts file
 
 async function internalApiPost(path: string, body: any) {
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000';
+  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
 
   const res = await fetch(`${baseUrl}${path}`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'x-internal-secret': process.env.INTERNAL_API_SECRET!,
+      "Content-Type": "application/json",
+      "x-internal-secret": process.env.INTERNAL_API_SECRET!,
     },
     body: JSON.stringify(body),
   });

@@ -1,5 +1,5 @@
-import { GraphNode, GraphLink } from "../graph-data/types";
-import { generateLayout, LayoutConfig } from './graphLayouts';
+import { GraphLink, GraphNode } from "../graph-data/types";
+import { LayoutConfig, generateLayout } from "./graphLayouts";
 
 interface ViewState {
   zoom: number;
@@ -10,25 +10,25 @@ interface ViewState {
 interface GraphConfig {
   graphData: { nodes: GraphNode[]; links: GraphLink[] };
   targetNode: string;
-  layoutMode: 'shell' | 'force' | 'fibonacci';
-  particleMode: 'pulse' | 'laser' | 'off';
+  layoutMode: "shell" | "force" | "fibonacci";
+  particleMode: "pulse" | "laser" | "off";
   isOrbiting: boolean;
   // Add view state
   viewState?: ViewState;
 }
 
 export function generateGraphHTML(config: GraphConfig): string {
-  const { graphData, targetNode, layoutMode, particleMode, isOrbiting, viewState } = config;
-  
+  const { graphData, targetNode, layoutMode } = config;
+
   // Generate the layout using your existing function
   const layoutConfig: LayoutConfig = {
     layoutMode,
     targetNodeId: targetNode,
-    graphData
+    graphData,
   };
-  
+
   const nodes = generateLayout(layoutConfig);
-  
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -375,10 +375,10 @@ export function generateGraphHTML(config: GraphConfig): string {
 // Helper function to download the HTML file
 export function downloadGraphHTML(config: GraphConfig, filename?: string): void {
   const html = generateGraphHTML(config);
-  const blob = new Blob([html], { type: 'text/html' });
+  const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
-  
-  const a = document.createElement('a');
+
+  const a = document.createElement("a");
   a.href = url;
   a.download = filename || `cosmic-graph-${config.targetNode.slice(0, 6)}.html`;
   document.body.appendChild(a);

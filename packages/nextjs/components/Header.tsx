@@ -1,17 +1,15 @@
 "use client";
 
 import React, { useRef } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { hardhat } from "viem/chains";
-import { 
-  Bars3Icon, 
-  BugAntIcon, 
-  MagnifyingGlassIcon,    // 🔧 For Explorer
-  UserIcon,               // 🔧 For My NFTs  
-  PhotoIcon,              // 🔧 For All NFTs
-  WrenchScrewdriverIcon   // 🔧 For Debug Contracts
+import {
+  Bars3Icon,
+  MagnifyingGlassIcon, // 🔧 For My NFTs
+  PhotoIcon, // 🔧 For Explorer
+  UserIcon, // 🔧 For All NFTs
+  WrenchScrewdriverIcon, // 🔧 For Debug Contracts
 } from "@heroicons/react/24/outline";
 import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { useOutsideClick, useTargetNetwork } from "~~/hooks/scaffold-eth";
@@ -30,7 +28,7 @@ export const menuLinks: HeaderMenuLink[] = [
   },
   {
     label: "My NFTs",
-    href: "/myNFTs", 
+    href: "/myNFTs",
     icon: <UserIcon className="h-4 w-4" />, // 🔧 Personal/user icon
   },
   {
@@ -58,8 +56,8 @@ export const HeaderMenuLinks = () => {
               href={href}
               passHref
               className={`${
-                isActive 
-                  ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-400/30 text-blue-200" 
+                isActive
+                  ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-400/30 text-blue-200"
                   : "text-slate-300 hover:text-white border border-transparent"
               } hover:bg-slate-700/30 hover:border-slate-500/30 transition-all duration-300 py-2 px-4 text-sm rounded-full gap-2 flex items-center backdrop-blur-sm`}
             >
@@ -101,7 +99,7 @@ export const Header = () => {
             <HeaderMenuLinks />
           </ul>
         </details>
-        
+
         <Link href="/" passHref className="hidden lg:flex items-center gap-3 ml-4 mr-6 shrink-0 group">
           <div className="flex relative w-10 h-10">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg opacity-20 group-hover:opacity-40 transition-opacity duration-300"></div>
@@ -116,12 +114,12 @@ export const Header = () => {
             <span className="text-xs text-slate-400">Mint a unique NFT of your address</span>
           </div>
         </Link>
-        
+
         <ul className="hidden lg:flex lg:flex-nowrap menu menu-horizontal px-1 gap-2">
           <HeaderMenuLinks />
         </ul>
       </div>
-      
+
       <div className="navbar-end grow mr-4 flex items-center gap-3">
         <RainbowKitCustomConnectButton />
         {isLocalNetwork && <FaucetButton />}

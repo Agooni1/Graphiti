@@ -19,9 +19,7 @@ const AllNFTs: NextPage = () => {
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-2">
             All NFTs
           </h1>
-          <span className="block text-lg text-slate-400">
-            Browse all NFTs minted on the platform
-          </span>
+          <span className="block text-lg text-slate-400">Browse all NFTs minted on the platform</span>
         </div>
 
         {/* Content Area - Removed container background */}

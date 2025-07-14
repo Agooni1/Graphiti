@@ -36,12 +36,8 @@ export function DebugContracts() {
       {contractNames.length === 0 ? (
         <div className="bg-slate-800/40 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl p-8 text-center relative z-10">
           <div className="text-6xl mb-4 opacity-50">🔧</div>
-          <div className="text-slate-300 text-xl mb-4 font-medium">
-            No contracts found!
-          </div>
-          <div className="text-slate-400">
-            Deploy some contracts to see them here
-          </div>
+          <div className="text-slate-300 text-xl mb-4 font-medium">No contracts found!</div>
+          <div className="text-slate-400">Deploy some contracts to see them here</div>
         </div>
       ) : (
         <>

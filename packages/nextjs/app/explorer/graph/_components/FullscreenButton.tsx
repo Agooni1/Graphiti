@@ -1,8 +1,6 @@
 "use client";
-import {
-  ArrowsPointingOutIcon,
-  ArrowsPointingInIcon,
-} from "@heroicons/react/24/outline";
+
+import { ArrowsPointingInIcon, ArrowsPointingOutIcon } from "@heroicons/react/24/outline";
 
 interface FullscreenButtonProps {
   isFullscreen: boolean;
@@ -23,9 +21,7 @@ export default function FullscreenButton({ isFullscreen, onToggle }: FullscreenB
           ) : (
             <ArrowsPointingOutIcon className="w-4 h-4 text-blue-200" />
           )}
-          <span className="text-xs text-blue-200 font-medium">
-            {isFullscreen ? "Exit" : "Fullscreen"}
-          </span>
+          <span className="text-xs text-blue-200 font-medium">{isFullscreen ? "Exit" : "Fullscreen"}</span>
         </div>
       </button>
     </div>

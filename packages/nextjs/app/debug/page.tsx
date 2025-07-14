@@ -23,9 +23,7 @@ const Debug: NextPage = () => {
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-2">
             Debug Contracts
           </h1>
-          <span className="block text-lg text-slate-400">
-            Debug & interact with your deployed contracts
-          </span>
+          <span className="block text-lg text-slate-400">Debug & interact with your deployed contracts</span>
         </div>
 
         {/* Content Area */}

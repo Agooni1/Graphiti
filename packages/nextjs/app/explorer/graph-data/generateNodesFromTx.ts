@@ -1,9 +1,8 @@
 //Purpose:
-// Converts raw Ethereum transaction data (usually from Alchemy or Etherscan) 
+// Converts raw Ethereum transaction data (usually from Alchemy or Etherscan)
 // into a format usable by your graph component: an array of GraphNodes and GraphLinks.
-
-import { GraphNode, GraphLink } from "./types";
-import { getETHBalanceCached, isContractCached, asyncPool } from "./utils";
+import { GraphLink, GraphNode } from "./types";
+import { asyncPool, getETHBalanceCached, isContractCached } from "./utils";
 
 export interface Transfer {
   from: string;
@@ -15,7 +14,7 @@ export interface Transfer {
 export async function generateNodesFromTx(
   transfers: Transfer[],
   chain: string,
-  onProgress?: (loaded: number, total: number) => void
+  onProgress?: (loaded: number, total: number) => void,
 ): Promise<{ nodes: GraphNode[]; links: GraphLink[] }> {
   const nodesMap = new Map<string, GraphNode>();
   const links: GraphLink[] = [];
@@ -23,28 +22,19 @@ export async function generateNodesFromTx(
   const linkIndices: Record<string, number> = {};
 
   // 1. Collect all unique addresses
-  const addresses = Array.from(
-    new Set(transfers.flatMap(tx => [tx.from, tx.to]))
-  );
+  const addresses = Array.from(new Set(transfers.flatMap(tx => [tx.from, tx.to])));
   const total = addresses.length;
   let loaded = 0;
 
   // 2. Batch fetch balances and contract statuses with limited concurrency
   const concurrency = 1; // Adjust as needed for your API limits
 
-  const addressData = await asyncPool(
-    concurrency,
-    addresses,
-    async (address) => {
-      const [balance, isContract] = await Promise.all([
-        getETHBalanceCached(address),
-        isContractCached(address),
-      ]);
-      loaded++;
-      if (onProgress) onProgress(loaded, total);
-      return { address, balance, isContract };
-    }
-  );
+  const addressData = await asyncPool(concurrency, addresses, async address => {
+    const [balance, isContract] = await Promise.all([getETHBalanceCached(address), isContractCached(address)]);
+    loaded++;
+    if (onProgress) onProgress(loaded, total);
+    return { address, balance, isContract };
+  });
 
   // 3. Build nodesMap from fetched data
   for (const { address, balance, isContract } of addressData) {
@@ -71,7 +61,7 @@ export async function generateNodesFromTx(
   }
 
   const nodes = Array.from(nodesMap.values());
-  console.log("nodedata:", nodes)
+  console.log("nodedata:", nodes);
   return {
     nodes,
     links,

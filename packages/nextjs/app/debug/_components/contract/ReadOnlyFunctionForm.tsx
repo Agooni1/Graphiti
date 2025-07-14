@@ -78,20 +78,14 @@ export const ReadOnlyFunctionForm = ({
         </h5>
       </div>
 
-      {inputElements.length > 0 && (
-        <div className="space-y-3">
-          {inputElements}
-        </div>
-      )}
+      {inputElements.length > 0 && <div className="space-y-3">{inputElements}</div>}
 
       <div className="flex flex-col md:flex-row justify-between gap-4">
         <div className="flex-1">
           {result !== null && result !== undefined && (
             <div className="bg-slate-900/40 rounded-lg p-3 border border-white/5">
               <div className="text-blue-300 text-sm font-medium mb-2">Result:</div>
-              <div className="text-slate-200 text-sm break-words">
-                {displayTxResult(result, "sm")}
-              </div>
+              <div className="text-slate-200 text-sm break-words">{displayTxResult(result, "sm")}</div>
             </div>
           )}
         </div>
@@ -111,7 +105,6 @@ export const ReadOnlyFunctionForm = ({
             </>
           ) : (
             <>
-
               <span>Read</span>
             </>
           )}

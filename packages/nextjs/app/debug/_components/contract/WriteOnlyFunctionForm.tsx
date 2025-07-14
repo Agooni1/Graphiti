@@ -101,12 +101,8 @@ export const WriteOnlyFunctionForm = ({
       </div>
 
       <div className="space-y-4">
-        {inputs.length > 0 && (
-          <div className="space-y-3">
-            {inputs}
-          </div>
-        )}
-        
+        {inputs.length > 0 && <div className="space-y-3">{inputs}</div>}
+
         {abiFunction.stateMutability === "payable" && (
           <div className="bg-slate-900/40 rounded-lg p-3 border border-yellow-400/20">
             <div className="text-yellow-300 text-sm font-medium mb-2 flex items-center">
@@ -130,17 +126,13 @@ export const WriteOnlyFunctionForm = ({
               <TxReceipt txResult={displayedTxResult} />
             </div>
           )}
-          
+
           <div className="flex items-center">
-            {writeDisabled && (
-              <div className="text-red-400 text-sm mr-4">
-                ⚠️ Connect wallet or switch network
-              </div>
-            )}
-            
-            <button 
+            {writeDisabled && <div className="text-red-400 text-sm mr-4">⚠️ Connect wallet or switch network</div>}
+
+            <button
               className="bg-orange-600/20 hover:bg-orange-600/30 border border-orange-400/30 rounded-lg px-4 py-2 font-medium transition-all duration-200 text-orange-300 hover:text-orange-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={writeDisabled || isPending} 
+              disabled={writeDisabled || isPending}
               onClick={handleWrite}
             >
               {isPending ? (

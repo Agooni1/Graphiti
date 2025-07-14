@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Collectible } from "./AllHoldings"; // Make sure this import exists
+import Image from "next/image";
+import { Collectible } from "./AllHoldings";
+import { useAccount } from "wagmi";
+// Make sure this import exists
 import { Address, AddressInput } from "~~/components/scaffold-eth";
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
-import { useAccount } from "wagmi";
 
 export const NFTCard = ({ nft }: { nft: Collectible }) => {
   const [transferToAddress, setTransferToAddress] = useState("");
@@ -20,25 +22,25 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
   // Helper functions for explorer links
   const getExplorerUrl = (address: string, network: string) => {
     const baseUrls = {
-      'mainnet': 'https://etherscan.io',
-      'sepolia': 'https://sepolia.etherscan.io',
-      'base': 'https://basescan.org',
-      'arbitrum': 'https://arbiscan.io',
+      mainnet: "https://etherscan.io",
+      sepolia: "https://sepolia.etherscan.io",
+      base: "https://basescan.org",
+      arbitrum: "https://arbiscan.io",
     };
-    
+
     const baseUrl = baseUrls[network as keyof typeof baseUrls] || baseUrls.mainnet;
     return `${baseUrl}/address/${address}`;
   };
 
   const getExplorerName = (network: string) => {
     const names = {
-      'mainnet': 'Etherscan',
-      'sepolia': 'Sepolia Etherscan',
-      'base': 'BaseScan',
-      'arbitrum': 'Arbiscan',
+      mainnet: "Etherscan",
+      sepolia: "Sepolia Etherscan",
+      base: "BaseScan",
+      arbitrum: "Arbiscan",
     };
-    
-    return names[network as keyof typeof names] || 'Etherscan';
+
+    return names[network as keyof typeof names] || "Etherscan";
   };
 
   // Check if connected user owns this NFT
@@ -55,29 +57,27 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
         functionName: "burn",
         args: [BigInt(nft.id)],
       });
-      
+
       setShowBurnConfirm(false);
       console.log(`🔥 Successfully burned NFT #${nft.id}`);
-      
     } catch (error) {
       console.error("Error burning NFT:", error);
       setShowBurnConfirm(false);
     }
   };
 
-  // Handle transfer function  
+  // Handle transfer function
   const handleTransfer = async () => {
     if (!transferToAddress) return;
-    
+
     try {
       await writeContractAsync({
         functionName: "transferFrom",
         args: [nft.owner, transferToAddress, BigInt(nft.id)],
       });
-      
+
       setTransferToAddress("");
       console.log(`✅ Successfully transferred NFT #${nft.id} to ${transferToAddress}`);
-      
     } catch (error) {
       console.error("Error transferring NFT:", error);
     }
@@ -87,7 +87,6 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
     <div className="relative w-full max-w-md">
       {/* Clean card with subtle glass effect */}
       <div className="bg-slate-900/20 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 hover:border-white/20">
-        
         {/* Interactive Graph Area */}
         <div className="relative">
           {isInteractive && hasAnimationUrl ? (
@@ -98,18 +97,16 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
                 title="Interactive Cosmic Graph"
                 sandbox="allow-scripts allow-same-origin allow-pointer-lock"
                 loading="lazy"
-                style={{ background: 'transparent' }}
+                style={{ background: "transparent" }}
               />
               {/* Shape badge - top left */}
               <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/20">
-                <span className="text-white text-sm font-medium">
-                  {getAttributeValue("Shape")}
-                </span>
+                <span className="text-white text-sm font-medium">{getAttributeValue("Shape")}</span>
               </div>
               {/* Open Full Screen button - top right */}
-              <a 
-                href={nft.animation_url} 
-                target="_blank" 
+              <a
+                href={nft.animation_url}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/20 hover:bg-black/90 transition-all duration-200 group"
                 title="Open Full Screen"
@@ -122,15 +119,15 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
             </div>
           ) : (
             <div className="relative">
-              <img 
-                src={nft.image} 
-                alt="Cosmic Graph Visualization" 
+              <Image
+                src={nft.image || "/placeholder.png"}
+                alt="Cosmic Graph Visualization"
+                fill
                 className="w-full h-80 object-cover"
+                unoptimized
               />
               <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/20">
-                <span className="text-white text-sm font-medium">
-                  {getAttributeValue("Shape")}
-                </span>
+                <span className="text-white text-sm font-medium">{getAttributeValue("Shape")}</span>
               </div>
             </div>
           )}
@@ -171,8 +168,8 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
             onClick={() => setIsExpanded(!isExpanded)}
             className="w-full text-slate-400 hover:text-white text-sm font-medium py-2 transition-colors flex items-center justify-center space-x-2 border-t border-white/5 pt-4"
           >
-            <span>{isExpanded ? 'Hide Details' : 'Show Details'}</span>
-            <span className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+            <span>{isExpanded ? "Hide Details" : "Show Details"}</span>
+            <span className={`transform transition-transform ${isExpanded ? "rotate-180" : ""}`}>▼</span>
           </button>
 
           {isExpanded && (
@@ -186,7 +183,7 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
                 {nft.targetAddress ? (
                   <div className="space-y-2">
                     <Address address={nft.targetAddress} />
-                    <a 
+                    <a
                       href={getExplorerUrl(nft.targetAddress, String(getAttributeValue("Network")))}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -209,7 +206,7 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
                 </div>
                 <div className="space-y-2">
                   <Address address={nft.owner} />
-                  <a 
+                  <a
                     href={getExplorerUrl(nft.owner, String(getAttributeValue("Network")))}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -230,7 +227,7 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
                   </div>
                   <div className="text-white font-bold capitalize">{getAttributeValue("Network")}</div>
                 </div>
-                
+
                 {nft.mintTimestamp && (
                   <div className="bg-black/20 rounded-lg p-4 border border-white/5">
                     <div className="text-pink-400 text-sm font-medium mb-2 flex items-center space-x-2">
@@ -257,7 +254,7 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
                       placeholder="Enter receiver address"
                       onChange={newValue => setTransferToAddress(newValue)}
                     />
-                    
+
                     <button
                       className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center space-x-2"
                       disabled={!transferToAddress}

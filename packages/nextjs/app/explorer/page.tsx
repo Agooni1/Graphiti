@@ -1,17 +1,18 @@
 "use client";
-import type { NextPage } from "next";
-import { useState, useCallback, useEffect, useRef } from "react";
-import { useAccount } from "wagmi";
+
+import { useEffect, useRef, useState } from "react";
+import { MenuActions } from "./_components/MenuActions";
+import { generateNodesFromTx } from "./graph-data/generateNodesFromTx";
+import { GraphLink, GraphNode } from "./graph-data/types";
+import { FilterAndSortTx, fetchAllTransfersCached } from "./graph-data/utils";
 import SimpleCosmicGraph from "./graph/SimpleCosmicGraph";
 import { AssetTransfersResult } from "alchemy-sdk";
-import { GraphNode, GraphLink } from "./graph-data/types";
-import { fetchAllTransfersCached, FilterAndSortTx } from "./graph-data/utils";
-import { generateNodesFromTx } from "./graph-data/generateNodesFromTx";
-import { MenuActions } from "./_components/MenuActions";
-import { getChainFromId, type SupportedChain } from "~~/utils/cosmicNFT/chainHelpers";
+import type { NextPage } from "next";
+import { useAccount } from "wagmi";
+import { type SupportedChain } from "~~/utils/cosmicNFT/chainHelpers";
 
-const Test: NextPage = () => {
-  const { address: connectedAddress, isConnected, chain } = useAccount();
+const Explorer: NextPage = () => {
+  const { address: connectedAddress, isConnected } = useAccount();
   const [inputValue, setInputValue] = useState("");
   const [address, setAddress] = useState("");
   const [transferDirection, setTransferDirection] = useState<"from" | "to" | "both">("both");
@@ -20,10 +21,10 @@ const Test: NextPage = () => {
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({ nodes: [], links: [] });
 
   const txDisplayLimit = 200; // Limit for transactions to display
-  
+
   // Add state to track if we've already auto-loaded wallet address
   const [hasAutoLoaded, setHasAutoLoaded] = useState(false);
-  
+
   // Add ref for fullscreen functionality
   const graphWrapperRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -32,8 +33,8 @@ const Test: NextPage = () => {
   const [progress, setProgress] = useState<{ loaded: number; total: number }>({ loaded: 0, total: 0 });
 
   // Add graph control states - Update particleMode to include 'off'
-  const [layoutMode, setLayoutMode] = useState<'shell' | 'force' | 'fibonacci'>('shell');
-  const [particleMode, setParticleMode] = useState<'pulse' | 'laser' | 'off'>('pulse');
+  const [layoutMode, setLayoutMode] = useState<"shell" | "force" | "fibonacci">("shell");
+  const [particleMode, setParticleMode] = useState<"pulse" | "laser" | "off">("pulse");
   const [isOrbiting, setIsOrbiting] = useState(true); //default to true for auto-orbiting
   const [showNodeLabels, setShowNodeLabels] = useState(true); // Add this new state
 
@@ -73,8 +74,8 @@ const Test: NextPage = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
 
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
   // When address/params change, show loading spinner
@@ -106,19 +107,15 @@ const Test: NextPage = () => {
 
       setProgress({ loaded: 0, total: filtered.length });
 
-      const graph = await generateNodesFromTx(
-        filtered,
-        selectedChain,
-        (loaded: number, total: number) => {
-          setProgress({ loaded, total });
-        }
-      );
+      const graph = await generateNodesFromTx(filtered, selectedChain, (loaded: number, total: number) => {
+        setProgress({ loaded, total });
+      });
       setGraphData(graph);
       setLoading(false);
     };
 
     fetchGraphData();
-  }, [allTransfers, txDisplayLimit, transferDirection]);
+  }, [allTransfers, txDisplayLimit, transferDirection, address, selectedChain]);
 
   // New handler function
   const handleSetTarget = (newAddress: string) => {
@@ -163,19 +160,18 @@ const Test: NextPage = () => {
     setHasAutoLoaded(false);
     setLoading(false);
     setProgress({ loaded: 0, total: 0 });
-    
+
     // Also reset graph view position
     if (resetViewRef.current) {
       resetViewRef.current();
     }
-    
+
     // Force a re-render by updating a key or similar
     // This ensures any cached rendering state is cleared
     setTimeout(() => {
       setGraphData({ nodes: [], links: [] });
     }, 50);
   };
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
@@ -232,8 +228,8 @@ const Test: NextPage = () => {
         <div
           ref={graphWrapperRef}
           className={`relative bg-slate-900/50 backdrop-blur-sm border border-blue-500/30 flex items-center justify-center overflow-hidden transition-all duration-300 z-0 ${
-            isFullscreen 
-              ? "w-screen h-screen fixed top-0 left-0 z-50" 
+            isFullscreen
+              ? "w-screen h-screen fixed top-0 left-0 z-50"
               : "w-full max-w-[1280px] h-[75vh] max-h-[750px] rounded-2xl shadow-2xl shadow-blue-500/10"
           }`}
         >
@@ -242,15 +238,7 @@ const Test: NextPage = () => {
             <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm z-10 rounded-2xl">
               <div className="flex flex-col items-center gap-4">
                 <svg width="60" height="60">
-                  <circle
-                    cx="30"
-                    cy="30"
-                    r="26"
-                    stroke="#3b82f6"
-                    strokeWidth="6"
-                    fill="none"
-                    opacity="0.2"
-                  />
+                  <circle cx="30" cy="30" r="26" stroke="#3b82f6" strokeWidth="6" fill="none" opacity="0.2" />
                   <circle
                     cx="30"
                     cy="30"
@@ -259,26 +247,22 @@ const Test: NextPage = () => {
                     strokeWidth="6"
                     fill="none"
                     strokeDasharray={2 * Math.PI * 26}
-                    strokeDashoffset={
-                      2 * Math.PI * 26 * (1 - (progress.loaded / (progress.total || 1)))
-                    }
+                    strokeDashoffset={2 * Math.PI * 26 * (1 - progress.loaded / (progress.total || 1))}
                     style={{ transition: "stroke-dashoffset 0.2s" }}
                   />
                 </svg>
-                <div className="text-blue-200 font-medium">
-                  Loading graph...
-                </div>
+                <div className="text-blue-200 font-medium">Loading graph...</div>
                 <div className="text-slate-400 text-sm text-center">
                   Addresses with a lotta nodes may take a while... <br />
-                  I'm too broke for a premium API key
+                  I&apos;m too broke for a premium API key
                 </div>
               </div>
             </div>
           )}
-          
+
           {/* SimpleCosmicGraph - Pass resetViewRef */}
-          <SimpleCosmicGraph 
-            graphData={graphData} 
+          <SimpleCosmicGraph
+            graphData={graphData}
             onSetTarget={handleSetTarget}
             isFullscreen={isFullscreen}
             targetNode={address.toLowerCase()}
@@ -291,7 +275,7 @@ const Test: NextPage = () => {
             showNodeLabels={showNodeLabels} // Add this prop
             selectedChain={selectedChain}
           />
-          
+
           {/* Empty State */}
           {!loading && graphData.nodes.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center text-center">
@@ -299,9 +283,9 @@ const Test: NextPage = () => {
                 <div className="text-6xl mb-4 opacity-50">🌌</div>
                 <div className="text-slate-300 text-xl mb-4 font-medium">
                   {!address
-                    ? (isConnected && connectedAddress
-                        ? "Ready to explore"
-                        : "Connect your wallet to begin")
+                    ? isConnected && connectedAddress
+                      ? "Ready to explore"
+                      : "Connect your wallet to begin"
                     : `No transfers found for this address on ${
                         {
                           ethereum: "Ethereum Mainnet",
@@ -309,16 +293,14 @@ const Test: NextPage = () => {
                           arbitrum: "Arbitrum One",
                           base: "Base",
                         }[selectedChain]
-                      }`
-                  }
+                      }`}
                 </div>
                 <div className="text-slate-400">
                   {!address
-                    ? (isConnected && connectedAddress
-                        ? "Enter an address to begin"
-                        : "Connect your wallet or enter an address to begin")
-                    : "Try another address or switch networks."
-                  }
+                    ? isConnected && connectedAddress
+                      ? "Enter an address to begin"
+                      : "Connect your wallet or enter an address to begin"
+                    : "Try another address or switch networks."}
                 </div>
               </div>
             </div>
@@ -350,4 +332,4 @@ const Test: NextPage = () => {
   );
 };
 
-export default Test;
+export default Explorer;

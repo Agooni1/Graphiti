@@ -13,7 +13,7 @@ const alchemy = new Alchemy(config);
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const address = searchParams.get('address');
+  const address = searchParams.get("address");
 
   if (!address) {
     return NextResponse.json({ error: "Address parameter required" }, { status: 400 });

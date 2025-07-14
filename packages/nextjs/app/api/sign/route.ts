@@ -1,7 +1,6 @@
 // /app/api/sign/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
-import { Wallet, solidityPackedKeccak256, getBytes } from "ethers";
+import { Wallet, getBytes, solidityPackedKeccak256 } from "ethers";
 
 const signer = new Wallet(process.env.SIGNING_PRIVATE_KEY!);
 
@@ -30,22 +29,21 @@ export async function POST(req: NextRequest) {
     }
 
     const metadata = await ipfsResponse.json();
-    
+
     // Validate the metadata belongs to this user
     if (!validateUserMetadata(metadata, userAddress)) {
       return NextResponse.json({ error: "IPFS content does not belong to this address" }, { status: 403 });
     }
-
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to validate IPFS content" }, { status: 400 });
   }
 
   // Create the same hash as the contract: keccak256(abi.encodePacked(_ipfsHash, msg.sender, _nonce))
   const messageHash = solidityPackedKeccak256(
-    ["string", "address", "uint256"], 
-    [ipfsHash, userAddress, currentNonce+2]
+    ["string", "address", "uint256"],
+    [ipfsHash, userAddress, currentNonce + 2],
   );
-  
+
   console.log("Backend - IPFS Hash:", ipfsHash);
   console.log("Backend - User Address:", userAddress.toLowerCase());
   console.log("Backend - Nonce:", currentNonce);
@@ -59,9 +57,9 @@ export async function POST(req: NextRequest) {
 
   console.log("Backend - Signature:", signature);
   console.log("Backend - Signature length:", signature.length);
-  
-  return NextResponse.json({ 
-    signature: signature
+
+  return NextResponse.json({
+    signature: signature,
   });
 }
 

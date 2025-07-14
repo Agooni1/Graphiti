@@ -1,5 +1,5 @@
 // components/Tooltip.tsx
-import { ReactNode, useState, useRef, useEffect } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 
 interface TooltipProps {
   content: string | ReactNode; // Accept string or JSX
@@ -17,7 +17,7 @@ export const Tooltip = ({ content, children, disabled = false }: TooltipProps) =
       const rect = wrapperRef.current.getBoundingClientRect();
       setTooltipPosition({
         x: rect.left + rect.width / 2,
-        y: rect.top
+        y: rect.top,
       });
     }
   }, [isVisible]);
@@ -27,21 +27,21 @@ export const Tooltip = ({ content, children, disabled = false }: TooltipProps) =
   }
 
   return (
-    <div 
+    <div
       ref={wrapperRef}
       className="flex-1 relative" // 🔧 CHANGED: Remove display: contents, use flex-1
       onMouseEnter={() => setIsVisible(true)}
       onMouseLeave={() => setIsVisible(false)}
     >
       {children}
-      
+
       {isVisible && (
-        <div 
+        <div
           className="fixed z-50 pointer-events-none" // 🔧 CHANGED: Use fixed positioning
           style={{
             left: `${tooltipPosition.x}px`,
             top: `${tooltipPosition.y - 8}px`,
-            transform: 'translate(-50%, -100%)'
+            transform: "translate(-50%, -100%)",
           }}
         >
           <div className="bg-slate-800 text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap border border-slate-600 shadow-lg">

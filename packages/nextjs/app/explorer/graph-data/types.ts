@@ -1,6 +1,5 @@
 // Purpose:
 // Central place for defining the shared data shapes used in your graph logic
-
 import { AssetTransfersResult } from "alchemy-sdk";
 
 export interface GraphDataProps {
@@ -42,7 +41,7 @@ export interface Props {
 }
 
 export interface PairDataProps {
-  pairsFromParent: { from: string; to: string; direction: "inbound" | "outbound"; }[];
+  pairsFromParent: { from: string; to: string; direction: "inbound" | "outbound" }[];
   transfers: AssetTransfersResult[];
 }
 

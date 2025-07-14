@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
-import { useScaffoldContract, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 import { NFTCard } from "~~/app/allNFTs/_components/NFTCard";
-
+import { useScaffoldContract, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 // Import cosmic NFT functions
 import { getMetadataFromIPFS } from "~~/utils/cosmicNFT/ipfs-fetch";
 
@@ -33,8 +32,8 @@ export interface Collectible extends Partial<NFTMetaData> {
   id: number;
   uri: string;
   owner: string;
-  targetAddress: string;  // 🔧 ADD: Target address from contract
-  mintTimestamp: bigint;  // 🔧 ADD: Mint timestamp from contract
+  targetAddress: string; // 🔧 ADD: Target address from contract
+  mintTimestamp: bigint; // 🔧 ADD: Mint timestamp from contract
 }
 
 export const MyHoldings = () => {
@@ -61,7 +60,7 @@ export const MyHoldings = () => {
       setAllCollectiblesLoading(true);
       const collectibleUpdate: Collectible[] = [];
       const totalBalance = parseInt(myTotalBalance.toString());
-      
+
       for (let tokenIndex = 0; tokenIndex < totalBalance; tokenIndex++) {
         try {
           // Get the actual token ID at this index for the connected user
@@ -78,7 +77,7 @@ export const MyHoldings = () => {
 
           // Get token URI
           const tokenURI = await yourCollectibleContract.read.tokenURI([tokenId]);
-          
+
           // Parse IPFS hash
           const ipfsHash = tokenURI.replace("https://gateway.pinata.cloud/ipfs/", "");
 
@@ -93,8 +92,9 @@ export const MyHoldings = () => {
             nftMetadata = {
               name: `Cosmic Graph #${tokenIdNumber}`,
               description: "Interactive Ethereum transaction visualization (metadata loading failed)",
-              image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkNvc21pYyBHcmFwaDwvdGV4dD48L3N2Zz4=",
-              attributes: []
+              image:
+                "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkNvc21pYyBHcmFwaDwvdGV4dD48L3N2Zz4=",
+              attributes: [],
             };
           }
 
@@ -103,16 +103,15 @@ export const MyHoldings = () => {
             id: tokenIdNumber,
             uri: tokenURI,
             owner: connectedAddress,
-            targetAddress: targetAddress,  // 🔧 ADD: Target address from contract
-            mintTimestamp: mintTimestamp,  // 🔧 ADD: Mint timestamp from contract
+            targetAddress: targetAddress, // 🔧 ADD: Target address from contract
+            mintTimestamp: mintTimestamp, // 🔧 ADD: Mint timestamp from contract
             ...nftMetadata,
           };
 
           collectibleUpdate.push(collectible);
-
         } catch (e) {
           console.error(`❌ Error fetching NFT at index ${tokenIndex}:`, e);
-          
+
           // Add a placeholder so user knows something exists but failed to load
           collectibleUpdate.push({
             id: tokenIndex, // Use index as fallback ID
@@ -122,11 +121,12 @@ export const MyHoldings = () => {
             mintTimestamp: BigInt(0), // Fallback timestamp
             name: `NFT #${tokenIndex} (Loading Error)`,
             description: "There was an error loading this NFT",
-            image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjY2NjIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkVycm9yPC90ZXh0Pjwvc3ZnPg==",
+            image:
+              "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjY2NjIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkVycm9yPC90ZXh0Pjwvc3ZnPg==",
           });
         }
       }
-      
+
       // Sort by token ID
       collectibleUpdate.sort((a, b) => a.id - b.id);
       setMyAllCollectibles(collectibleUpdate);
@@ -152,10 +152,9 @@ export const MyHoldings = () => {
       {/* 🔧 UPDATED: Better header with stats */}
       <div className="text-center mb-8 -my-8">
         <p className="text-slate-400">
-          {myAllCollectibles.length > 0 
-            ? `You own ${myAllCollectibles.length} cosmic graph${myAllCollectibles.length !== 1 ? 's' : ''}`
-            : "No cosmic graphs found in your wallet"
-          }
+          {myAllCollectibles.length > 0
+            ? `You own ${myAllCollectibles.length} cosmic graph${myAllCollectibles.length !== 1 ? "s" : ""}`
+            : "No cosmic graphs found in your wallet"}
         </p>
       </div>
 
@@ -174,7 +173,6 @@ export const MyHoldings = () => {
       ) : (
         <>
           {/* 🔧 UPDATED: Summary stats without interactive count */}
-            
 
           {/* NFT Grid */}
           <div className="flex flex-wrap gap-4 my-8 px-5 justify-center">

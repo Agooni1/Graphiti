@@ -1,50 +1,50 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
-  const secret = request.headers.get('x-internal-secret');
+  const secret = request.headers.get("x-internal-secret");
   if (secret !== process.env.INTERNAL_API_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const PINATA_JWT = process.env.PINATA_JWT;
-  
+
   if (!PINATA_JWT) {
-    console.error('PINATA_JWT environment variable not set');
-    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    console.error("PINATA_JWT environment variable not set");
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
   try {
     const { htmlContent, filename = "cosmic-graph-interactive.html" } = await request.json();
-    
+
     if (!htmlContent) {
-      return NextResponse.json({ error: 'No HTML content provided' }, { status: 400 });
+      return NextResponse.json({ error: "No HTML content provided" }, { status: 400 });
     }
 
     // console.log(`📤 Server: Uploading HTML to IPFS: ${filename}`);
 
     const formData = new FormData();
-    
+
     // Create HTML file blob
     const htmlBlob = new Blob([htmlContent], { type: "text/html" });
     const htmlFile = new File([htmlBlob], filename, { type: "text/html" });
-    
-    formData.append('file', htmlFile);
+
+    formData.append("file", htmlFile);
 
     const pinataMetadata = JSON.stringify({
       name: filename,
       keyvalues: {
-        type: 'cosmic-nft-interactive-html',
-        fileType: 'text/html',
-        contentType: 'interactive-visualization',
-        timestamp: new Date().toISOString()
-      }
+        type: "cosmic-nft-interactive-html",
+        fileType: "text/html",
+        contentType: "interactive-visualization",
+        timestamp: new Date().toISOString(),
+      },
     });
-    formData.append('pinataMetadata', pinataMetadata);
+    formData.append("pinataMetadata", pinataMetadata);
 
-    const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
-      method: 'POST',
+    const response = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${PINATA_JWT}`,
+        Authorization: `Bearer ${PINATA_JWT}`,
       },
       body: formData,
     });
@@ -57,16 +57,18 @@ export async function POST(request: NextRequest) {
 
     const result = await response.json();
     // console.log(`✅ Server: HTML uploaded to IPFS: ${result.IpfsHash}`);
-    
-    return NextResponse.json({ 
-      cid: result.IpfsHash,     // ← Changed from "hash" to "cid"
-      success: true 
+
+    return NextResponse.json({
+      cid: result.IpfsHash, // ← Changed from "hash" to "cid"
+      success: true,
     });
-    
   } catch (error) {
-    console.error('HTML upload error:', error);
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'HTML upload failed' 
-    }, { status: 500 });
+    console.error("HTML upload error:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "HTML upload failed",
+      },
+      { status: 500 },
+    );
   }
 }

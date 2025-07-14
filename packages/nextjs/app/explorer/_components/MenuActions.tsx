@@ -1,23 +1,29 @@
-import { AddressInput, BlockieAvatar } from "~~/components/scaffold-eth";
-import {
-  MagnifyingGlassIcon, 
-  SparklesIcon, 
-  Squares2X2Icon,
-  BoltIcon,
-  ArrowPathRoundedSquareIcon as SwirlIcon,
-  PlayIcon,
-  PauseIcon,
-  ArrowPathIcon,
-  XMarkIcon,
-  EyeIcon,
-  EyeSlashIcon
-} from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
 import { MintCosmicNFT } from "./MintCosmicNFT";
 import { MintInfoTooltip } from "./MintInfoTooltip";
-import { CHAIN_CONFIGS, isContractDeployedOnChain, type SupportedChain, getChainFromId, getChainId } from "~~/utils/cosmicNFT/chainHelpers";
-import { useNetworkSwitch } from "~~/hooks/cosmicNFT/useNetworkSwitch";
 import { useAccount } from "wagmi";
-import { useState, useEffect } from "react";
+import {
+  ArrowPathIcon,
+  BoltIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  MagnifyingGlassIcon,
+  PauseIcon,
+  PlayIcon,
+  SparklesIcon,
+  Squares2X2Icon,
+  ArrowPathRoundedSquareIcon as SwirlIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import { AddressInput, BlockieAvatar } from "~~/components/scaffold-eth";
+import { useNetworkSwitch } from "~~/hooks/cosmicNFT/useNetworkSwitch";
+import {
+  CHAIN_CONFIGS,
+  type SupportedChain,
+  getChainFromId,
+  getChainId,
+  isContractDeployedOnChain,
+} from "~~/utils/cosmicNFT/chainHelpers";
 
 // 🔧 UPDATE: Show all chains, not just deployed ones
 const CHAIN_OPTIONS = Object.entries(CHAIN_CONFIGS).map(([value, config]) => ({
@@ -41,8 +47,8 @@ interface MenuActionsProps {
   particleMode: any;
   isOrbiting: boolean;
   currentViewState: any;
-  transferDirection: 'from' | 'to' | 'both';
-  setTransferDirection: (v: 'from' | 'to' | 'both') => void;
+  transferDirection: "from" | "to" | "both";
+  setTransferDirection: (v: "from" | "to" | "both") => void;
   setLayoutMode: (v: any) => void;
   setParticleMode: (v: any) => void;
   setIsOrbiting: (v: boolean) => void;
@@ -79,26 +85,26 @@ export function MenuActions({
   selectedChain,
   setSelectedChain,
 }: MenuActionsProps) {
-  const { switchToChain, currentChainId } = useNetworkSwitch();
+  const { switchToChain } = useNetworkSwitch();
   const { chain } = useAccount();
-  
+
   // 🔧 NEW: Add network switching state
   const [isSwitchingNetwork, setIsSwitchingNetwork] = useState(false);
-  
+
   // 🔧 NEW: Add debounced wrong network state
   const [showWrongNetworkWarning, setShowWrongNetworkWarning] = useState(false);
-  
+
   // 🔧 UPDATE: Use helper function and sync with wallet
   const canMint = isContractDeployedOnChain(selectedChain);
-  
+
   // 🔧 UPDATE: Handle network change with loading state
   const handleNetworkChange = async (newChain: SupportedChain) => {
     // Update local state immediately for UI responsiveness
     setSelectedChain(newChain);
-    
+
     // Hide warning immediately when switching
     setShowWrongNetworkWarning(false);
-    
+
     // Switch wallet network if connected
     if (isConnected) {
       setIsSwitchingNetwork(true);
@@ -113,14 +119,14 @@ export function MenuActions({
         }, 500);
       }
     }
-    
+
     // Refresh data for new chain
     handleParamsChange();
   };
 
   // 🔧 NEW: Debounced wrong network detection
   const isWrongNetwork = chain?.id && chain.id !== getChainId(selectedChain);
-  
+
   useEffect(() => {
     if (isSwitchingNetwork) {
       // Hide warning during switch
@@ -133,7 +139,7 @@ export function MenuActions({
       const timer = setTimeout(() => {
         setShowWrongNetworkWarning(true);
       }, 2000);
-      
+
       return () => clearTimeout(timer);
     } else {
       // Hide warning immediately if networks match
@@ -177,7 +183,11 @@ export function MenuActions({
             value={inputValue}
             onChange={value => setInputValue(value)}
             name="Target Address"
-            placeholder={connectedAddress ? `Connected: ${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}` : "Paste or type address..."}
+            placeholder={
+              connectedAddress
+                ? `Connected: ${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`
+                : "Paste or type address..."
+            }
           />
 
           {/* Action Buttons Grid - 2x3 layout */}
@@ -234,24 +244,25 @@ export function MenuActions({
                   disabled={isSwitchingNetwork}
                   className={`min-w-[120px] min-h-[35px] text-s px-2 py-1 rounded-lg bg-gradient-to-r from-slate-800/90 to-slate-700/90 backdrop-blur-sm border text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all duration-200 hover:border-slate-500/60 hover:from-slate-700/90 hover:to-slate-600/90 cursor-pointer shadow-lg ${
                     isSwitchingNetwork
-                      ? 'opacity-60 cursor-not-allowed'
-                      : showWrongNetworkWarning 
-                        ? 'border-orange-500/60 ring-1 ring-orange-500/20' 
-                        : 'border-slate-600/40'
+                      ? "opacity-60 cursor-not-allowed"
+                      : showWrongNetworkWarning
+                        ? "border-orange-500/60 ring-1 ring-orange-500/20"
+                        : "border-slate-600/40"
                   }`}
-                  title={isSwitchingNetwork ? "Switching network..." : "Select blockchain network - this will switch your wallet too"}
+                  title={
+                    isSwitchingNetwork
+                      ? "Switching network..."
+                      : "Select blockchain network - this will switch your wallet too"
+                  }
                 >
                   {CHAIN_OPTIONS.map(opt => (
-                    <option 
-                      key={opt.value} 
-                      value={opt.value}
-                    >
+                    <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
                   ))}
                 </select>
-                
-                <MintCosmicNFT 
+
+                <MintCosmicNFT
                   graphConfig={{
                     graphData,
                     targetNode: address.toLowerCase(),
@@ -259,7 +270,7 @@ export function MenuActions({
                     particleMode,
                     isOrbiting,
                     viewState: currentViewState === null ? undefined : currentViewState,
-                    transferDirection
+                    transferDirection,
                   }}
                   selectedChain={selectedChain}
                   disabled={
@@ -307,20 +318,20 @@ export function MenuActions({
             <div className="text-xs text-slate-300 font-medium mb-1">Transactions</div>
             <div className="flex gap-0.5">
               {[
-                { mode: 'both', label: 'All' },
-                { mode: 'from', label: 'Sent' },
-                { mode: 'to', label: 'Received' },
+                { mode: "both", label: "All" },
+                { mode: "from", label: "Sent" },
+                { mode: "to", label: "Received" },
               ].map(({ mode, label }) => (
                 <button
                   key={mode}
                   className={`btn btn-xs flex-1 text-xs ${
-                    transferDirection === mode 
-                      ? 'btn-primary bg-gradient-to-r from-blue-600 to-purple-600' 
-                      : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
+                    transferDirection === mode
+                      ? "btn-primary bg-gradient-to-r from-blue-600 to-purple-600"
+                      : "btn-outline border-slate-600 text-slate-300 hover:border-slate-400"
                   }`}
-                  onClick={() => { 
-                    setTransferDirection(mode as any); 
-                    handleParamsChange(); 
+                  onClick={() => {
+                    setTransferDirection(mode as any);
+                    handleParamsChange();
                   }}
                   disabled={loading}
                 >
@@ -335,16 +346,16 @@ export function MenuActions({
             <div className="text-xs text-slate-300 font-medium mb-1">Layout</div>
             <div className="flex gap-0.5">
               {[
-                { mode: 'shell', icon: Squares2X2Icon },
-                { mode: 'force', icon: BoltIcon },
-                { mode: 'fibonacci', icon: SwirlIcon }
+                { mode: "shell", icon: Squares2X2Icon },
+                { mode: "force", icon: BoltIcon },
+                { mode: "fibonacci", icon: SwirlIcon },
               ].map(({ mode, icon: Icon }) => (
                 <button
                   key={mode}
                   className={`btn btn-xs flex-1 ${
-                    layoutMode === mode 
-                      ? 'btn-primary bg-gradient-to-r from-blue-600 to-purple-600' 
-                      : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
+                    layoutMode === mode
+                      ? "btn-primary bg-gradient-to-r from-blue-600 to-purple-600"
+                      : "btn-outline border-slate-600 text-slate-300 hover:border-slate-400"
                   }`}
                   onClick={() => setLayoutMode(mode as any)}
                 >
@@ -359,18 +370,18 @@ export function MenuActions({
             <div className="text-xs text-slate-300 font-medium mb-1">Particles</div>
             <div className="flex gap-0.5">
               {[
-                { mode: 'pulse', icon: PlayIcon },
-                { mode: 'laser', icon: BoltIcon },
-                { mode: 'off', icon: XMarkIcon }
+                { mode: "pulse", icon: PlayIcon },
+                { mode: "laser", icon: BoltIcon },
+                { mode: "off", icon: XMarkIcon },
               ].map(({ mode, icon: Icon }) => (
                 <button
                   key={mode}
                   className={`btn btn-xs flex-1 ${
-                    particleMode === mode 
-                      ? (mode === 'off' 
-                          ? 'btn-primary bg-gradient-to-r from-gray-600 to-gray-700' 
-                          : 'btn-primary bg-gradient-to-r from-purple-600 to-pink-600')
-                      : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
+                    particleMode === mode
+                      ? mode === "off"
+                        ? "btn-primary bg-gradient-to-r from-gray-600 to-gray-700"
+                        : "btn-primary bg-gradient-to-r from-purple-600 to-pink-600"
+                      : "btn-outline border-slate-600 text-slate-300 hover:border-slate-400"
                   }`}
                   onClick={() => setParticleMode(mode as any)}
                 >
@@ -389,16 +400,16 @@ export function MenuActions({
             <div className="flex gap-0.5">
               <button
                 className={`btn btn-xs flex-1 ${
-                  isOrbiting  // 🔧 Changed from isAutoOrbiting
-                    ? 'btn-primary bg-gradient-to-r from-cyan-600 to-blue-600' 
-                    : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
+                  isOrbiting // 🔧 Changed from isAutoOrbiting
+                    ? "btn-primary bg-gradient-to-r from-cyan-600 to-blue-600"
+                    : "btn-outline border-slate-600 text-slate-300 hover:border-slate-400"
                 }`}
-                onClick={() => setIsOrbiting(!isOrbiting)}  // 🔧 Changed from setIsAutoOrbiting
-                title={isOrbiting ? "Pause Orbit" : "Auto Orbit"}  // 🔧 Changed from isAutoOrbiting
+                onClick={() => setIsOrbiting(!isOrbiting)} // 🔧 Changed from setIsAutoOrbiting
+                title={isOrbiting ? "Pause Orbit" : "Auto Orbit"} // 🔧 Changed from isAutoOrbiting
               >
                 {isOrbiting ? <PauseIcon className="w-3 h-3" /> : <PlayIcon className="w-3 h-3" />}
               </button>
-              
+
               <button
                 onClick={handleResetView}
                 className="btn btn-xs flex-1 btn-outline border-slate-600 text-slate-300 hover:border-slate-400"
@@ -409,9 +420,9 @@ export function MenuActions({
 
               <button
                 className={`btn btn-xs flex-1 ${
-                  showNodeLabels 
-                    ? 'btn-primary bg-gradient-to-r from-green-600 to-emerald-600' 
-                    : 'btn-outline border-slate-600 text-slate-300 hover:border-slate-400'
+                  showNodeLabels
+                    ? "btn-primary bg-gradient-to-r from-green-600 to-emerald-600"
+                    : "btn-outline border-slate-600 text-slate-300 hover:border-slate-400"
                 }`}
                 onClick={() => setShowNodeLabels(!showNodeLabels)}
                 title={showNodeLabels ? "Hide Labels" : "Show Labels"}

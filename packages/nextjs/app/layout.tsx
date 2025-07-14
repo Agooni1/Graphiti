@@ -4,25 +4,18 @@ import { ThemeProvider } from "~~/components/ThemeProvider";
 import "~~/styles/globals.css";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
-export const metadata = getMetadata({ 
-  title: "Explore Ethereum in 3D", 
-  description: "Visualize Ethereum blockchain. Explore addresses, transactions, and smart contracts." 
+export const metadata = getMetadata({
+  title: "Explore Ethereum in 3D",
+  description: "Visualize Ethereum blockchain. Explore addresses, transactions, and smart contracts.",
 });
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
     <html suppressHydrationWarning>
       <body className="bg-slate-900">
-        <ThemeProvider
-          defaultTheme="dark"
-          forcedTheme="dark"
-          enableSystem={false}
-          attribute="data-theme"
-        >
+        <ThemeProvider defaultTheme="dark" forcedTheme="dark" enableSystem={false} attribute="data-theme">
           <ScaffoldEthAppWithProviders>
-            <div className="min-h-screen bg-slate-900">
-              {children}
-            </div>
+            <div className="min-h-screen bg-slate-900">{children}</div>
           </ScaffoldEthAppWithProviders>
         </ThemeProvider>
       </body>

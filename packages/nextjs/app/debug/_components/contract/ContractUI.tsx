@@ -44,7 +44,7 @@ export const ContractUI = ({ contractName, className = "" }: ContractUIProps) =>
           <div className="text-6xl mb-4 opacity-50">⚠️</div>
           <div className="text-slate-300 text-xl mb-2 font-medium">Contract Not Found</div>
           <p className="text-slate-400">
-            No contract found by the name of "{contractName}" on chain "{targetNetwork.name}"
+            No contract found by the name of &quot;{contractName}&quot; on chain &quot;{targetNetwork.name}&quot;
           </p>
         </div>
       </div>
@@ -54,7 +54,6 @@ export const ContractUI = ({ contractName, className = "" }: ContractUIProps) =>
   return (
     <div className={`grid grid-cols-1 lg:grid-cols-6 px-6 lg:px-10 lg:gap-8 w-full max-w-7xl my-0 ${className}`}>
       <div className="col-span-5 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-        
         {/* Contract Info Panel */}
         <div className="col-span-1 flex flex-col">
           <div className="bg-slate-800/40 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl p-6 mb-6 relative">
@@ -67,13 +66,13 @@ export const ContractUI = ({ contractName, className = "" }: ContractUIProps) =>
                   <Address address={deployedContractData.address} />
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-black/20 rounded-lg p-3 border border-white/10 text-center">
                   <div className="text-green-400 text-xs font-medium mb-1">Balance</div>
                   <Balance address={deployedContractData.address} className="text-white font-bold text-sm" />
                 </div>
-                
+
                 {targetNetwork && (
                   <div className="bg-black/20 rounded-lg p-3 border border-white/10 text-center">
                     <div className="text-cyan-400 text-xs font-medium mb-1">Network</div>
@@ -88,9 +87,7 @@ export const ContractUI = ({ contractName, className = "" }: ContractUIProps) =>
 
           {/* Contract Variables */}
           <div className="bg-slate-800/40 backdrop-blur-sm border border-purple-500/20 rounded-2xl shadow-2xl p-6">
-            <h4 className="text-lg font-semibold text-purple-300 mb-4 flex items-center">
-              Variables
-            </h4>
+            <h4 className="text-lg font-semibold text-purple-300 mb-4 flex items-center">Variables</h4>
             <ContractVariables
               refreshDisplayVariables={refreshDisplayVariables}
               deployedContractData={deployedContractData}
@@ -102,9 +99,7 @@ export const ContractUI = ({ contractName, className = "" }: ContractUIProps) =>
         <div className="col-span-1 lg:col-span-2 flex flex-col gap-6">
           <div className="bg-slate-800/40 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl relative">
             <div className="p-6">
-              <h4 className="text-lg font-semibold text-blue-300 mb-4 flex items-center">
-                Read Methods
-              </h4>
+              <h4 className="text-lg font-semibold text-blue-300 mb-4 flex items-center">Read Methods</h4>
               <div className="space-y-4">
                 <ContractReadMethods deployedContractData={deployedContractData} />
               </div>

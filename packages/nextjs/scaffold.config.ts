@@ -28,14 +28,11 @@ const scaffoldConfig = {
   // You can get your own at https://dashboard.alchemyapi.io
   // It's recommended to store it in an env variable:
   // .env.local for local testing, and in the Vercel/system env config for live apps.
-  alchemyApiKey: process.env.PRIVATE_ALCHEMY_API_KEY || DEFAULT_ALCHEMY_API_KEY,
+  alchemyApiKey: process.env.ALCHEMY_API_KEY || DEFAULT_ALCHEMY_API_KEY,
   
   // 🔧 UPDATE: Add RPC overrides for all networks
   rpcOverrides: {
-    [chains.sepolia.id]: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || "",
-    [chains.arbitrum.id]: process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL || "",
-    [chains.base.id]: process.env.NEXT_PUBLIC_BASE_RPC_URL || "",
-    [chains.mainnet.id]: process.env.NEXT_PUBLIC_MAINNET_RPC_URL || "",
+    
   },
 
   // This is ours WalletConnect's default project ID.

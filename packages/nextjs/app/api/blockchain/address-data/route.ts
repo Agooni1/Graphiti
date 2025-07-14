@@ -1,19 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
+import { NETWORK_MAP } from "../utils";
 import { Alchemy, Network } from "alchemy-sdk";
-import { ethers } from 'ethers';
-import { NETWORK_MAP } from "../utils"
+import { ethers } from "ethers";
 
 export async function POST(request: NextRequest) {
   try {
     const { address, chain } = await request.json();
     type ChainKey = keyof typeof NETWORK_MAP;
-    const network = NETWORK_MAP[(chain as ChainKey)] || Network.ETH_SEPOLIA;
-    
+    const network = NETWORK_MAP[chain as ChainKey] || Network.ETH_SEPOLIA;
+
     if (!address || !ethers.isAddress(address)) {
-      return NextResponse.json({ error: 'Invalid Ethereum address' }, { status: 400 });
+      return NextResponse.json({ error: "Invalid Ethereum address" }, { status: 400 });
     }
 
-    console.log(`🔍 Server: Fetching blockchain data for ${address}`);
+    // console.log(`🔍 Server: Fetching blockchain data for ${address}`);
 
     // Initialize Alchemy directly inside the API route
     const alchemyConfig = {
@@ -33,18 +33,20 @@ export async function POST(request: NextRequest) {
       transactionCount,
       connectedAddresses: getMockConnectedAddresses(address),
       recentTransactions: getMockTransactions(address),
-      tokenBalances: getMockTokenBalances(address),
+      tokenBalances: getMockTokenBalances(),
       nftCount: Math.floor(Math.random() * 20),
     };
 
-    console.log(`✅ Server: Blockchain data fetched for ${address}`);
+    // console.log(`✅ Server: Blockchain data fetched for ${address}`);
     return NextResponse.json(cosmicData);
-    
   } catch (error) {
-    console.error('Blockchain data fetch error:', error);
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Failed to fetch blockchain data' 
-    }, { status: 500 });
+    console.error("Blockchain data fetch error:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Failed to fetch blockchain data",
+      },
+      { status: 500 },
+    );
   }
 }
 
@@ -52,9 +54,7 @@ export async function POST(request: NextRequest) {
 function getMockConnectedAddresses(address: string): string[] {
   const addresses = [];
   for (let i = 0; i < 8; i++) {
-    const mockAddress = ethers.getAddress(
-      "0x" + ethers.keccak256(ethers.toUtf8Bytes(address + i)).slice(2, 42)
-    );
+    const mockAddress = ethers.getAddress("0x" + ethers.keccak256(ethers.toUtf8Bytes(address + i)).slice(2, 42));
     addresses.push(mockAddress);
   }
   return addresses;
@@ -74,7 +74,7 @@ function getMockTransactions(address: string) {
   return transactions;
 }
 
-function getMockTokenBalances(address: string) {
+function getMockTokenBalances() {
   return [
     { symbol: "USDC", balance: "1000.50", contractAddress: "0xA0b86a33E6410fCaA2df108ffB1De3b15b4c0c8A" },
     { symbol: "WETH", balance: "5.25", contractAddress: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" },

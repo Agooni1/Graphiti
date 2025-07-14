@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { NFTCard } from "./NFTCard";
 import { useScaffoldContract, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
-
 // Import cosmic NFT functions
 import { getMetadataFromIPFS } from "~~/utils/cosmicNFT/ipfs-fetch";
 
@@ -29,8 +28,8 @@ export interface Collectible extends Partial<NFTMetaData> {
   id: number;
   uri: string;
   owner: string;
-  targetAddress: string;  // 🔧 ADD: Target address from contract
-  mintTimestamp: bigint;  // 🔧 ADD: Mint timestamp from contract
+  targetAddress: string; // 🔧 ADD: Target address from contract
+  mintTimestamp: bigint; // 🔧 ADD: Mint timestamp from contract
 }
 
 export const AllHoldings = () => {
@@ -55,21 +54,21 @@ export const AllHoldings = () => {
       setAllCollectiblesLoading(true);
       const collectibleUpdate: Collectible[] = [];
       const totalTokens = parseInt(totalSupply.toString());
-      
+
       // 🔧 FIX: Check if there are any tokens before looping
       if (totalTokens === 0) {
         setAllCollectibles([]);
         setAllCollectiblesLoading(false);
         return;
       }
-      
+
       // Loop through all existing tokens using tokenByIndex
       for (let index = 0; index < totalTokens; index++) {
         try {
           // Get the actual token ID at this index (handles gaps from burned tokens)
           const tokenId = await yourCollectibleContract.read.tokenByIndex([BigInt(index)]);
           const tokenIdNumber = parseInt(tokenId.toString());
-          
+
           // Get owner of this token
           const owner = await yourCollectibleContract.read.ownerOf([tokenId]);
 
@@ -77,7 +76,7 @@ export const AllHoldings = () => {
           const cardGraphData = await yourCollectibleContract.read.cosmicGraphs([tokenId]);
           const targetAddress = cardGraphData[0] as string;
           const mintTimestamp = cardGraphData[1] as bigint;
-          
+
           // Get token URI (which is just the IPFS hash)
           const tokenURI = await yourCollectibleContract.read.tokenURI([tokenId]);
 
@@ -88,7 +87,7 @@ export const AllHoldings = () => {
           let nftMetadata: NFTMetaData;
           try {
             nftMetadata = await getMetadataFromIPFS(ipfsHash);
-            
+
             // Process IPFS URLs for image and animation_url
             if (nftMetadata.image && nftMetadata.image.startsWith("ipfs://")) {
               nftMetadata.image = nftMetadata.image.replace("ipfs://", "https://ipfs.io/ipfs/");
@@ -97,7 +96,6 @@ export const AllHoldings = () => {
             if (nftMetadata.animation_url && nftMetadata.animation_url.startsWith("ipfs://")) {
               nftMetadata.animation_url = nftMetadata.animation_url.replace("ipfs://", "https://ipfs.io/ipfs/");
             }
-
           } catch (metadataError) {
             console.error(`❌ Error fetching metadata for token ${tokenIdNumber}:`, metadataError);
 
@@ -105,8 +103,9 @@ export const AllHoldings = () => {
             nftMetadata = {
               name: `NFT #${tokenIdNumber}`,
               description: "Metadata loading failed",
-              image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5GVDwvdGV4dD48L3N2Zz4=",
-              attributes: []
+              image:
+                "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5GVDwvdGV4dD48L3N2Zz4=",
+              attributes: [],
             };
           }
 
@@ -120,13 +119,12 @@ export const AllHoldings = () => {
           };
 
           collectibleUpdate.push(collectible);
-
         } catch (e) {
           console.error(`Error fetching NFT at index ${index}:`, e);
           // Skip this token since we can't get its ID
         }
       }
-      
+
       // Sort by token ID (ascending)
       collectibleUpdate.sort((a, b) => a.id - b.id);
       setAllCollectibles(collectibleUpdate);
@@ -152,9 +150,7 @@ export const AllHoldings = () => {
         <div className="flex justify-center items-center mt-10">
           <div className="text-center">
             <div className="text-2xl text-primary-content mb-4">No NFTs found</div>
-            <p className="text-slate-400">
-              No NFTs have been minted yet. Be the first to create one!
-            </p>
+            <p className="text-slate-400">No NFTs have been minted yet. Be the first to create one!</p>
           </div>
         </div>
       ) : (
