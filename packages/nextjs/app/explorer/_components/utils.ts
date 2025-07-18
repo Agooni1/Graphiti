@@ -18,8 +18,8 @@ export async function getSignature(
   }
 
   const { signature } = await response.json();
-  console.log("Frontend received signature:", signature);
-  console.log("Frontend signature length:", signature.length);
+  // console.log("Frontend received signature:", signature);
+  // console.log("Frontend signature length:", signature.length);
 
   // Validate and ensure proper hex format
   if (!signature || typeof signature !== "string") {

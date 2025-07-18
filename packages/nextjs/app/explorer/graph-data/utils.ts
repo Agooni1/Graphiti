@@ -197,7 +197,7 @@ export async function fetchAllTransfers(address: string, chain: string = "eth"):
 
     const url = `${baseUrl}/api/blockchain/transfers?address=${encodeURIComponent(address)}&chain=${encodeURIComponent(chain)}`;
 
-    console.log(`🔗 Fetching transfers from: ${url}`);
+    // console.log(`🔗 Fetching transfers from: ${url}`);
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -210,7 +210,7 @@ export async function fetchAllTransfers(address: string, chain: string = "eth"):
       throw new Error(data.error);
     }
 
-    console.log("✅ Fetched transfers:", data.transfers?.length || 0, "transfers");
+    // console.log("✅ Fetched transfers:", data.transfers?.length || 0, "transfers");
 
     return data.transfers || [];
   } catch (err) {

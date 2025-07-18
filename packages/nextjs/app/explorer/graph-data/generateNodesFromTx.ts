@@ -61,7 +61,7 @@ export async function generateNodesFromTx(
   }
 
   const nodes = Array.from(nodesMap.values());
-  console.log("nodedata:", nodes);
+  // console.log("nodedata:", nodes);
   return {
     nodes,
     links,

@@ -69,7 +69,7 @@ export default function SimpleCosmicGraph({
   // Create the actual reset function and assign it to the ref
   useEffect(() => {
     const resetView = () => {
-      console.log("Graph reset function called - resetting view!");
+      // console.log("Graph reset function called - resetting view!");
       setPanOffset({ x: 0, y: 0 });
       setOrbitRotation({ x: 0, y: 0 });
       orbitRotationRef.current = { x: 0, y: 0 };

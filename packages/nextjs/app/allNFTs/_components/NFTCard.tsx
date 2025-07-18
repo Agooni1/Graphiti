@@ -59,7 +59,6 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
       });
 
       setShowBurnConfirm(false);
-      console.log(`🔥 Successfully burned NFT #${nft.id}`);
     } catch (error) {
       console.error("Error burning NFT:", error);
       setShowBurnConfirm(false);
@@ -77,7 +76,6 @@ export const NFTCard = ({ nft }: { nft: Collectible }) => {
       });
 
       setTransferToAddress("");
-      console.log(`✅ Successfully transferred NFT #${nft.id} to ${transferToAddress}`);
     } catch (error) {
       console.error("Error transferring NFT:", error);
     }
