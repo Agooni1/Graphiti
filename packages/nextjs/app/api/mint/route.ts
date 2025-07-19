@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Wallet, getBytes, solidityPackedKeccak256, verifyMessage } from "ethers";
 import { generateNodesFromTx } from "~~/app/explorer/graph-data/generateNodesFromTx";
-// Import the cached functions from your utils
 import { FilterAndSortTx, FilterPair, getETHBalanceCached } from "~~/app/explorer/graph-data/utils";
 import { fetchAllTransfersCached } from "~~/app/explorer/graph-data/utils";
 import { getGraphHTMLForIPFS } from "~~/app/explorer/graph/htmlGraphGenerator";
@@ -10,7 +9,6 @@ import { generateMetadata } from "~~/utils/cosmicNFT/generateMetadata";
 
 const signer = new Wallet(process.env.SIGNING_PRIVATE_KEY!);
 
-// Rate limiting and request tracking
 const addressRequestTracker = new Map<string, number>();
 const pendingRequests = new Set<string>();
 
@@ -31,27 +29,25 @@ export async function POST(req: NextRequest) {
     targetNode,
     viewState,
     graphData: clientGraphData,
-    nonce, // <-- include nonce here!
+    nonce,
   } = await req.json();
 
-  // 🔧 LOCALHOST OVERRIDE: Use test address for development
+  // Step 1: LOCALHOST OVERRIDE
   const userAddress = IS_LOCALHOST ? TEST_ADDRESS : originalUserAddress;
 
-  // Input validation - relaxed for localhost
+  // Step 2: Input validation
   if (!IS_LOCALHOST && (!userAddress || !signature || !message || !timestamp)) {
     return NextResponse.json({ error: "Missing required authentication fields" }, { status: 400 });
   }
 
   try {
-    // 🔧 SKIP AUTHENTICATION FOR LOCALHOST
+    // Step 3: Authentication
     if (!IS_LOCALHOST) {
-      // 1. Verify timestamp is recent (within 5 minutes)
       const now = Date.now();
-      if (now - timestamp > 5 * 60 * 1000) {
+      if (now - timestamp > 1 * 60 * 1000) {
         return NextResponse.json({ error: "Request expired - timestamp too old" }, { status: 400 });
       }
 
-      // 2. Verify signature proves address ownership
       const expectedMessage = `Mint cosmic graph for ${userAddress} at ${timestamp}`;
       if (message !== expectedMessage) {
         return NextResponse.json({ error: "Invalid message format" }, { status: 400 });
@@ -63,28 +59,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 🔧 SKIP RATE LIMITING FOR LOCALHOST
+    // Step 4: Rate limiting
     if (!IS_LOCALHOST) {
-      // 4. Prevent concurrent requests for same address
       if (pendingRequests.has(userAddress.toLowerCase())) {
-        return NextResponse.json(
-          {
-            error: "Request already in progress for this address",
-          },
-          { status: 409 },
-        );
+        return NextResponse.json({ error: "Request already in progress for this address" }, { status: 409 });
       }
-
-      // Mark request as pending
       pendingRequests.add(userAddress.toLowerCase());
       addressRequestTracker.set(userAddress.toLowerCase(), Date.now());
     }
 
-    // 5. Fetch transfers using CACHED function (likely already cached!)
+    // Step 5: Fetch transfers
     const allTransfers = await fetchAllTransfersCached(userAddress, chain);
 
     if (allTransfers.length === 0) {
-      // Add more detailed error information
       return NextResponse.json(
         {
           error: `No transaction history found for address ${userAddress} on ${chain} network`,
@@ -99,34 +86,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Process transfers to get pairs
+    // Step 6: Process transfers
     const filteredTransfers: any[] = FilterAndSortTx(allTransfers, {
-      //   maxCount: txDisplayLimit,           // 🔧 Changed from 1000 to txDisplayLimit
-      direction: transferDirection, // 🔧 Changed from "both" to transferDirection
-      address: userAddress, // 🔧 Keep the same (userAddress = address)
-      // 🔧 Remove "order: newest" - page.tsx doesn't use it
+      direction: transferDirection,
+      address: userAddress,
     });
 
     const pairsFromParent = FilterPair(filteredTransfers, userAddress);
 
-    // 7. Generate graph data using the SAME function as the graph UI
+    // Step 7: Generate graph data
     let generatedgraphData;
     if (clientGraphData && clientGraphData.nodes && clientGraphData.links) {
-      generatedgraphData = clientGraphData; // <-- USE CLIENT DATA IF PROVIDED
+      generatedgraphData = clientGraphData;
     } else {
-      generatedgraphData = await generateNodesFromTx(filteredTransfers, chain, (loaded, total) =>
-        console.log(`📊 Processing nodes: ${loaded}/${total}`),
-      );
+      generatedgraphData = await generateNodesFromTx(filteredTransfers, chain);
     }
 
-    // 9. Generate HTML visualization (use ACTUAL UI state)
+    // Step 8: Generate HTML visualization
     const graphConfig = {
       graphData: generatedgraphData,
-      targetNode: targetNode || userAddress, // 🔧 Use passed targetNode
+      targetNode: targetNode || userAddress,
       layoutMode: layoutMode as "shell" | "force" | "fibonacci",
       particleMode: particleMode as "pulse" | "laser" | "off",
-      isOrbiting: isOrbiting, // 🔧 Use passed isOrbiting value
-      viewState: viewState || undefined, // 🔧 Use passed viewState
+      isOrbiting: isOrbiting,
+      viewState: viewState || undefined,
     };
 
     const htmlContent = getGraphHTMLForIPFS(graphConfig);
@@ -134,14 +117,14 @@ export async function POST(req: NextRequest) {
       throw new Error("Failed to generate HTML content");
     }
 
-    // 10. Upload HTML to IPFS
+    // Step 9: Upload HTML to IPFS
     const htmlUploadRes = await internalApiPost("/api/ipfs/upload-html", {
       htmlContent,
       filename: `cosmic-graph-${userAddress.slice(0, 6)}.html`,
     });
     const htmlCid = htmlUploadRes.cid;
 
-    // 11. Create simple metadata (not using generateMetadata with cosmic data)
+    // Step 10: Create metadata
     const addressCosmicData = {
       address: userAddress,
       balance: await getETHBalanceAsBigInt(userAddress),
@@ -156,13 +139,12 @@ export async function POST(req: NextRequest) {
             ),
         ),
       ),
-      // Transform AssetTransfersResult[] to Transaction[]
       recentTransactions: allTransfers.slice(0, 10).map(transfer => ({
         hash: transfer.hash || transfer.uniqueId || `${transfer.blockNum}-${transfer.from}-${transfer.to}`,
         from: transfer.from || "",
         to: transfer.to || "",
         value: transfer.value?.toString() || "0",
-        timestamp: transfer.blockNum ? Number(transfer.blockNum) : Math.floor(Date.now() / 1000), // fallback to current time
+        timestamp: transfer.blockNum ? Number(transfer.blockNum) : Math.floor(Date.now() / 1000),
       })),
       tokenBalances: [],
       nftCount: 0,
@@ -177,13 +159,12 @@ export async function POST(req: NextRequest) {
       generatedgraphData.nodes.length,
     );
 
-    // 11. Upload metadata to IPFS
+    // Step 11: Upload metadata to IPFS
     const metadataUploadRes = await internalApiPost("/api/ipfs/upload-metadata", { metadata });
     const metadataCid = metadataUploadRes.cid;
 
-    // 12. Create signature for minting (assuming nonce is 0 for now)
+    // Step 12: Create signature for minting
     const messageHash = solidityPackedKeccak256(["string", "address", "uint256"], [metadataCid, userAddress, nonce]);
-
     const messageHashBytes = getBytes(messageHash);
     const mintingSignature = await signer.signMessage(messageHashBytes);
 
@@ -213,7 +194,6 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   } finally {
-    // Always remove from pending requests (only if not localhost)
     if (!IS_LOCALHOST) {
       pendingRequests.delete(userAddress.toLowerCase());
     }
@@ -232,7 +212,6 @@ async function getETHBalanceAsBigInt(address: string): Promise<bigint> {
     if (!cleanBalance || cleanBalance === ".") {
       return BigInt(0);
     }
-    // Convert to wei (multiply by 10^18 if it's in ETH)
     const balanceNum = parseFloat(cleanBalance);
     return BigInt(Math.floor(balanceNum * 1e18));
   } catch {
@@ -253,12 +232,11 @@ const getChainId = (chain: string) => {
     case "arbitrum":
       return 42161;
     default:
-      return 11155111; // fallback to sepolia
+      return 11155111;
   }
 };
 
-// Add this helper function in your /api/mint/route.ts file
-
+// Internal API POST helper
 async function internalApiPost(path: string, body: any) {
   const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
 

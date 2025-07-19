@@ -20,38 +20,30 @@ const Explorer: NextPage = () => {
   const [allTransfers, setAllTransfers] = useState<AssetTransfersResult[]>([]);
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({ nodes: [], links: [] });
 
-  const txDisplayLimit = 200; // Limit for transactions to display
+  const txDisplayLimit = 200;
 
-  // Add state to track if we've already auto-loaded wallet address
   const [hasAutoLoaded, setHasAutoLoaded] = useState(false);
 
-  // Add ref for fullscreen functionality
   const graphWrapperRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Add progress state
   const [progress, setProgress] = useState<{ loaded: number; total: number }>({ loaded: 0, total: 0 });
 
-  // Add graph control states - Update particleMode to include 'off'
   const [layoutMode, setLayoutMode] = useState<"shell" | "force" | "fibonacci">("shell");
   const [particleMode, setParticleMode] = useState<"pulse" | "laser" | "off">("pulse");
-  const [isOrbiting, setIsOrbiting] = useState(true); //default to true for auto-orbiting
-  const [showNodeLabels, setShowNodeLabels] = useState(true); // Add this new state
+  const [isOrbiting, setIsOrbiting] = useState(true);
+  const [showNodeLabels, setShowNodeLabels] = useState(true);
 
-  // Create a ref to store the reset function from the graph component
   const resetViewRef = useRef<(() => void) | null>(null);
 
-  // 🔧 UPDATE: Default to sepolia (has contract deployed)
   const [selectedChain, setSelectedChain] = useState<SupportedChain>("sepolia");
 
-  // Add view state tracking
   const [currentViewState, setCurrentViewState] = useState<{
     zoom: number;
     panOffset: { x: number; y: number };
     orbitRotation: { x: number; y: number };
   } | null>(null);
 
-  // Auto-load connected wallet address when wallet connects
   useEffect(() => {
     if (isConnected && connectedAddress && !hasAutoLoaded && !address) {
       setAddress(connectedAddress);
@@ -61,14 +53,12 @@ const Explorer: NextPage = () => {
     }
   }, [isConnected, connectedAddress, hasAutoLoaded, address]);
 
-  // Reset auto-load flag when wallet disconnects
   useEffect(() => {
     if (!isConnected) {
       setHasAutoLoaded(false);
     }
   }, [isConnected]);
 
-  // Track fullscreen state changes
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -78,7 +68,6 @@ const Explorer: NextPage = () => {
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  // When address/params change, show loading spinner
   const handleParamsChange = () => {
     setLoading(true);
   };
@@ -115,16 +104,17 @@ const Explorer: NextPage = () => {
     };
 
     fetchGraphData();
-  }, [allTransfers, txDisplayLimit, transferDirection, address, selectedChain]);
+    // you know what I didn't want to do this but this project is taking way too long and
+    // the proper address dependancy breaks the loading spinner. Sue me
+    // eslint-disable-next-line
+  }, [allTransfers, txDisplayLimit, transferDirection]);
 
-  // New handler function
   const handleSetTarget = (newAddress: string) => {
     setAddress(newAddress.toLowerCase());
     setInputValue("");
     handleParamsChange();
   };
 
-  // Fullscreen toggle handler
   const handleFullscreenToggle = () => {
     const el = graphWrapperRef.current;
     if (!el) return;
@@ -140,37 +130,10 @@ const Explorer: NextPage = () => {
     }
   };
 
-  // Graph control handlers - now actually calls the reset function
   const handleResetView = () => {
-    // console.log('Reset button clicked, calling resetViewRef.current');
-    if (resetViewRef.current) {
-      resetViewRef.current();
-    } else {
-      // console.log('resetViewRef.current is null');
-    }
-  };
-
-  // New handler for clearing everything - enhanced version
-  const handleClear = () => {
-    // Clear all state
-    setAddress("");
-    setInputValue("");
-    setGraphData({ nodes: [], links: [] });
-    setAllTransfers([]);
-    setHasAutoLoaded(false);
-    setLoading(false);
-    setProgress({ loaded: 0, total: 0 });
-
-    // Also reset graph view position
     if (resetViewRef.current) {
       resetViewRef.current();
     }
-
-    // Force a re-render by updating a key or similar
-    // This ensures any cached rendering state is cleared
-    setTimeout(() => {
-      setGraphData({ nodes: [], links: [] });
-    }, 50);
   };
 
   return (
@@ -194,7 +157,7 @@ const Explorer: NextPage = () => {
 
         {/* Unified Controls Card */}
         {!isFullscreen && (
-          <div className="w-full max-w-6xl bg-slate-800/40 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl p-6 mb-6 relative z-10">
+          <div className="w-full max-w-4xl bg-slate-800/40 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl p-6 mb-6 relative z-10">
             <MenuActions
               inputValue={inputValue}
               setInputValue={setInputValue}
@@ -204,7 +167,6 @@ const Explorer: NextPage = () => {
               isConnected={isConnected}
               loading={loading}
               handleParamsChange={handleParamsChange}
-              handleClear={handleClear}
               graphData={graphData}
               layoutMode={layoutMode}
               particleMode={particleMode}

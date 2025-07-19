@@ -30,9 +30,8 @@ const scaffoldConfig = {
   // .env.local for local testing, and in the Vercel/system env config for live apps.
   alchemyApiKey: process.env.ALCHEMY_API_KEY || DEFAULT_ALCHEMY_API_KEY,
   
-  // 🔧 UPDATE: Add RPC overrides for all networks
+  
   rpcOverrides: {
-    
   },
 
   // This is ours WalletConnect's default project ID.

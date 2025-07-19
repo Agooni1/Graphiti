@@ -4,8 +4,6 @@ import { Wallet, getBytes, solidityPackedKeccak256 } from "ethers";
 
 const signer = new Wallet(process.env.SIGNING_PRIVATE_KEY!);
 
-// console.log("Signer address:", signer.address);
-
 export async function POST(req: NextRequest) {
   const { ipfsHash, userAddress, currentNonce } = await req.json();
 
@@ -44,19 +42,10 @@ export async function POST(req: NextRequest) {
     [ipfsHash, userAddress, currentNonce + 2],
   );
 
-  // console.log("Backend - IPFS Hash:", ipfsHash);
-  // console.log("Backend - User Address:", userAddress.toLowerCase());
-  // console.log("Backend - Nonce:", currentNonce);
-  // console.log("Backend - Message Hash:", messageHash);
-
-  // Convert hash to Uint8Array for signMessage
   const messageHashBytes = getBytes(messageHash);
 
   // Sign the hash bytes
   const signature = await signer.signMessage(messageHashBytes);
-
-  // console.log("Backend - Signature:", signature);
-  // console.log("Backend - Signature length:", signature.length);
 
   return NextResponse.json({
     signature: signature,
@@ -78,6 +67,5 @@ function validateUserMetadata(metadata: any, userAddress: string): boolean {
   if (!metadata.graphData || !metadata.graphData.nodes) {
     return false;
   }
-
   return true;
 }

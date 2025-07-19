@@ -41,7 +41,6 @@ interface MenuActionsProps {
   isConnected: boolean;
   loading: boolean;
   handleParamsChange: () => void;
-  handleClear: () => void;
   graphData: any;
   layoutMode: any;
   particleMode: any;
@@ -68,7 +67,6 @@ export function MenuActions({
   isConnected,
   loading,
   handleParamsChange,
-  handleClear,
   graphData,
   layoutMode,
   particleMode,
@@ -190,10 +188,10 @@ export function MenuActions({
             }
           />
 
-          {/* Action Buttons Grid - 2x3 layout */}
+          {/* Action Buttons Grid - mirrored layout, Generate left, Connected Address right */}
           <div className="grid grid-cols-3 gap-2">
             <button
-              className="btn btn-primary bg-gradient-to-r from-blue-600 to-purple-600 border-none hover:scale-105 transition-transform text-sm"
+              className="col-span-2 btn btn-primary bg-gradient-to-r from-blue-600 to-purple-600 border-none hover:scale-105 transition-transform text-sm"
               onClick={() => {
                 setAddress(inputValue);
                 setInputValue("");
@@ -206,7 +204,7 @@ export function MenuActions({
             </button>
 
             <button
-              className="btn bg-gradient-to-r from-cyan-600 to-blue-600 border-none text-white hover:scale-105 transition-transform text-sm"
+              className="col-span-1 btn bg-gradient-to-r from-cyan-600 to-blue-600 border-none text-white hover:scale-105 transition-transform text-sm"
               onClick={() => {
                 setAddress(connectedAddress ? connectedAddress : "");
                 setInputValue("");
@@ -215,14 +213,6 @@ export function MenuActions({
               disabled={!isConnected}
             >
               Use Connected Address
-            </button>
-
-            <button
-              className="btn btn-outline border-slate-500 text-slate-300 hover:border-slate-400 hover:bg-slate-600/20 text-sm"
-              onClick={handleClear}
-              title="Clear all data and start fresh"
-            >
-              Clear
             </button>
 
             <div className="col-span-3 space-y-2">
@@ -237,12 +227,12 @@ export function MenuActions({
               )}
 
               <div className="flex items-center gap-1 relative z-20">
-                {/* Chain selector and mint button */}
+                {/* Chain selector */}
                 <select
                   value={selectedChain}
                   onChange={e => handleNetworkChange(e.target.value as SupportedChain)}
                   disabled={isSwitchingNetwork}
-                  className={`min-w-[120px] min-h-[35px] text-s px-2 py-1 rounded-lg bg-gradient-to-r from-slate-800/90 to-slate-700/90 backdrop-blur-sm border text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all duration-200 hover:border-slate-500/60 hover:from-slate-700/90 hover:to-slate-600/90 cursor-pointer shadow-lg ${
+                  className={`w-[160px] min-h-[35px] text-s px-2 py-1 rounded-lg bg-gradient-to-r from-slate-800/90 to-slate-700/90 backdrop-blur-sm border text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all duration-200 hover:border-slate-500/60 hover:from-slate-700/90 hover:to-slate-600/90 cursor-pointer shadow-lg ${
                     isSwitchingNetwork
                       ? "opacity-60 cursor-not-allowed"
                       : showWrongNetworkWarning
@@ -262,6 +252,7 @@ export function MenuActions({
                   ))}
                 </select>
 
+                {/* Mint button */}
                 <MintCosmicNFT
                   graphConfig={{
                     graphData,
