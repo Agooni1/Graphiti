@@ -24,6 +24,7 @@ import {
   getChainId,
   isContractDeployedOnChain,
 } from "~~/utils/cosmicNFT/chainHelpers";
+import { Listbox } from "@headlessui/react";
 
 // 🔧 UPDATE: Show all chains, not just deployed ones
 const CHAIN_OPTIONS = Object.entries(CHAIN_CONFIGS).map(([value, config]) => ({
@@ -228,29 +229,26 @@ export function MenuActions({
 
               <div className="flex items-center gap-1 relative z-20">
                 {/* Chain selector */}
-                <select
-                  value={selectedChain}
-                  onChange={e => handleNetworkChange(e.target.value as SupportedChain)}
-                  disabled={isSwitchingNetwork}
-                  className={`w-[160px] min-h-[35px] text-s px-2 py-1 rounded-lg bg-gradient-to-r from-slate-800/90 to-slate-700/90 backdrop-blur-sm border text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all duration-200 hover:border-slate-500/60 hover:from-slate-700/90 hover:to-slate-600/90 cursor-pointer shadow-lg ${
-                    isSwitchingNetwork
-                      ? "opacity-60 cursor-not-allowed"
-                      : showWrongNetworkWarning
-                        ? "border-orange-500/60 ring-1 ring-orange-500/20"
-                        : "border-slate-600/40"
-                  }`}
-                  title={
-                    isSwitchingNetwork
-                      ? "Switching network..."
-                      : "Select blockchain network - this will switch your wallet too"
-                  }
-                >
-                  {CHAIN_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <Listbox value={selectedChain} onChange={handleNetworkChange}>
+                  <div className="relative">
+                    <Listbox.Button className="w-[160px] min-h-[35px] rounded-lg bg-gradient-to-r from-slate-800/90 to-slate-700/90 text-slate-200 px-2 py-1">
+                      {CHAIN_CONFIGS[selectedChain].name}
+                    </Listbox.Button>
+                    <Listbox.Options className="absolute mt-1 w-[160px] rounded-lg bg-slate-800/90 text-slate-200 shadow-lg z-50">
+                      {CHAIN_OPTIONS.map(opt => (
+                        <Listbox.Option
+                          key={opt.value}
+                          value={opt.value}
+                          className={({ active }) =>
+                            `cursor-pointer select-none px-4 py-2 ${active ? "bg-slate-700/90" : ""}`
+                          }
+                        >
+                          {opt.label}
+                        </Listbox.Option>
+                      ))}
+                    </Listbox.Options>
+                  </div>
+                </Listbox>
 
                 {/* Mint button */}
                 <MintCosmicNFT

@@ -97,8 +97,8 @@ export function MintCosmicNFT({
       return;
     }
 
-    const notificationId = notification.loading("Checking affordability...");
     setIsMinting(true);
+    let notificationId = notification.loading("Preparing mint...");
 
     try {
       const canAfford = await canAffordMinting({
@@ -108,24 +108,22 @@ export function MintCosmicNFT({
         mintPrice: mintPriceWei.toString(),
       });
 
-      notification.remove(notificationId);
-
       if (!canAfford) {
         notification.error("❌ Insufficient funds for minting + gas fees");
         setIsMinting(false);
+        notification.remove(notificationId);
         return;
       }
 
-      // Step 1: Authentication
-      const authNotificationId = notification.loading("Signing authentication message...");
+      notification.remove(notificationId);
+      notificationId = notification.loading("Signing authentication message...");
+
       const timestamp = Date.now();
       const authMessage = `Mint cosmic graph for ${connectedAddress} at ${timestamp}`;
-
       const authSignature = await signMessageAsync({ message: authMessage });
-      notification.remove(authNotificationId);
 
-      // Step 2: Backend preparation
-      const mintNotificationId = notification.loading("Generating cosmic visualization...");
+      notification.remove(notificationId);
+      notificationId = notification.loading("Generating cosmic visualization...");
 
       const requestBody = {
         userAddress: connectedAddress,
@@ -135,7 +133,7 @@ export function MintCosmicNFT({
         timestamp,
         layoutMode: graphConfig.layoutMode,
         particleMode: graphConfig.particleMode,
-        chain: getApiChain(selectedChain), // 🔧 UPDATE: Use helper function
+        chain: getApiChain(selectedChain),
         transferDirection: graphConfig.transferDirection || "both",
         isOrbiting: graphConfig.isOrbiting,
         targetNode: graphConfig.targetNode,
@@ -155,10 +153,9 @@ export function MintCosmicNFT({
       }
 
       const { metadataCid, signature: mintingSignature } = await mintResponse.json();
-      notification.remove(mintNotificationId);
 
-      // Step 3: On-chain minting
-      const txNotificationId = notification.loading("Minting NFT on blockchain...");
+      notification.remove(notificationId);
+      notificationId = notification.loading("Minting NFT on blockchain...");
 
       await writeContractAsync({
         functionName: "mintGraph",
@@ -166,11 +163,11 @@ export function MintCosmicNFT({
         value: mintPriceWei,
       });
 
-      notification.remove(txNotificationId);
-      notification.success("🌌 Interactive Cosmic NFT minted successfully!");
-    } catch (error) {
+      notification.success("Interactive Cosmic NFT minted successfully!");
       notification.remove(notificationId);
+    } catch (error) {
       notification.error(`Failed to mint cosmic NFT: ${error instanceof Error ? error.message : "Unknown error"}`);
+      notification.remove(notificationId);
       console.error("Error minting cosmic NFT:", error);
     } finally {
       setIsMinting(false);

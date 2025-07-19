@@ -12,9 +12,6 @@ const signer = new Wallet(process.env.SIGNING_PRIVATE_KEY!);
 const addressRequestTracker = new Map<string, number>();
 const pendingRequests = new Set<string>();
 
-const IS_LOCALHOST = process.env.NODE_ENV === "development";
-const TEST_ADDRESS = "0xcC6eDeB501BbD8AD9E028BDe937B63Cdd64A1D91";
-
 export async function POST(req: NextRequest) {
   const {
     userAddress: originalUserAddress,
@@ -32,43 +29,38 @@ export async function POST(req: NextRequest) {
     nonce,
   } = await req.json();
 
-  // Step 1: LOCALHOST OVERRIDE
-  const userAddress = IS_LOCALHOST ? TEST_ADDRESS : originalUserAddress;
+  // Step 1: Input validation (no localhost override)
+  const userAddress = originalUserAddress;
 
-  // Step 2: Input validation
-  if (!IS_LOCALHOST && (!userAddress || !signature || !message || !timestamp)) {
+  if (!userAddress || !signature || !message || !timestamp) {
     return NextResponse.json({ error: "Missing required authentication fields" }, { status: 400 });
   }
 
   try {
-    // Step 3: Authentication
-    if (!IS_LOCALHOST) {
-      const now = Date.now();
-      if (now - timestamp > 1 * 60 * 1000) {
-        return NextResponse.json({ error: "Request expired - timestamp too old" }, { status: 400 });
-      }
-
-      const expectedMessage = `Mint cosmic graph for ${userAddress} at ${timestamp}`;
-      if (message !== expectedMessage) {
-        return NextResponse.json({ error: "Invalid message format" }, { status: 400 });
-      }
-
-      const recoveredAddress = verifyMessage(message, signature);
-      if (recoveredAddress.toLowerCase() !== userAddress.toLowerCase()) {
-        return NextResponse.json({ error: "Signature verification failed" }, { status: 403 });
-      }
+    // Step 2: Authentication
+    const now = Date.now();
+    if (now - timestamp > 1 * 60 * 1000) {
+      return NextResponse.json({ error: "Request expired - timestamp too old" }, { status: 400 });
     }
 
-    // Step 4: Rate limiting
-    if (!IS_LOCALHOST) {
-      if (pendingRequests.has(userAddress.toLowerCase())) {
-        return NextResponse.json({ error: "Request already in progress for this address" }, { status: 409 });
-      }
-      pendingRequests.add(userAddress.toLowerCase());
-      addressRequestTracker.set(userAddress.toLowerCase(), Date.now());
+    const expectedMessage = `Mint cosmic graph for ${userAddress} at ${timestamp}`;
+    if (message !== expectedMessage) {
+      return NextResponse.json({ error: "Invalid message format" }, { status: 400 });
     }
 
-    // Step 5: Fetch transfers
+    const recoveredAddress = verifyMessage(message, signature);
+    if (recoveredAddress.toLowerCase() !== userAddress.toLowerCase()) {
+      return NextResponse.json({ error: "Signature verification failed" }, { status: 403 });
+    }
+
+    // Step 3: Rate limiting
+    if (pendingRequests.has(userAddress.toLowerCase())) {
+      return NextResponse.json({ error: "Request already in progress for this address" }, { status: 409 });
+    }
+    pendingRequests.add(userAddress.toLowerCase());
+    addressRequestTracker.set(userAddress.toLowerCase(), Date.now());
+
+    // Step 4: Fetch transfers
     const allTransfers = await fetchAllTransfersCached(userAddress, chain);
 
     if (allTransfers.length === 0) {
@@ -86,7 +78,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Step 6: Process transfers
+    // Step 5: Process transfers
     const filteredTransfers: any[] = FilterAndSortTx(allTransfers, {
       direction: transferDirection,
       address: userAddress,
@@ -94,7 +86,7 @@ export async function POST(req: NextRequest) {
 
     const pairsFromParent = FilterPair(filteredTransfers, userAddress);
 
-    // Step 7: Generate graph data
+    // Step 6: Generate graph data
     let generatedgraphData;
     if (clientGraphData && clientGraphData.nodes && clientGraphData.links) {
       generatedgraphData = clientGraphData;
@@ -102,7 +94,7 @@ export async function POST(req: NextRequest) {
       generatedgraphData = await generateNodesFromTx(filteredTransfers, chain);
     }
 
-    // Step 8: Generate HTML visualization
+    // Step 7: Generate HTML visualization
     const graphConfig = {
       graphData: generatedgraphData,
       targetNode: targetNode || userAddress,
@@ -117,14 +109,14 @@ export async function POST(req: NextRequest) {
       throw new Error("Failed to generate HTML content");
     }
 
-    // Step 9: Upload HTML to IPFS
+    // Step 8: Upload HTML to IPFS
     const htmlUploadRes = await internalApiPost("/api/ipfs/upload-html", {
       htmlContent,
       filename: `cosmic-graph-${userAddress.slice(0, 6)}.html`,
     });
     const htmlCid = htmlUploadRes.cid;
 
-    // Step 10: Create metadata
+    // Step 9: Create metadata
     const addressCosmicData = {
       address: userAddress,
       balance: await getETHBalanceAsBigInt(userAddress),
@@ -159,12 +151,15 @@ export async function POST(req: NextRequest) {
       generatedgraphData.nodes.length,
     );
 
-    // Step 11: Upload metadata to IPFS
+    // Step 10: Upload metadata to IPFS
     const metadataUploadRes = await internalApiPost("/api/ipfs/upload-metadata", { metadata });
     const metadataCid = metadataUploadRes.cid;
 
-    // Step 12: Create signature for minting
-    const messageHash = solidityPackedKeccak256(["string", "address", "uint256"], [metadataCid, userAddress, nonce]);
+    // Step 11: Create signature for minting
+    const messageHash = solidityPackedKeccak256(
+      ["string", "address", "uint256"],
+      [metadataCid, userAddress, nonce + 1],
+    );
     const messageHashBytes = getBytes(messageHash);
     const mintingSignature = await signer.signMessage(messageHashBytes);
 
@@ -194,9 +189,7 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   } finally {
-    if (!IS_LOCALHOST) {
-      pendingRequests.delete(userAddress.toLowerCase());
-    }
+    pendingRequests.delete(userAddress.toLowerCase());
   }
 }
 
