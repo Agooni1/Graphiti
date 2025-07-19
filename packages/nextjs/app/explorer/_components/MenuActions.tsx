@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { MintCosmicNFT } from "./MintCosmicNFT";
 import { MintInfoTooltip } from "./MintInfoTooltip";
+import { Listbox } from "@headlessui/react";
 import { useAccount } from "wagmi";
 import {
   ArrowPathIcon,
@@ -24,7 +25,6 @@ import {
   getChainId,
   isContractDeployedOnChain,
 } from "~~/utils/cosmicNFT/chainHelpers";
-import { Listbox } from "@headlessui/react";
 
 // 🔧 UPDATE: Show all chains, not just deployed ones
 const CHAIN_OPTIONS = Object.entries(CHAIN_CONFIGS).map(([value, config]) => ({
@@ -231,16 +231,24 @@ export function MenuActions({
                 {/* Chain selector */}
                 <Listbox value={selectedChain} onChange={handleNetworkChange}>
                   <div className="relative">
-                    <Listbox.Button className="w-[160px] min-h-[35px] rounded-lg bg-gradient-to-r from-slate-800/90 to-slate-700/90 text-slate-200 px-2 py-1">
+                    <Listbox.Button
+                      as="div"
+                      className="w-[160px] min-h-[35px] rounded-lg bg-gradient-to-r from-slate-800/90 to-slate-700/90 text-slate-200 px-2 py-1 cursor-pointer"
+                    >
                       {CHAIN_CONFIGS[selectedChain].name}
                     </Listbox.Button>
-                    <Listbox.Options className="absolute mt-1 w-[160px] rounded-lg bg-slate-800/90 text-slate-200 shadow-lg z-50">
+                    <Listbox.Options
+                      as="ul"
+                      className="absolute mt-1 w-[160px] rounded-lg bg-slate-900/95 text-white shadow-2xl z-50 border border-slate-700"
+                    >
                       {CHAIN_OPTIONS.map(opt => (
                         <Listbox.Option
                           key={opt.value}
                           value={opt.value}
                           className={({ active }) =>
-                            `cursor-pointer select-none px-4 py-2 ${active ? "bg-slate-700/90" : ""}`
+                            `cursor-pointer select-none px-4 py-2 ${
+                              active ? "bg-blue-700/80 text-white" : "text-slate-200"
+                            }`
                           }
                         >
                           {opt.label}

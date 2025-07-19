@@ -3702,6 +3702,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@se-2/nextjs@workspace:packages/nextjs"
   dependencies:
+    "@headlessui/react": ^2.2.4
     "@heroicons/react": ~2.1.5
     "@rainbow-me/rainbowkit": 2.2.3
     "@tailwindcss/postcss": 4.0.15
